@@ -1,0 +1,164 @@
+:root {
+  --color-1: #b33439;
+  --primary: #3f3f95;
+  --secondary: #b33439;
+  --color-2: #313a62;
+  --color-3: #3f3f95;
+  --color-4: #727597;
+  --color-5: #e3d9dc;
+  --color-6: #ffffff;
+}
+
+.glassy-navbar-wrapper {
+  background: transparent;
+  max-width: 1400px;
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: 100%;
+}
+
+.glassy-navbar {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 1rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.20);
+  width: 100%;
+  overflow: visible !important;
+  position: relative;
+  z-index: 100;
+  background: var(--color-6);
+}
+
+.glassy-navbar .navbar-brand {
+  font-size: 1.5rem;
+  color: var(--primary);
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.glassy-navbar .nav-link {
+  transition: all 0.15s ease;
+  color: #000;
+  opacity: 0.9;
+  font-weight: 400;
+  background: none;
+  border-radius: 8px;
+  padding: 6px 16px;
+}
+
+.glassy-navbar .nav-link:hover {
+  text-shadow: 0 0 5px rgba(114, 117, 151, 0.2);
+  color: var(--primary);
+}
+
+.m-large {
+  margin-top: 7.5rem;
+}
+
+@media (max-width: 992px) {
+  .glassy-navbar {
+    flex-direction: column;
+    padding: 15px;
+  }
+
+  .navbar-nav {
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .glassy-navbar .navbar-toggler {
+    display: block;
+    background: var(--color-6);
+    border: 1.5px solid var(--color-3);
+    font-size: 1.5rem;
+    cursor: pointer;
+  }
+}
+
+.btn-c-primary {
+  background-color: var(--primary);
+  color: var(--color-6);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.btn-c-primary:hover {
+  color: var(--color-6);
+  background-color: var(--secondary);
+  box-shadow: 0px 0px 8px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-c-primary:focus {
+  color: var(--color-6);
+  background-color: var(--secondary);
+  box-shadow: 0px 0px 10px 3px rgba(0, 0, 0, 0.3);
+}
+
+.btn-c-secondary {
+  background-color: var(--secondary);
+  color: var(--color-6);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.btn-c-secondary:hover {
+  color: var(--color-6);
+  background-color: var(--primary);
+  box-shadow: 0px 0px 8px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-c-secondary:focus {
+  color: var(--color-6);
+  background-color: var(--primary);
+  box-shadow: 0px 0px 10px 3px rgba(0, 0, 0, 0.3);
+}
+
+.text-c-primary {
+  color: var(--primary);
+}
+
+.table-c thead th,
+.table-c thead td {
+  background-color: var(--primary);
+  color: var(--color-6);
+  font-weight: bold;
+}
+
+.dropdown-menu {
+  /* Box shadow except the top */
+  border: none;
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.2);
+}
+
+.nav-item.dropdown:hover .dropdown-menu,
+.nav-item.dropdown.show .dropdown-menu {
+  display: block !important;
+}
+
+.c-hr {
+  margin: 0.5rem auto;
+  width: 80%;
+}
+
+.edit-c-btn {
+  position: absolute;
+  color: var(--primary);
+  top: 2%;
+  right: 2%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.edit-c-btn:hover {
+  color: var(--secondary);
+  scale: 1.05;
+}
