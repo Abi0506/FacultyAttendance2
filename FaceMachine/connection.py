@@ -1,9 +1,9 @@
 import mysql.connector
 import datetime 
-from zk import ZK
+
 
 DEVICE_IP = "192.168.1.100"
-PORT = 4370
+
 
 def db():
     try:
@@ -84,12 +84,3 @@ def check_log_info(log):
         mydb.commit()
         return True
     
-def connect_to_device(reason):
-    zk = ZK(DEVICE_IP, port=PORT, timeout=5, password=0, force_udp=False, ommit_ping=False)
-    try:
-        conn = zk.connect()
-        print("Connected to device successfully for reason:", reason)
-        return conn
-    except Exception as e:
-        print(f"Connection failed: {e}")
-        return False

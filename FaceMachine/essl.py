@@ -103,4 +103,3 @@ def process_logs():
         conn.close()
 
 
-process_logs()
