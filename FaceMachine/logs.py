@@ -1,7 +1,8 @@
 
 from connection import db_connection
-from connection import connect_to_device
+from zk import ZK
 from connection import check_log_info
+from connection import db
 
 from datetime import timezone
 import os.path
@@ -13,7 +14,7 @@ from essl import process_logs
 import schedule
 import time
 import datetime
-import threading
+
 
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
@@ -63,64 +64,61 @@ def holiday():
     return lst
 
 
-def get_realtime_logs():
-    conn = connect_to_device("getting live attendance list")
-    if not conn:
-        print("connection failed")
-        return
 
-    try:
-        conn.reg_event(1)  
-        
-        for log in conn.live_capture():
-            if log is None:
-                continue
-
-            print(f"Captured: {log}")
-
-            db_connection([log,])
-       
-   
-
-    except KeyboardInterrupt:
-        print("Stopping real-time log listener.")
-    except Exception as e:
-        print(f" Real-time logging error: {e}")
-    finally:
-        conn.disconnect()
+def connect_to_device(reason , DEVICE_IP ):
+    PORT = 4370
     
+
+    zk = ZK(DEVICE_IP, port=PORT, timeout=5, password=0, force_udp=False, ommit_ping=False)
+    try:
+        conn = zk.connect()
+        print("Connected to device successfully for reason:", reason)
+        return conn
+    except Exception as e:
+        print(f"Connection failed: {e}")
+        return False
+
+
+
 
 def get_attendance_list():
      
+        connection = db()
+        cursor = connection.cursor()
+        cursor.execute("SELECT ip_address FROM device")
+        rows = cursor.fetchall()
 
-        conn = connect_to_device("getting attendance list")
-        if not conn:
-            print("connection failed")
-        try :
-            conn.disable_device()
-            logs = conn.get_attendance()
-            print(logs)
-            conn.enable_device()
+  
+        for (ip,) in rows:
+        
+            conn = connect_to_device("getting attendance list" , ip)
+            if not conn:
+                print("connection failed")
+            try :
+                conn.disable_device()
+                logs = conn.get_attendance()
+                conn.enable_device()
 
-            if not logs:
-                print("No attendance logs found.")
-                return
-            
-            else:
-                for log in logs:
-                    check_log_info(log)
+                if not logs:
+                    print("No attendance logs found.")
+                    return
+                
+                else:
+                    for log in logs:
+                        check_log_info(log)
 
-            conn.disconnect()
+                conn.disconnect()
 
-        except Exception as e:
-            print(f"Error getting attendance logs: {e}")
-        finally:    
-            
-            print("Disconnected from device.")     
+            except Exception as e:
+                print(f"Error getting attendance logs: {e}")
+            finally:    
+                
+                print("Disconnected from device.") 
+        cursor.close()
+        connection.close()            
 
 def logs_main():
-    live_thread = threading.Thread(target=get_realtime_logs, daemon=True)
-    live_thread.start()
+  
     
     holiday_dates = holiday()
     
