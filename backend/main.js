@@ -6,7 +6,7 @@ const app = express();
 
 const PORT = 5050;
 const corsOptions = {
-  origin: ['http://10.10.33.251:8000','http://localhost:3000' ],
+  origin: ['http://10.10.33.251:8000','http://localhost:8000','http://localhost:3001' ,'http://10.10.33.251:3000',],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -28,5 +28,5 @@ app.use("/api/attendance", attendanceRouter);
 
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}`);
 });
