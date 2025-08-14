@@ -24,7 +24,7 @@ yarn-error.log*
 .env
 /backend/dumps
 
-venv
+venv/
 
 __pycache__
 FaceMachine/venv/Lib/

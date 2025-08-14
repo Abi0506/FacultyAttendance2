@@ -153,7 +153,7 @@ function UserManager() {
   };
 
   return (
-    <PageWrapper title="User Manager">
+    <PageWrapper title="Useer Manager">
 
       {/* Add User */}
       <div className="mb-5 p-4 rounded-4 border bg-light">
@@ -252,6 +252,7 @@ function UserManager() {
                     </option>
                   ))}
                 </select>
+                <p><a href='/categories'>Click here</a> to add a new category</p>
               </div>
             </div>
             <div className="mt-4">
