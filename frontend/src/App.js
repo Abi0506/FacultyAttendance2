@@ -66,14 +66,13 @@ function AppContent() {
     logout,
     designation
   } = useAuth();
-  // ...existing code...
   const [pendingExemptions, setPendingExemptions] = useState(0);
 
   useEffect(() => {
     const fetchPendingExemptions = async () => {
       if (isAuthenticated && designation === 'HR') {
         try {
-          const res = await import('./axios').then(m => m.default.get('/attendence/hr_exemptions_all'));
+          const res = await import('./axios').then(m => m.default.get('/attendance/hr_exemptions_all'));
           if (res.data && Array.isArray(res.data.exemptions)) {
             const pending = res.data.exemptions.filter(e => e.exemptionStatus === 'pending').length;
             setPendingExemptions(pending);
