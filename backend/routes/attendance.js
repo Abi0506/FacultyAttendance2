@@ -460,6 +460,18 @@ router.post('/devices/update', async (req, res) => {
     res.status(500).json({ message: "Failed to update device" });
   }
 });
+router.post('/devices/delete', async (req, res) => {
+  let { id } = req.body;
+  try {
+    await db.query('DELETE FROM devices WHERE device_id = ?', [id]);
+    res.json({ message: "Device deleted successfully", success: true });
+  } catch (err) {
+    console.error("Error deleting device:", err);
+    res.status(500).json({ message: "Failed to delete device" });
+  }
+});
+
+
 
 router.get('/get_user/:id', async (req, res) => {
   const { id } = req.params;
