@@ -1,10 +1,6 @@
 import mysql.connector
 import datetime 
 
-
-DEVICE_IP = "192.168.1.100"
-
-
 def db():
     try:
         mydb = mysql.connector.connect(
@@ -19,29 +15,6 @@ def db():
         print(f"Error: {err}")
         return None
 
-
-def db_connection(logs):
-    for log in logs:
-        user_id = log.user_id
-        timestamp = log.timestamp
-        try:
-            mydb = db()
-            cursor = mydb.cursor()
-
-            
-            print(f"Processing log for User ID: {user_id}, Timestamp: {timestamp}") 
-            
-            insert_query = """
-                INSERT INTO faculty_data_logs.logs (staff_id, time, date)
-                VALUES (%s, %s, %s)
-            """
-            cursor.execute(insert_query, (user_id, timestamp, timestamp))
-            mydb.commit()
-
-        except Exception as err:
-            print(f"Database error: {err}")
-        finally:
-            mydb.close()
 
 def check_log_info(log):
     if not log.user_id or not log.timestamp:

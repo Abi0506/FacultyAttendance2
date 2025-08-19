@@ -76,43 +76,6 @@ def delete_user(user_id):
         finally:
             conn.disconnect()
 
-# def migrate():
-#     df = pd.read_excel("Faculty.xlsx")
-#     filtered_df = df[df["department"] == "CSE" ]  
-#     dicts = filtered_df.to_dict(orient="records")
-    
-#     try:    
-            
-#         for record in dicts:
-#             user_id = record["fac_id"]
-#             name = record["name"]
-#             set_user_credentials(user_id=user_id, name=name ,password='')
-#             time.sleep(1)
-
-            
-#     except Exception as e:
-#         print(f"Error during migration: {e}")
-#     finally:
-        
-#         print("Migration completed successfully!")      
-  
-
-
-# def delete_logs():
-#     conn = connect_to_device("deleting logs")
-#     if not conn:
-#         return "Error: Device not connected"
-
-#     try:
-#         conn.clear_attendance()
-#         return "Logs deleted successfully"
-
-#     except Exception as e:
-#         return "Error: Delete logs failed"
-
-#     finally:
-#         conn.disconnect()
-
 if __name__ == "__main__":
     func = sys.argv[1]
     if func == 'set_user_credentials':
@@ -128,5 +91,3 @@ if __name__ == "__main__":
         else:
             user_id = sys.argv[2]
             print(delete_user(user_id))
-    # elif func == 'delete_logs':
-    #     print(delete_logs())
