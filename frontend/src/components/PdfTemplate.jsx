@@ -1,0 +1,68 @@
+import React from 'react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+const PdfTemplate = (title, headers, data, logoBase64 = 'logo.png') => {
+    const doc = new jsPDF();
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    const headerHeight = 30;
+    const footerHeight = 15;
+
+    //  header background
+    doc.setFillColor(230, 230, 230);
+    doc.rect(0, 0, pageWidth, headerHeight, 'F');
+
+    //  (left)
+    const logoWidth = 20;
+    const logoHeight = 20;
+    doc.addImage(logoBase64, 'PNG', 14, 5, logoWidth, logoHeight);
+
+    // (center)
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    const titleWidth = doc.getTextWidth(title);
+    doc.text(title, (pageWidth - titleWidth) / 2, 17);
+
+    // (right)
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    const rightText = 'PSG iTech';
+    const rightTextWidth = doc.getTextWidth(rightText);
+    doc.text(rightText, pageWidth - rightTextWidth - 14, 17);
+
+    autoTable(doc, {
+        startY: headerHeight + 10,
+        head: [headers],
+        body: data,
+        theme: "plain",
+        styles: {
+            fontSize: 10,
+            cellPadding: 3,
+        },
+        headStyles: {
+            fillColor: [63, 63, 149],
+            textColor: [255, 255, 255],
+        },
+    });
+
+    // footer background
+    doc.setFillColor(230, 230, 230);
+    doc.rect(0, pageHeight - footerHeight, pageWidth, footerHeight, 'F');
+
+    // footer text
+    const footerText = `Generated on ${new Date().toLocaleDateString()}`;
+    doc.setFontSize(10);
+    const footerTextWidth = doc.getTextWidth(footerText);
+    doc.text(
+        footerText,
+        (pageWidth - footerTextWidth) / 2,
+        pageHeight - footerHeight / 2 + 1
+    );
+
+    return doc;
+};
+
+export default PdfTemplate;

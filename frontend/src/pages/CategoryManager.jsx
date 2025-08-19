@@ -277,7 +277,7 @@ function CategoryManagerPage() {
                         />
                     </div>
                     <div className="col-12">
-                        <button type="submit" className="btn btn-primary" disabled={loading}>
+                        <button type="submit" className="btn btn-c-primary px-5" disabled={loading}>
                             {loading ? "Adding..." : "Add Category"}
                         </button>
                     </div>
