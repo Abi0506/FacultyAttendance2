@@ -156,9 +156,25 @@
   border: none;
   background: transparent;
   cursor: pointer;
+  
+  transition-duration: 0.3s;
 }
 
 .edit-c-btn:hover {
   color: var(--secondary);
-  scale: 1.05;
+}
+.delete-c-btn {
+  position: absolute;
+  color: var(--primary);
+  top: 2%;
+  left: 2%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition-duration: 0.3s;
+}
+
+.delete-c-btn:hover {
+  color: var(--secondary);
+
 }

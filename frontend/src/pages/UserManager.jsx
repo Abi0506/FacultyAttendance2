@@ -153,7 +153,7 @@ function UserManager() {
   };
 
   return (
-    <PageWrapper title="Useer Manager">
+    <PageWrapper title="User Manager">
 
       {/* Add User */}
       <div className="mb-5 p-4 rounded-4 border bg-light">

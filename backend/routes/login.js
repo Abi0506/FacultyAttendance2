@@ -50,8 +50,8 @@ router.get('/check_session', (req, res) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'None',
+      secure: false,
+      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
     res.json({ message: 'Valid token', designation: decoded.designation, staff_id: decoded.staff_id });
