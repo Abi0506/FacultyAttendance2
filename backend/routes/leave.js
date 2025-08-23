@@ -28,7 +28,7 @@ router.post('/', async (req, res) => {
         const staff_id = decoded.staff_id;
 
         const { start_date, end_date, leave_type } = req.body;
-        const sql = 'INSERT INTO `leave` (staff_id, start_date, end_date, leave_type, status) VALUES (?, ?, ?, ?, ?)';
+        const sql = 'INSERT INTO `leave` (staff_id, start_date, end_date, leave_type) VALUES ( ?, ?, ?, ?)';
         
         const [result] = await db.query(sql, [staff_id, start_date, end_date, leave_type]);
         res.json({ leave_id: result.insertId });
