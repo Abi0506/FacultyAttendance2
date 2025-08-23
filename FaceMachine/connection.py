@@ -16,6 +16,7 @@ def db():
         return None
 
 
+
 def check_log_info(log):
     if not log.user_id or not log.timestamp:
         print(f"Log missing user_id or timestamp: {log}")
