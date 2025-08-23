@@ -8,13 +8,17 @@ const scriptPath = process.env.PYTHON_SCRIPT_PATH;
 
 
 function runPythonScript(args) {
+  const pythonPath = 'c:\\FacultyAttendance2\\FaceMachine\\venv\\Scripts\\python.exe'; // Update to your venv path
   return new Promise((resolve, reject) => {
-    exec(`python "${scriptPath}" ${args.join(' ')}`, (error, stdout, stderr) => {
+    exec(`"${pythonPath}" "${scriptPath}" ${args.join(' ')}`, (error, stdout, stderr) => {
+      console.log('Python stdout:', stdout);
+      console.log('Python stderr:', stderr);
       if (error) return reject(new Error(stderr || 'Script failed'));
       resolve(stdout.trim());
     });
   });
 }
+
 
 
 router.post('/edit_user', async (req, res) => {
@@ -47,8 +51,6 @@ router.post('/edit_user', async (req, res) => {
 
 router.post('/add_user', async (req, res) => {
   let { id, name, dept, category, designation, staff_type, intime, outtime, breakmins, breakin, breakout } = req.body;
-
-  
   try {
     const pythonResult = await runPythonScript(['set_user_credentials', id, name]);
     if (pythonResult.includes('Error')) {
