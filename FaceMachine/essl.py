@@ -1,7 +1,7 @@
 import mysql.connector
 from datetime import datetime, timedelta
 from connection import db as db_connect
-from logs import get_holidays
+from holiday import get_holidays
 
 def insert_log(cursor, staffs, logs, date, is_holiday):
     print("Inserting log")
@@ -18,7 +18,7 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
         break_mins = 0
         attendance = 'P'
         # Holiday logic: if holiday, only mark present for those with logs
-        if is_holiday:
+        if is_holiday or datetime.datetime.today().weekday() != 6:
             if not time_logs:
                 continue  # skip staff with no logs
         if time_logs:
@@ -56,10 +56,17 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
             attendance = 'A'
         try:
             print("Executing query")
-            cursor.execute("""
-                INSERT INTO report (staff_id, date, late_mins, attendance)
-                VALUES (%s, %s, %s, %s)
-            """, (staff_id, date, round(late_mins, 2), attendance))
+            # Check if report already exists for staff_id and date
+            cursor.execute("SELECT * FROM report WHERE staff_id = %s AND date = %s", (staff_id, date))
+            exists = cursor.fetchall()
+            if exists:
+                cursor.execute("UPDATE report SET late_mins = %s, attendance = %s WHERE staff_id = %s AND date = %s",
+                               (round(late_mins, 2), attendance, staff_id, date))
+            else:
+                cursor.execute("""
+                    INSERT INTO report (staff_id, date, late_mins, attendance)
+                    VALUES (%s, %s, %s, %s)
+                """, (staff_id, date, round(late_mins, 2), attendance))
         except mysql.connector.Error as err:
             print(f"Error inserting log for {staff_id}: {err}")
 
@@ -90,4 +97,4 @@ def process_logs():
         cursor.close()
         conn.close()
 
-process_logs()
+
