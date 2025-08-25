@@ -9,6 +9,32 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
     categories = cursor.fetchall()
 
     for staff_id, category_id in staffs:
+        # Staff-wise leave logic: check if staff is on leave for the day
+        cursor.execute("SELECT * FROM `leave` WHERE staff_id = %s AND %s BETWEEN start_date AND end_date", (staff_id, date))
+        leave_record = cursor.fetchone()
+        time_logs = [log_time for log_staff_id, log_time in logs if log_staff_id == staff_id]
+        time_logs.sort()
+        if leave_record and not time_logs:
+            attendance = 'L'
+            late_mins = 0
+            try:
+                cursor.execute("SELECT * FROM report WHERE staff_id = %s AND date = %s", (staff_id, date))
+                exists = cursor.fetchall()
+                if exists:
+                    cursor.execute("UPDATE report SET late_mins = %s, attendance = %s WHERE staff_id = %s AND date = %s",
+                                   (round(late_mins, 2), attendance, staff_id, date))
+                else:
+                    cursor.execute("""
+                        INSERT INTO report (staff_id, date, late_mins, attendance)
+                        VALUES (%s, %s, %s, %s)
+                    """, (staff_id, date, round(late_mins, 2), attendance))
+            except mysql.connector.Error as err:
+                print(f"Error inserting log for {staff_id}: {err}")
+            continue  # Skip further processing for staff on leave with no logs
+        category_data = next((cat for cat in categories if cat[0] == category_id), None)
+        if not category_data:
+            continue
+        # ...existing code...
         category_data = next((cat for cat in categories if cat[0] == category_id), None)
         if not category_data:
             continue
@@ -18,9 +44,9 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
         break_mins = 0
         attendance = 'P'
         # Holiday logic: if holiday, only mark present for those with logs
-        if is_holiday or datetime.datetime.today().weekday() != 6:
+        if is_holiday or datetime.today().weekday() == 6:
             if not time_logs:
-                continue  # skip staff with no logs
+                continue  # skip staff with no logs on holidays
         if time_logs:
             time_objs = [datetime.strptime(f"{date} {t}", "%Y-%m-%d %H:%M:%S") for t in time_logs]
             n = len(time_objs)
