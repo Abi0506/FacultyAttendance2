@@ -25,7 +25,7 @@ DROP TABLE IF EXISTS `exemptions`;
 CREATE TABLE `exemptions` (
   `exemptionId` int NOT NULL AUTO_INCREMENT,
   `exemptionType` varchar(50) NOT NULL,
-  `staffId` varchar(20) NOT NULL,
+    `staffId` VARCHAR(20) NOT NULL, -- can be staff id or 'all'
   `exemptionStaffName` varchar(100) DEFAULT NULL,
   `exemptionSession` varchar(50) DEFAULT NULL,
   `exemptionDate` date DEFAULT NULL,
