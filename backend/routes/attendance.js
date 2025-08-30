@@ -254,82 +254,42 @@ router.post('/individual_data', async (req, res) => {
 });
 
 router.post('/applyExemption', async (req, res) => {
-  let { exemptionType, staffId, exemptionSession, exemptionDate, exemptionReason, otherReason, start_time, end_time, exemptionStatus } = req.body;
-
-  if (!exemptionSession || exemptionSession.length === 0) {
-    exemptionSession = null;
-  } else if (Array.isArray(exemptionSession)) {
-    exemptionSession = exemptionSession.join(',');
-  }
-
-  exemptionDate = exemptionDate || null;
-  start_time = start_time || null;
-  end_time = end_time || null;
+  let { exemptionType, staffId, exemptionSession, exemptionDate, exemptionReason, otherReason, start_time, end_time, exemptionStatus } = req.body; let name = '';
 
   try {
-    if (staffId === "all") {
-      // Fetch all staff IDs and names
-      const [staffRows] = await db.query('SELECT staff_id, name FROM staff');
-      
-      if (staffRows.length === 0) {
-        return res.status(400).json({ message: "No staff found to apply exemption" });
-      }
+    const [staffRows] = await db.query('SELECT name FROM staff WHERE staff_id = ?', [staffId]);
+    if (staffRows.length === 0) {
+      return res.status(400).json({ message: "Staff ID does not exist" });
+    }
+    name = staffRows[0].name;
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to add exemption" });
+  }
 
-      // Prepare bulk insert values for all staff
-      const values = staffRows.map(({ staff_id, name }) => [
+  if (exemptionSession.length === 0) {
+    exemptionSession = null;
+  }
+  try {
+    await db.query(
+      `INSERT INTO exemptions 
+            (exemptionType, staffId, exemptionStaffName, exemptionSession, exemptionDate, exemptionReason, otherReason, start_time, end_time,exemptionStatus) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
         exemptionType,
-        staff_id,
+        staffId,
         name,
-        exemptionSession,
+        Array.isArray(exemptionSession) ? exemptionSession.join(',') : exemptionSession,
         exemptionDate,
         exemptionReason,
         otherReason,
         start_time,
         end_time,
         exemptionStatus
-      ]);
-
-      // Bulk insert exemptions for all staff
-      await db.query(
-        `INSERT INTO exemptions 
-          (exemptionType, staffId, exemptionStaffName, exemptionSession, exemptionDate, exemptionReason, otherReason, start_time, end_time, exemptionStatus) 
-          VALUES ?`,
-        [values]
-      );
-
-      return res.json({ message: "Exemptions added for all staff successfully" });
-    } else {
-      // For single staff, verify staff exists
-      const [staffRows] = await db.query('SELECT name FROM staff WHERE staff_id = ?', [staffId]);
-      if (staffRows.length === 0) {
-        return res.status(400).json({ message: "Staff ID does not exist" });
-      }
-      const name = staffRows[0].name;
-
-      // Insert exemption for single staff
-      await db.query(
-        `INSERT INTO exemptions 
-          (exemptionType, staffId, exemptionStaffName, exemptionSession, exemptionDate, exemptionReason, otherReason, start_time, end_time, exemptionStatus) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          exemptionType,
-          staffId,
-          name,
-          exemptionSession,
-          exemptionDate,
-          exemptionReason,
-          otherReason,
-          start_time,
-          end_time,
-          exemptionStatus
-        ]
-      );
-
-      res.json({ message: "Exemption added successfully" });
-    }
+      ]
+    );
+    res.json({ message: "Exemption added successfully" });
   } catch (err) {
-    console.error("Error in /applyExemption:", err);
-    res.status(500).json({ message: "Failed to add exemption", error: err.message });
+    res.status(500).json({ message: "Failed to add exemption" });
   }
 });
 
@@ -396,10 +356,6 @@ router.post('/hr_exemptions/reject', async (req, res) => {
 
 router.post("/search/getuser", async (req, res) => {
   const { staffId } = req.body;
-  if (staffId === "all") {
-    // Return a dummy staff object for 'All'
-    return res.json({ message: "Staff fetched successfully", staff: { staff_id: "all", name: "All" } });
-  }
   try {
     const [rows] = await db.query('SELECT * FROM staff WHERE staff_id = ?', [staffId]);
     if (rows.length === 0) {
