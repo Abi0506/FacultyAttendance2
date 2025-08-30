@@ -282,7 +282,7 @@ function HRExcemptions() {
                                 filteredExemptions.map((exemption, index) => {
                                     return (
                                         <tr key={index} className="exemption-row" id={`${exemption.exemptionId}`}>
-                                                <td>{exemption.staffId === "all" ? "All" : exemption.staffId}</td>
+                                            <td>{exemption.staffId}</td>
                                             <td>{exemption.exemptionType}</td>
                                             <td>{exemption.exemptionDate}</td>
                                             <td>{exemption.exemptionSession || <span className="text-muted">-------</span>}</td>
@@ -339,28 +339,16 @@ function HRExcemptions() {
                 <form onSubmit={handleSubmit} className="row g-3">
                     <div className="col-md-4">
                         <label htmlFor="userSelect" className="form-label fw-medium">User (Staff ID)</label>
-                        <div className="input-group">
-                            <select
-                                className="form-select"
-                                name="staffId"
-                                value={formData.staffId}
-                                onChange={handleChange}
-                                required
-                            >
-                                <option value="">Select Staff</option>
-                                <option value="all">All</option>
-                            </select>
-                            <input
-                                type="text"
-                                className="form-control"
-                                name="staffId"
-                                value={formData.staffId !== "all" ? formData.staffId : ""}
-                                onChange={handleChange}
-                                placeholder="Enter Staff ID"
-                                disabled={formData.staffId === "all"}
-                            />
-                        </div>
-                        {staffName && formData.staffId !== "all" && (
+                        <input
+                            type="text"
+                            className="form-control"
+                            name="staffId"
+                            value={formData.staffId}
+                            onChange={handleChange}
+                            placeholder="Enter Staff ID"
+                            required
+                        />
+                        {staffName && (
                             <div className="mt-1 text-primary small">{staffName}</div>
                         )}
                     </div>
