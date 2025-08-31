@@ -123,7 +123,7 @@ function HRExcemptions() {
                 showAlert('Failed to add exemption', 'error');
             }
         } catch (error) {
-            showAlert('Submission failed!', 'error');
+            showAlert(error.response.data.message || 'Failed to add exemption', 'error');
             console.error("Error submitting exemption:", error);
         }
     };
