@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 
 
+
 async function start_end_time() {
   const today = new Date();
   const year = today.getFullYear();
@@ -254,45 +255,72 @@ router.post('/individual_data', async (req, res) => {
 });
 
 router.post('/applyExemption', async (req, res) => {
-  let { exemptionType, staffId, exemptionSession, exemptionDate, exemptionReason, otherReason, start_time, end_time, exemptionStatus } = req.body; let name = '';
+  let { exemptionType, staffId, exemptionSession, exemptionDate, exemptionReason, otherReason, start_time, end_time, exemptionStatus } = req.body;
 
+  // 1. Prepare data for the database, converting empty values to null
+  const sessionString = Array.isArray(exemptionSession) && exemptionSession.length > 0 ? exemptionSession.join(',') : null;
+  const startTimeForDb = start_time || null;
+  const endTimeForDb = end_time || null;
+  const dateForDb = exemptionDate || null;
+
+  // 2. Check for an identical existing exemption before proceeding
   try {
+    const [duplicates] = await db.query(
+      `SELECT * FROM exemptions 
+       WHERE staffId = ? 
+       AND exemptionDate = ? 
+       AND exemptionType = ?
+       AND COALESCE(exemptionSession, '') = COALESCE(?, '')
+       AND COALESCE(start_time, '') = COALESCE(?, '')
+       AND COALESCE(end_time, '') = COALESCE(?, '')
+       AND (exemptionStatus = 'pending' OR exemptionStatus = 'approved')`,
+      [staffId, dateForDb, exemptionType, sessionString, startTimeForDb, endTimeForDb]
+    );
+
+    if (duplicates.length > 0) {
+    
+      return res.status(409).json({ message: "An identical exemption request is already pending or approved." });
+    }
+  } catch (error) {
+    console.error("Error checking for duplicate exemptions:", error);
+    return res.status(500).json({ message: "Failed to check for duplicates" });
+  }
+
+  // 3. If no duplicate is found, proceed to add the exemption
+  try {
+    // Verify staff ID and get the name
     const [staffRows] = await db.query('SELECT name FROM staff WHERE staff_id = ?', [staffId]);
     if (staffRows.length === 0) {
-      return res.status(400).json({ message: "Staff ID does not exist" });
+      return res.status(404).json({ message: "Staff ID does not exist" });
     }
-    name = staffRows[0].name;
-  } catch (error) {
-    return res.status(500).json({ message: "Failed to add exemption" });
-  }
+    const name = staffRows[0].name;
 
-  if (exemptionSession.length === 0) {
-    exemptionSession = null;
-  }
-  try {
+    // Insert the new exemption
     await db.query(
       `INSERT INTO exemptions 
-            (exemptionType, staffId, exemptionStaffName, exemptionSession, exemptionDate, exemptionReason, otherReason, start_time, end_time,exemptionStatus) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (exemptionType, staffId, exemptionStaffName, exemptionSession, exemptionDate, exemptionReason, otherReason, start_time, end_time, exemptionStatus) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         exemptionType,
         staffId,
         name,
-        Array.isArray(exemptionSession) ? exemptionSession.join(',') : exemptionSession,
-        exemptionDate,
+        sessionString,
+        dateForDb,
         exemptionReason,
         otherReason,
-        start_time,
-        end_time,
+        startTimeForDb,
+        endTimeForDb,
         exemptionStatus
       ]
     );
-    res.json({ message: "Exemption added successfully" });
+
+    res.status(201).json({ message: "Exemption added successfully" });
+
   } catch (err) {
-    res.status(500).json({ message: "Failed to add exemption" });
+    console.error("Error in /applyExemption:", err);
+    res.status(500).json({ message: "Failed to add exemption", error: err.message });
   }
 });
-
 router.get('/hr_exemptions_all', async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM exemptions  ORDER BY exemptionDate DESC');
