@@ -23,9 +23,9 @@ function ApplyExemption() {
         exemptionSession: [],
         exemptionDate: todayDate,
         exemptionReason: '',
-        otherReason: null,
-        start_time: null,
-        end_time: null,
+        otherReason: '',
+        start_time: '',
+        end_time: '',
         exemptionStatus: 'pending'
     });
 
@@ -81,13 +81,15 @@ function ApplyExemption() {
             if (res.data.message === "Exemption added successfully") {
                 showAlert('Exemption added successfully!', 'success');
                 setFormData({
+                     staffId: user.staffId || '',
                     exemptionType: 'Day',
                     exemptionSession: [],
                     exemptionDate: todayDate,
                     exemptionReason: '',
-                    otherReason: null,
-                    start_time: null,
-                    end_time: null,
+                    otherReason: '',
+                    start_time: '',
+                    end_time: '',
+                     exemptionStatus: 'pending',
                 });
                 setSelectedSessions([]);
                 fetchExemptions();
@@ -96,7 +98,7 @@ function ApplyExemption() {
                 throw new Error("Failed to add exemption");
             }
         } catch (error) {
-            showAlert('Submission failed!', 'error');
+            showAlert(error.response.data.message || 'Failed to add exemption', 'error');
         }
     };
 
