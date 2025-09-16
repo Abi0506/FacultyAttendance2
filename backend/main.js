@@ -2,11 +2,14 @@
 const express = require("express");
 const cookieParser = require('cookie-parser');
 const cors = require("cors");
+const session = require('express-session');
+const passport = require('passport');
+require('dotenv').config();
 const app = express();
 
 const PORT = 5050;
 const corsOptions = {
-  origin: ['http://10.10.33.251:8000','http://localhost:8000','http://localhost:3001' ,'http://10.10.33.251:3000',],
+  origin: ['http://10.10.33.251:8000', 'http://localhost:8000', 'http://localhost:3001', 'http://10.10.33.251:3000', 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -16,6 +19,28 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
+// Session middleware (required for Passport)
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false } // set to true if using HTTPS
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
+const googleAuthRouter = require('./routes/googleAuth');
+app.use('/auth', googleAuthRouter);
+
+passport.serializeUser((user, done) => {
+  done(null, user);
+});
+
+passport.deserializeUser((user, done) => {
+  done(null, user);
+});
 
 
 const loginRouter = require("./routes/login");
