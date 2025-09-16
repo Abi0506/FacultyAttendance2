@@ -71,11 +71,18 @@ function LoginPage() {
               required
             />
           </div>
-          <button type="submit" className="btn btn-primary w-100 btn-c-primary">Login</button>
+          <button type="submit" className="btn btn-primary w-100 btn-c-primary mb-2">Login</button>
         </form>
+        <div className="text-center mt-3">
+          <button
+            className="btn btn-danger w-100"
+            onClick={() => window.location.href = 'http://localhost:5050/auth/google'}
+          >
+            <i className="bi bi-google me-2"></i>Login with Google
+          </button>
+        </div>
       </PageWrapper>
     </div>
-
   );
 }
 
