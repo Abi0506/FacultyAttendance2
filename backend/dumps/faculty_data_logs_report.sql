@@ -1,8 +1,8 @@
--- MySQL dump 10.13  Distrib 8.0.38, for Win64 (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.43, for Win64 (x86_64)
 --
 -- Host: localhost    Database: faculty_data_logs
 -- ------------------------------------------------------
--- Server version	9.0.1
+-- Server version	8.0.43
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -16,32 +16,33 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `logs`
+-- Table structure for table `report`
 --
 
-DROP TABLE IF EXISTS `logs`;
+DROP TABLE IF EXISTS `report`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `logs` (
+CREATE TABLE `report` (
   `log_id` int NOT NULL AUTO_INCREMENT,
   `staff_id` varchar(20) DEFAULT NULL,
-  `time` time DEFAULT NULL,
   `date` date DEFAULT NULL,
+  `late_mins` int DEFAULT NULL,
+  `attendance` char(1) DEFAULT NULL,
   PRIMARY KEY (`log_id`),
-  KEY `staff_id` (`staff_id`),
-  CONSTRAINT `logs_ibfk_1` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`staff_id`),
-  CONSTRAINT `logs_ibfk_2` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`staff_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=33 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  KEY `report` (`staff_id`),
+  CONSTRAINT `report_ibfk_1` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`staff_id`),
+  CONSTRAINT `report_ibfk_2` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`staff_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=77 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `logs`
+-- Dumping data for table `report`
 --
 
-LOCK TABLES `logs` WRITE;
-/*!40000 ALTER TABLE `logs` DISABLE KEYS */;
-INSERT INTO `logs` VALUES (1,'I0215','08:23:45','2025-05-15'),(2,'I0215','11:15:00','2025-05-15'),(3,'I0215','13:22:00','2025-05-15'),(4,'I0215','16:30:00','2025-05-15'),(5,'I0215','16:30:00','2025-05-15'),(13,'I0215','11:20:24','2025-06-05'),(18,'I0215','12:23:58','2025-06-05'),(19,'I0215','12:20:27','2025-06-06'),(20,'I0216','12:28:08','2025-06-06'),(21,'I0215','12:34:59','2025-06-06'),(22,'I0215','12:56:04','2025-06-06'),(24,'715524104021','13:12:28','2025-06-06'),(25,'I0218','08:40:35','2025-06-15'),(26,'I0218','12:30:40','2025-06-15'),(27,'I0218','13:45:32','2025-06-15'),(28,'I0218','16:45:10','2025-06-15'),(29,'I0215','08:35:10','2025-06-19'),(30,'I0215','12:30:40','2025-06-19'),(31,'I0215','13:50:23','2025-06-19'),(32,'I0215','16:30:43','2025-06-19');
-/*!40000 ALTER TABLE `logs` ENABLE KEYS */;
+LOCK TABLES `report` WRITE;
+/*!40000 ALTER TABLE `report` DISABLE KEYS */;
+INSERT INTO `report` VALUES (54,'I0215','2025-06-05',416,'P'),(55,'I0216','2025-06-05',0,'A'),(56,'I0217','2025-06-05',0,'A'),(57,'I0215','2025-06-06',480,'P'),(58,'I0216','2025-06-06',0,'A'),(59,'I0217','2025-06-06',0,'A'),(61,'I0216','2025-06-06',480,'P'),(62,'I0217','2025-06-06',0,'A'),(63,'715524104021','2025-06-06',0,'A'),(65,'I0216','2025-06-06',480,'P'),(66,'I0217','2025-06-06',0,'A'),(67,'715524104021','2025-06-06',0,'A'),(69,'I0216','2025-06-06',480,'P'),(70,'I0217','2025-06-06',0,'A'),(71,'I0218','2025-06-15',6,'P'),(72,'715524104021','2025-06-19',0,'A'),(73,'I0215','2025-06-19',24,'P'),(74,'I0216','2025-06-19',0,'A'),(75,'I0217','2025-06-19',0,'A'),(76,'I0218','2025-06-19',0,'A');
+/*!40000 ALTER TABLE `report` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -53,4 +54,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-07-11 11:03:10
+-- Dump completed on 2025-09-25 19:30:29

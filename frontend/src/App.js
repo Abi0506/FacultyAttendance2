@@ -20,6 +20,7 @@ import UserManager from './pages/UserManager';
 import CategoryManager from './pages/CategoryManager';
 import DevicesManager from './pages/DevicesManager';
 import HRLeaveManager from './pages/HRLeaveManager';
+import ResetPasswordPage from './pages/ResetPassword';
 // import LeaveManager from './pages/LeaveManager';
 
 // --- Auth & Context Imports ---
@@ -153,7 +154,7 @@ function AppContent() {
                                     <li className="nav-item">
                                         <Link className="nav-link" to="/applyExemption">Apply Exemption</Link>
                                     </li>
-                                    
+
                                 </ul>
                             )}
                             <div className="ms-auto">
@@ -174,7 +175,8 @@ function AppContent() {
             <div className="container m-large">
                 <Routes>
                     <Route path="/login" element={<LoginPage />} />
-                    
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
+
                     {/* HR Routes */}
                     <Route path="/view" element={<RequireHR><AttendanceViewer /></RequireHR>} />
                     <Route path="/summary" element={<RequireHR><DepartmentSummary /></RequireHR>} />
@@ -188,7 +190,7 @@ function AppContent() {
                     {/* Staff Routes */}
                     <Route path="/staffIndividualReport" element={<RequireStaff><IndividualStaffReport /></RequireStaff>} />
                     <Route path="/applyExemption" element={<RequireStaff><ExemptionApplyPage /></RequireStaff>} />
-                    
+
                     <Route path="/" element={
                         isAuthenticated
                             ? (designation === "HR"
