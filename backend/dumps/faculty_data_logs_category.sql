@@ -1,8 +1,8 @@
--- MySQL dump 10.13  Distrib 8.0.38, for Win64 (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.43, for Win64 (x86_64)
 --
 -- Host: localhost    Database: faculty_data_logs
 -- ------------------------------------------------------
--- Server version	9.0.1
+-- Server version	8.0.43
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -16,33 +16,32 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `staff`
+-- Table structure for table `category`
 --
 
-DROP TABLE IF EXISTS `staff`;
+DROP TABLE IF EXISTS `category`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `staff` (
-  `staff_id` varchar(20) NOT NULL,
-  `name` varchar(100) DEFAULT NULL,
-  `dept` varchar(20) DEFAULT NULL,
-  `category` int DEFAULT NULL,
-  `password` varchar(60) DEFAULT NULL,
-  `designation` varchar(50) DEFAULT NULL,
-  PRIMARY KEY (`staff_id`),
-  KEY `category` (`category`),
-  CONSTRAINT `staff_ibfk_1` FOREIGN KEY (`category`) REFERENCES `category` (`category_no`)
+CREATE TABLE `category` (
+  `category_no` int NOT NULL,
+  `category_description` varchar(100) DEFAULT NULL,
+  `in_time` varchar(15) DEFAULT NULL,
+  `break_in` varchar(15) DEFAULT NULL,
+  `break_out` varchar(15) DEFAULT NULL,
+  `out_time` varchar(15) DEFAULT NULL,
+  `break_time_mins` int DEFAULT NULL,
+  PRIMARY KEY (`category_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `staff`
+-- Dumping data for table `category`
 --
 
-LOCK TABLES `staff` WRITE;
-/*!40000 ALTER TABLE `staff` DISABLE KEYS */;
-INSERT INTO `staff` VALUES ('715524104021','Arya A','CSE',1,'$2b$10$dhZ1FHqTviZtx9mVGmuau.IbY67TG6dUkqEFQC4REwWXvkiy.Nkdu','STAFF'),('I01001','Wanda Maximoff','ECE',1,'$2b$10$8JpoILSCkshxdtEmveU5X.YoMaacwdTdIZ4e6BKGYodn0OZxxCGRK','Professor'),('I0215','Mahavishnu','CSE',1,'$2b$10$vqI/V7zF7v1EM8ES8mP7Ne01TM/polzcC2JVIllMubXyVlepBfNzG','STAFF'),('I0216','HR','MECH',1,'$2b$10$ym84uMh1v2ZBIPEPaU01Oulx3z5Kjoy/frSKPCVwsQRayuvbdSKdy','HR'),('I0217','Tony','ECE',1,NULL,'STAFF'),('I0218','Stephen','CSE',2,'$2b$10$81ruD1IC6jTBQN5Ruv6JzOm9BEqCjsUoKxeEf5BtI9xyh9.UEAq.a','STAFF');
-/*!40000 ALTER TABLE `staff` ENABLE KEYS */;
+LOCK TABLES `category` WRITE;
+/*!40000 ALTER TABLE `category` DISABLE KEYS */;
+INSERT INTO `category` VALUES (1,'Teaching Staff','08:45:00','10:15:00','15:00:00','16:45:00',70),(2,'Non Teaching Staff','0','0','0','08:00:00',70);
+/*!40000 ALTER TABLE `category` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -54,4 +53,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-07-11 11:03:09
+-- Dump completed on 2025-09-25 19:30:29
