@@ -1,4 +1,3 @@
-
 # Faculty Attendance
 
 **Faculty Attendance** is a full-stack web application for tracking faculty attendance using data from an **eSSL face recognition device**. A Python script pulls attendance logs from the device, processes late minutes, and stores records in a MySQL database. An HR portal allows for approving exemptions and viewing complete attendance data.
@@ -30,7 +29,7 @@ FacultyAttendance2/
 ├── FaceMachine/      # Python scripts (auto-called, no manual setup needed)
 └── README.md
 
-````
+```
 
 ---
 
@@ -43,7 +42,7 @@ Follow the steps below to run the application locally.
 ```bash
 git clone https://github.com/Abi0506/FacultyAttendance2.git
 cd FacultyAttendance2
-````
+```
 
 ---
 
@@ -76,10 +75,17 @@ nodemon main.js
 Inside the `backend` folder, create a `.env` file with the following contents:
 
 ```env
-DB_HOST=localhost
-DB_USER=your_mysql_username
-DB_PASSWORD=your_mysql_password
-DB_NAME=faculty_attendance
+DB_HOST=your_mysql_host
+DB_USER=your_mysql_user
+DB_PASS=your_mysql_password
+DB_NAME=your_database
+SECRET_KEY=your_jwt_secret
+GOOGLE_CLIENT_ID=your_client_id
+GOOGLE_CLIENT_SECRET=your_client_secret
+GOOGLE_CALLBACK_URL=google_callback_url
+SESSION_SECRET=your_google_secret
+EMAIL_USER=your_email_id
+EMAIL_PASS=your_email_app_password
 ```
 
 > Replace `your_mysql_username` and `your_mysql_password` with your actual MySQL credentials.
@@ -130,7 +136,6 @@ Ensure the following are installed:
    * Approve or deny **exemptions**
 
 ---
-
 
 ## 📄 License
 

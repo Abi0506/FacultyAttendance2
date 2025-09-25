@@ -19,12 +19,11 @@ passport.use(new GoogleStrategy({
         try {
             const email = profile.emails && profile.emails[0] && profile.emails[0].value;
             if (!email) return done(null, false, { message: 'No email found in Google profile' });
-            // Check if email exists in staff table
             const [rows] = await db.query('SELECT staff_id, name, designation FROM staff WHERE email = ?', [email]);
             if (rows.length === 0) {
                 return done(null, false, { message: 'No staff found with this email' });
             }
-            // Attach staff info to user object
+            
             const user = { ...profile, staff: rows[0] };
             return done(null, user);
         } catch (err) {
@@ -42,7 +41,6 @@ router.get('/google',
 router.get('/google/callback',
     passport.authenticate('google', { failureRedirect: '/login', session: true }),
     (req, res) => {
-        // If user is not found, redirect to frontend with error message
         if (!req.user || !req.user.staff) {
             return res.redirect('http://localhost:3000/?message=' + encodeURIComponent('No staff found with this Google account. Please contact admin.'));
         }
