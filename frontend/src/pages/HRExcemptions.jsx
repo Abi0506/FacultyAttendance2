@@ -159,8 +159,8 @@ function HRExcemptions() {
         const exemptionId = updated[index].exemptionId;
         console.log(`Exemption ID: ${exemptionId}, Action: ${action}`);
         if (action === "approve") {
-          const exemptionData = updated[index];
-           const res = await axios.post("/attendance/hr_exemptions/approve", {
+            const exemptionData = updated[index];
+            const res = await axios.post("/attendance/hr_exemptions/approve", {
                 exemptionId,
                 staffId: exemptionData.staffId,
                 exemptionType: exemptionData.exemptionType,
@@ -191,32 +191,35 @@ function HRExcemptions() {
     };
 
     const downloadPDF = () => {
-    const title = 'Exemptions';
-    const headers = [
-        "Staff ID",
-        "Type",
-        "Date",
-        "Session(s)",
-        "Time",
-        "Reason",
-        "Status"
-    ];
-    const data = filteredExemptions.map(exemption => [
-        exemption.staffId,
-        exemption.exemptionType,
-        exemption.exemptionDate,
-        exemption.exemptionSession || "-",
-        (exemption.start_time && exemption.end_time)
-            ? `${exemption.start_time} - ${exemption.end_time}`
-            : "-",
-        exemption.exemptionReason === 'Other'
-            ? `Other: ${exemption.otherReason}`
-            : exemption.exemptionReason,
-        exemption.exemptionStatus
-    ]);
-    const doc = PdfTemplate(title, headers, data);
-    doc.save('exemptions.pdf');
-};
+        const title = 'Exemptions';
+        const columns = [
+            "Staff ID",
+            "Type",
+            "Date",
+            "Session(s)",
+            "Time",
+            "Reason",
+            "Status"
+        ];
+        const data = filteredExemptions.map(exemption => [
+            exemption.staffId,
+            exemption.exemptionType,
+            exemption.exemptionDate,
+            exemption.exemptionSession || "-",
+            (exemption.start_time && exemption.end_time)
+                ? `${exemption.start_time} - ${exemption.end_time}`
+                : "-",
+            exemption.exemptionReason === 'Other'
+                ? `Other: ${exemption.otherReason}`
+                : exemption.exemptionReason,
+            exemption.exemptionStatus
+        ]);
+        PdfTemplate({
+            title,
+            tables: [{ columns, data }],
+            fileName: 'exemptions.pdf'
+        });
+    };
 
 
     return (
@@ -358,9 +361,9 @@ function HRExcemptions() {
                             setFormData(prev => ({ ...prev, exemptionType: e.target.value }));
                             setSelectedSessions([]);
                         }} required>
-                             <option value="Day">Day</option>
+                            <option value="Day">Day</option>
                             <option value="Time">Time</option>
-                           
+
                             <option value="Session">Session</option>
                         </select>
                     </div>
