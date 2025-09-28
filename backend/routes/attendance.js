@@ -7,7 +7,12 @@ const db = require('../db');
 async function start_end_time() {
   const today = new Date();
   const year = today.getFullYear();
-  const start = today < new Date(`${year}-06-01`) ? `${year}-01-01` : `${year}-06-01`;
+  let start;
+  if (today < new Date(`${year}-06-01`)) {
+    start = `${year}-01-01`;
+  } else {
+    start = `${year}-06-01`;
+  }
   return [start, today.toISOString().split('T')[0]];
 }
 
@@ -59,108 +64,206 @@ router.post('/attendance_viewer', async (req, res) => {
 
 
 router.post('/dept_summary', async (req, res) => {
-  const [startDate, endDate] = await start_end_time();
-  const { category, dept } = req.body;
-  let rows = [];
-  let result = {};
+    let { start_date, end_date, category, dept } = req.body;
+    const today = new Date();
+    const year = today.getFullYear();
+    let resetDate;
+    if (today < new Date(`${year}-06-01`)) {
+        resetDate = `${year}-01-01`;
+    } else {
+        resetDate = `${year}-06-01`;
+    }
 
-  function addEntry(category, dept, entry) {
-    if (!result[category]) result[category] = {};
-    if (!result[category][dept]) result[category][dept] = [];
-    result[category][dept].push(entry);
+    // Handle empty or invalid dates
+    if (!start_date || start_date === '') {
+        start_date = resetDate;
+    }
+    if (!end_date || end_date === '') {
+        end_date = today.toISOString().split('T')[0];
+    }
+
+    // Validate dates
+    if (new Date(end_date) < new Date(start_date)) {
+        return res.status(400).json({ error: "End date cannot be before start date" });
+    }
+
+    let rows = [];
+    let result = {};
+
+    function addEntry(category, dept, entry) {
+        if (!result[category]) result[category] = {};
+        if (!result[category][dept]) result[category][dept] = [];
+        result[category][dept].push(entry);
+    }
+
+  // Calculate leaves: first 360 mins = 0.5 leave, then every 240 mins = 0.5 leave
+  function absent_marked(summary) {
+    let leaves = 0;
+    let num = Number(summary);
+    if (num >= 360) {
+      num -= 360;
+      leaves += 0.5;
+      while (num >= 240) {
+        num -= 240;
+        leaves += 0.5;
+      }
+    }
+    return [leaves, Number(summary)];
   }
 
   try {
-    if (category === 'ALL') {
-      // ALL: group by category and department
-      [rows] = await db.query(`
-        SELECT staff.staff_id, staff.name, staff.dept, 
-               SUM(report.late_mins) AS summary, 
-               category.category_description AS category
-        FROM report
-        JOIN staff ON staff.staff_id = report.staff_id
-        JOIN category ON category.category_no = staff.category  
-        WHERE report.date BETWEEN ? AND ?
-        GROUP BY staff.dept, staff.staff_id, staff.name, category.category_description
-        ORDER BY staff.dept, staff.staff_id
-      `, [startDate, endDate]);
-
-      for (const row of rows) {
-        const { dept, summary, category, ...rest } = row;
-        const [leaves, num1] = absent_marked(summary);
-        addEntry(category, dept, { ...rest, summary: num1, leaves, dept });
-      }
-    } else if (
-      (category === "Teaching Staff" || category === "Non Teaching Staff") &&
-      dept && dept !== "ALL"
-    ) {
-      // Filter by both category and department
-      [rows] = await db.query(`
-        SELECT staff.staff_id, staff.name, staff.dept, 
-               SUM(report.late_mins) AS summary
-        FROM report
-        JOIN staff ON staff.staff_id = report.staff_id
-        JOIN category ON category.category_no = staff.category  
-        WHERE report.date BETWEEN ? AND ? 
-          AND category.category_description = ?
-          AND staff.dept = ?
-        GROUP BY staff.dept, staff.staff_id, staff.name
-        ORDER BY staff.dept, staff.staff_id
-      `, [startDate, endDate, category, dept]);
-
-      for (const row of rows) {
-        const { dept, summary, ...rest } = row;
-        const [leaves, num1] = absent_marked(summary);
-        if (!result[dept]) result[dept] = [];
-        result[dept].push({ ...rest, summary: num1, leaves });
-      }
-    } else if (category === "Teaching Staff" || category === "Non Teaching Staff") {
-      // Only filter by category
-      [rows] = await db.query(`
-        SELECT staff.staff_id, staff.name, staff.dept, 
-               SUM(report.late_mins) AS summary
-        FROM report
-        JOIN staff ON staff.staff_id = report.staff_id
-        JOIN category ON category.category_no = staff.category  
-        WHERE report.date BETWEEN ? AND ? 
-          AND category.category_description = ?
-        GROUP BY staff.dept, staff.staff_id, staff.name
-        ORDER BY staff.dept, staff.staff_id
-      `, [startDate, endDate, category]);
-
-      for (const row of rows) {
-        const { dept, summary, ...rest } = row;
-        const [leaves, num1] = absent_marked(summary);
-        if (!result[dept]) result[dept] = [];
-        result[dept].push({ ...rest, summary: num1, leaves });
-      }
-    } else if (dept && dept !== "ALL") {
-
-      [rows] = await db.query(`
-        SELECT staff.staff_id, staff.name, staff.dept, 
-               SUM(report.late_mins) AS summary
-        FROM report
-        JOIN staff ON staff.staff_id = report.staff_id
-        WHERE report.date BETWEEN ? AND ? AND staff.dept = ?
-        GROUP BY staff.dept, staff.staff_id, staff.name
-        ORDER BY staff.dept, staff.staff_id
-      `, [startDate, endDate, dept]);
-
-      for (const row of rows) {
-        const { dept, summary, ...rest } = row;
-        const [leaves, num1] = absent_marked(summary);
-        if (!result[dept]) result[dept] = [];
-        result[dept].push({ ...rest, summary: num1, leaves });
-      }
+    // Always use reset date to today for leaves_detected calculation
+    const today = new Date();
+    const year = today.getFullYear();
+    let resetDate;
+    if (today < new Date(`${year}-06-01`)) {
+      resetDate = `${year}-01-01`;
+    } else {
+      resetDate = `${year}-06-01`;
     }
 
-    const start_Date = startDate.split('-').reverse().join('-');
-    const end_Date = endDate.split('-').reverse().join('-');
-    res.json({ date: [start_Date, end_Date], data: result });
-  } catch (err) {
-    console.error("Error in /dept_summary:", err);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
+    async function getAbsentDays(staff_id, fromDate, toDate) {
+      const [absents] = await db.query(
+        `SELECT COUNT(*) AS absent_days FROM report WHERE staff_id = ? AND date BETWEEN ? AND ? AND attendance = 'A'`,
+        [staff_id, fromDate, toDate]
+      );
+      return absents[0]?.absent_days || 0;
+    }
+
+    // Helper to get total late mins from reset to today
+    async function getTotalLateMins(staff_id, fromDate, toDate) {
+      const [result] = await db.query(
+        `SELECT SUM(late_mins) AS total_late_mins FROM report WHERE staff_id = ? AND date BETWEEN ? AND ?`,
+        [staff_id, fromDate, toDate]
+      );
+      return result[0]?.total_late_mins || 0;
+    }
+
+        if (category === 'ALL') {
+            [rows] = await db.query(`
+                SELECT staff.staff_id, staff.name, staff.dept, staff.designation,
+                       SUM(report.late_mins) AS summary, 
+                       category.category_description AS category
+                FROM report
+                JOIN staff ON staff.staff_id = report.staff_id
+                JOIN category ON category.category_no = staff.category  
+                WHERE report.date BETWEEN ? AND ?
+                GROUP BY staff.dept, staff.staff_id, staff.name, staff.designation, category.category_description
+                ORDER BY staff.dept, staff.staff_id
+            `, [start_date, end_date]);
+
+      for (const row of rows) {
+        const { dept, summary, category, staff_id, ...rest } = row;
+        // summary and leaves for selected range
+        const [leaves, num1] = absent_marked(summary || 0);
+        const absent_days = await getAbsentDays(staff_id, start_date, end_date);
+        // leaves_detected for reset-to-today range
+        const total_late_mins = await getTotalLateMins(staff_id, resetDate, today.toISOString().split('T')[0]);
+        const [leaves_reset] = absent_marked(total_late_mins);
+        const absent_days_reset = await getAbsentDays(staff_id, resetDate, today.toISOString().split('T')[0]);
+        const leaves_detected = absent_days_reset + leaves_reset;
+        addEntry(category, dept, { staff_id, ...rest, summary: num1, absent_days, leaves, leaves_detected, dept });
+      }
+        } else if (
+            (category === "Teaching Staff" || category === "Non Teaching Staff") &&
+            dept && dept !== "ALL"
+        ) {
+            [rows] = await db.query(`
+                SELECT staff.staff_id, staff.name, staff.dept, staff.designation,
+                       SUM(report.late_mins) AS summary
+                FROM report
+                JOIN staff ON staff.staff_id = report.staff_id
+                JOIN category ON category.category_no = staff.category  
+                WHERE report.date BETWEEN ? AND ? 
+                  AND category.category_description = ?
+                  AND staff.dept = ?
+                GROUP BY staff.dept, staff.staff_id, staff.name, staff.designation
+                ORDER BY staff.dept, staff.staff_id
+            `, [start_date, end_date, category, dept]);
+
+      for (const row of rows) {
+        const { dept, summary, staff_id, ...rest } = row;
+        const [leaves, num1] = absent_marked(summary || 0);
+        const absent_days = await getAbsentDays(staff_id, start_date, end_date);
+        const total_late_mins = await getTotalLateMins(staff_id, resetDate, today.toISOString().split('T')[0]);
+        const [leaves_reset] = absent_marked(total_late_mins);
+        const absent_days_reset = await getAbsentDays(staff_id, resetDate, today.toISOString().split('T')[0]);
+        const leaves_detected = absent_days_reset + leaves_reset;
+        if (!result[dept]) result[dept] = [];
+        result[dept].push({ staff_id, ...rest, summary: num1, absent_days, leaves, leaves_detected });
+      }
+        } else if (category === "Teaching Staff" || category === "Non Teaching Staff") {
+            [rows] = await db.query(`
+                SELECT staff.staff_id, staff.name, staff.dept, staff.designation,
+                       SUM(report.late_mins) AS summary
+                FROM report
+                JOIN staff ON staff.staff_id = report.staff_id
+                JOIN category ON category.category_no = staff.category  
+                WHERE report.date BETWEEN ? AND ? 
+                  AND category.category_description = ?
+                GROUP BY staff.dept, staff.staff_id, staff.name, staff.designation
+                ORDER BY staff.dept, staff.staff_id
+            `, [start_date, end_date, category]);
+
+      for (const row of rows) {
+        const { dept, summary, staff_id, ...rest } = row;
+        const [leaves, num1] = absent_marked(summary || 0);
+        const absent_days = await getAbsentDays(staff_id, start_date, end_date);
+        const total_late_mins = await getTotalLateMins(staff_id, resetDate, today.toISOString().split('T')[0]);
+        const [leaves_reset] = absent_marked(total_late_mins);
+        const absent_days_reset = await getAbsentDays(staff_id, resetDate, today.toISOString().split('T')[0]);
+        const leaves_detected = absent_days_reset + leaves_reset;
+        if (!result[dept]) result[dept] = [];
+        result[dept].push({ staff_id, ...rest, summary: num1, absent_days, leaves, leaves_detected });
+      }
+        } else if (dept && dept !== "ALL") {
+            [rows] = await db.query(`
+                SELECT staff.staff_id, staff.name, staff.dept, staff.designation,
+                       SUM(report.late_mins) AS summary
+                FROM report
+                JOIN staff ON staff.staff_id = report.staff_id
+                WHERE report.date BETWEEN ? AND ? AND staff.dept = ?
+                GROUP BY staff.dept, staff.staff_id, staff.name, staff.designation
+                ORDER BY staff.dept, staff.staff_id
+            `, [start_date, end_date, dept]);
+
+      for (const row of rows) {
+        const { dept, summary, staff_id, ...rest } = row;
+        // summary: sum of late_mins from selected range (already from SQL)
+        const [leaves, num1] = absent_marked(summary || 0);
+        const absent_days = await getAbsentDays(staff_id, start_date, end_date);
+        // leaves_detected for reset-to-today range
+        const total_late_mins = await getTotalLateMins(staff_id, resetDate, today.toISOString().split('T')[0]);
+        const [leaves_reset] = absent_marked(total_late_mins);
+        const absent_days_reset = await getAbsentDays(staff_id, resetDate, today.toISOString().split('T')[0]);
+        const leaves_detected = absent_days_reset + leaves_reset;
+        if (!result[dept]) result[dept] = [];
+        result[dept].push({ staff_id, ...rest, summary: Number(summary) || 0, absent_days, leaves, leaves_detected });
+      }
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr || typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                return 'Invalid date';
+            }
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) {
+                return 'Invalid date';
+            }
+            const [yyyy, mm, dd] = dateStr.split('-');
+            return `${dd.padStart(2, '0')}-${mm.padStart(2, '0')}-${yyyy}`;
+        }
+
+        const start_Date = formatDate(start_date);
+        const end_Date = formatDate(end_date);
+        const leaves_detected_col = `Leaves Detected (${start_Date} to ${end_Date})`;
+
+        console.log('Response data:', { date: [start_Date, end_Date], data: result, leaves_detected_col });
+        res.json({ date: [start_Date, end_Date], data: result, leaves_detected_col });
+    } catch (err) {
+        console.error("Error in /dept_summary:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
 });
 router.post('/individual_data', async (req, res) => {
   function parseTimeToMinutes(timeStr) {

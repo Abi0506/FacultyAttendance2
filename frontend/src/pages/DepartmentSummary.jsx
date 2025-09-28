@@ -9,6 +9,19 @@ function DepartmentSummary() {
     const [selectedDept, setSelectedDept] = useState('');
     const [summaryData, setSummaryData] = useState({});
     const [date, setDate] = useState([]);
+    // Auto-fill startDate as 1st of current month, endDate as today
+    function getDefaultStartDate() {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = (today.getMonth() + 1).toString().padStart(2, '0');
+        return `${year}-${month}-01`;
+    }
+    function getDefaultEndDate() {
+        return new Date().toISOString().split('T')[0];
+    }
+    const [startDate, setStartDate] = useState(getDefaultStartDate());
+    const [endDate, setEndDate] = useState(getDefaultEndDate());
+    const [leavesDetectedCol, setLeavesDetectedCol] = useState('Leaves Detected');
 
     const allDepartments = ["CSE", "ECE", "MECH"];
     const nonTeachingDepartments = ["ADMIN", "LIBRARY", "ECE", "CSE"];
@@ -27,7 +40,10 @@ function DepartmentSummary() {
     };
 
     const fetchDeptSummary = useCallback(async () => {
-        if (!mainCategory || (mainCategory !== "ALL" && mainCategory !== "Department Wise" && selectedDept === "")) return;
+        if (!mainCategory || (mainCategory !== "ALL" && mainCategory !== "Department Wise" && selectedDept === "")) {
+            setSummaryData({});
+            return;
+        }
 
         let categoryToSend = mainCategory;
         let deptToSend = "";
@@ -47,19 +63,37 @@ function DepartmentSummary() {
         try {
             const response = await axios.post('/attendance/dept_summary', {
                 category: categoryToSend,
-                dept: deptToSend
+                dept: deptToSend,
+                start_date: startDate,
+                end_date: endDate
             });
+            console.log('API response:', response.data);
             setSummaryData(response.data.data || {});
             setDate(response.data.date || []);
+            setLeavesDetectedCol(response.data.leaves_detected_col || 'Leaves Detected');
         } catch (error) {
             console.error("Error fetching summary:", error);
             setSummaryData({});
+            setDate([]);
         }
-    }, [mainCategory, selectedDept]);
+    }, [mainCategory, selectedDept, startDate, endDate]);
 
     useEffect(() => {
-        fetchDeptSummary();
-    }, [fetchDeptSummary]);
+        // If no startDate or endDate, auto-fill them
+        if (!startDate) setStartDate(getDefaultStartDate());
+        if (!endDate) setEndDate(getDefaultEndDate());
+        if (mainCategory && (mainCategory === "ALL" || selectedDept !== "") && startDate && endDate) {
+            if (new Date(endDate) >= new Date(startDate)) {
+                fetchDeptSummary();
+            } else {
+                setSummaryData({});
+                setDate([]);
+            }
+        } else {
+            setSummaryData({});
+            setDate([]);
+        }
+    }, [mainCategory, selectedDept, startDate, endDate, fetchDeptSummary]);
 
     const handleSaveAsPDF = () => {
         const doc = new jsPDF();
@@ -81,9 +115,15 @@ function DepartmentSummary() {
 
         const generateTable = (deptName, employees) => {
             doc.text(`${deptName} Department`, 14, startY);
-            const tableColumn = ['Employee Name', 'Employee ID', 'Late Minutes', 'Leaves Detected'];
+            const tableColumn = ['Employee Name', 'Employee ID', 'Late Minutes', 'Absent Days', leavesDetectedCol];
             const tableRows = Array.isArray(employees)
-                ? employees.map(emp => [emp.name, emp.staff_id, emp.summary, emp.leaves])
+                ? employees.map(emp => [
+                      emp.name || 'N/A',
+                      emp.staff_id || 'N/A',
+                      emp.summary || 0,
+                      emp.absent_days || 0,
+                      emp.leaves_detected || 0
+                  ])
                 : [];
             autoTable(doc, {
                 head: [tableColumn],
@@ -117,6 +157,10 @@ function DepartmentSummary() {
 
     const renderTable = (deptName, employees) => {
         const empArray = Array.isArray(employees) ? employees : [];
+        console.log(`Rendering table for ${deptName}:`, empArray);
+        const leavesColHeader = (
+            <span>{leavesDetectedCol.split(' ').slice(0, 2).join(' ')}<br />{leavesDetectedCol.split(' ').slice(2).join(' ')}</span>
+        );
         return (
             <div key={deptName} className="mt-4 ms-4">
                 <h5>{deptName} Department</h5>
@@ -124,24 +168,28 @@ function DepartmentSummary() {
                     <thead className="thead-dark">
                         <tr>
                             <th>Employee Name</th>
-                            <th>Employee ID</th>
+                            <th>Staff ID</th>
+                            <th>Designation</th>
                             <th>Late Minutes</th>
-                            <th>Leaves Detected</th>
+                            <th>Absent Days</th>
+                            <th>{leavesColHeader}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {empArray.length > 0 ? (
                             empArray.map((emp, index) => (
                                 <tr key={`${emp.staff_id}-${index}`}>
-                                    <td>{emp.name}</td>
-                                    <td>{emp.staff_id}</td>
-                                    <td>{emp.summary}</td>
-                                    <td>{emp.leaves}</td>
+                                    <td>{emp.name || 'N/A'}</td>
+                                    <td>{emp.staff_id || 'N/A'}</td>
+                                    <td>{emp.designation || 'N/A'}</td>
+                                    <td>{emp.summary || 0}</td>
+                                    <td>{emp.absent_days || 0}</td>
+                                    <td>{emp.leaves_detected || 0}</td>
                                 </tr>
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={4} className="text-center">No employees found.</td>
+                                <td colSpan={6} className="text-center">No employees found.</td>
                             </tr>
                         )}
                     </tbody>
@@ -174,6 +222,8 @@ function DepartmentSummary() {
                         onChange={(e) => {
                             setMainCategory(e.target.value);
                             setSelectedDept('');
+                            setSummaryData({});
+                            setDate([]);
                         }}
                     >
                         <option value="">Choose Category</option>
@@ -205,27 +255,40 @@ function DepartmentSummary() {
                     )}
             </div>
 
-            {mainCategory && ((mainCategory === "ALL") || (selectedDept !== "")) && Object.keys(summaryData).length > 0 ? (
-                <>
-                    <div className="col-md-4 mb-2">
-                        <div className="date-range-container d-flex align-items-center gap-2">
-                            <label className="me-2">From:</label>
-                            <input
-                                type="text"
-                                className="form-control me-3"
-                                value={date[0] || 'No date'}
-                                readOnly
-                            />
-                            <label className="me-2">To:</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                value={date[1] || 'No date'}
-                                readOnly
-                            />
-                        </div>
+            {mainCategory && (mainCategory === "ALL" || selectedDept !== "") && (
+                <div className="col-md-6 mb-2">
+                    <div className="date-range-container d-flex align-items-center gap-2">
+                        <label className="me-2">From:</label>
+                        <input
+                            type="date"
+                            className="form-control me-3"
+                            value={startDate}
+                            onChange={(e) => {
+                                const newStartDate = e.target.value;
+                                setStartDate(newStartDate);
+                                if (newStartDate && endDate && new Date(endDate) < new Date(newStartDate)) {
+                                    setEndDate('');
+                                }
+                            }}
+                            max={endDate || getDefaultEndDate()}
+                        />
+                        <label className="me-2">To:</label>
+                        <input
+                            type="date"
+                            className="form-control"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            min={startDate || ''}
+                            max={getDefaultEndDate()}
+                        />
+                        <button className="btn btn-primary ms-2" onClick={fetchDeptSummary}>Go</button>
                     </div>
+                   
+                </div>
+            )}
 
+            {mainCategory && (mainCategory === "ALL" || selectedDept !== "") && Object.keys(summaryData).length > 0 ? (
+                <>
                     {mainCategory === "ALL"
                         ? Object.entries(summaryData).map(([categoryName, departments]) =>
                             renderCategory(categoryName, departments)
@@ -241,7 +304,7 @@ function DepartmentSummary() {
             ) : (
                 <div className="alert alert-info mt-3">No data available for the selected department.</div>
             )}
-        </PageWrapper >
+        </PageWrapper>
     );
 }
 
