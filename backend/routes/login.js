@@ -5,13 +5,27 @@ const router = express.Router();
 require('dotenv').config();
 const SECRET_KEY = process.env.SECRET_KEY;
 const db = require('../db');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
+
+// Set up gmail access
+// Be sure to use app password and not regular password
+require('dotenv').config();
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 
 router.post('/login', async (req, res) => {
   console.log("Login request received");
-  const { userId, password } = req.body;
-  const [rows] = await db.query('SELECT staff_id, password,designation FROM staff WHERE staff_id = ?', [userId]);
+  const { userIdorEmail, password } = req.body;
+  console.log("User ID or Email:", userIdorEmail);
+  const [rows] = await db.query('SELECT staff_id, password,designation FROM staff WHERE staff_id = ? or email = ?', [userIdorEmail, userIdorEmail]);
   const user = rows[0];
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
@@ -66,6 +80,122 @@ router.post('/logout', (req, res) => {
     sameSite: 'lax'
   });
   res.json({ message: 'Logged out successfully' });
+});
+
+
+router.post('/reset-password', async (req, res) => {
+  const { UserOrEmail } = req.body;
+  if (!UserOrEmail) {
+    return res.status(400).json({ success: false, message: 'User ID or Email is required' });
+  }
+  try {
+    const [rows] = await db.query('SELECT staff_id, email FROM staff WHERE staff_id = ? OR email = ?', [UserOrEmail, UserOrEmail]);
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'No user found with this User ID or Email' });
+    }
+    const user = rows[0];
+    if (!user.email) {
+      return res.status(400).json({ success: false, message: 'No email associated with this account' });
+    }
+
+    // Generate reset token randomyl
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = await bcrypt.hash(resetToken, 10);
+    const expiry = Date.now() + 15 * 60 * 1000; //15 mins
+
+
+    await db.query('DELETE FROM password_resets WHERE user_id = ?', [user.staff_id]);
+    await db.query('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE token = ?, expires_at = ?', [user.staff_id, hashedToken, expiry, hashedToken, expiry]);
+    const resetLink = `http://localhost:3000/reset-password?token=${resetToken}&id=${user.staff_id}`;
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: 'Password Reset Request',
+      html: `<p>You requested a password reset. Click the link below to reset your password. This link is valid for 15 minutes.</p>
+             <a href="${resetLink}">${resetLink}</a>`
+    };
+    await transporter.sendMail(mailOptions);
+    return res.json({ success: true, message: 'Password reset link sent to your email' });
+  } catch (err) {
+    console.error('Database error:', err);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+
+router.get('/reset-password', async (req, res) => {
+  const { token, id } = req.query;
+  if (!token || !id) {
+    return res.status(400).json({ success: false, message: 'Invalid or missing token/id' });
+  }
+
+  try {
+    const [rows] = await db.query(
+      'SELECT token, expires_at FROM password_resets WHERE user_id = ? ',
+      [id]
+    );
+
+    if (rows.length === 0) {
+      console.log("No reset record found for user ID:", id);
+      return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+    }
+
+    const record = rows[0];
+    console.log("Token expiry time:", record.expires_at, "Current time:", Date.now());
+    if (Date.now() > record.expires_at) {
+      console.log("Token expired for user ID:", id);
+      return res.status(400).json({ success: false, message: 'Token has expired' });
+    }
+
+    const isValid = await bcrypt.compare(token, record.token);
+
+    if (!isValid) {
+      console.log("Invalid token provided for user ID:", id);
+      return res.status(400).json({ success: false, message: 'Invalid token' });
+    }
+
+    return res.json({ success: true, message: 'Token is valid' });
+
+  } catch (err) {
+    console.error('Database error:', err);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+router.post('/reset-password/confirm', async (req, res) => {
+  const { token, id, newPassword } = req.body;
+
+  if (!token || !id || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Missing fields' });
+  }
+
+  try {
+    const [rows] = await db.query('SELECT token, expires_at FROM password_resets WHERE user_id = ?', [id]);
+    if (rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+    }
+
+    const record = rows[0];
+
+    if (Date.now() > record.expires_at) {
+      return res.status(400).json({ success: false, message: 'Token has expired' });
+    }
+
+    const isValid = await bcrypt.compare(token, record.token);
+    if (!isValid) {
+      return res.status(400).json({ success: false, message: 'Invalid token' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    // Update staff and delete reset token
+    await db.query('UPDATE staff SET password = ? WHERE staff_id = ?', [hashedPassword, id]);
+    await db.query('DELETE FROM password_resets WHERE user_id = ?', [id]);
+    return res.json({ success: true, message: 'Password updated successfully' });
+
+  } catch (err) {
+    console.error('Database error:', err);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
 });
 
 

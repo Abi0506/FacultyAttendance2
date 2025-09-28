@@ -156,13 +156,14 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  
+
   transition-duration: 0.3s;
 }
 
 .edit-c-btn:hover {
   color: var(--secondary);
 }
+
 .delete-c-btn {
   position: absolute;
   color: var(--primary);
@@ -178,3 +179,94 @@
   color: var(--secondary);
 
 }
+
+/* ResetPasswordPage.css */
+
+/* Center modal */
+.reset-password-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  background-color: #fff;
+}
+
+/* Modal card */
+.reset-password-card {
+  background: #fff;
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+  box-sizing: border-box;
+}
+
+/* Heading */
+.reset-password-card h2 {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+/* Input field */
+.reset-password-input {
+  width: 100%;
+  padding: 12px 40px 12px 12px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+/* Eye icon */
+.toggle-password {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #888;
+  font-size: 18px;
+  user-select: none;
+}
+
+/* Strength bar container */
+.strength-bar-container {
+  height: 8px;
+  width: 100%;
+  background-color: #eee;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+/* Animated strength bar */
+.strength-bar {
+  height: 100%;
+  transition: width 0.5s ease, background-color 0.5s ease;
+}
+
+/* Strength text */
+.strength-text {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Submit button */
+.reset-password-button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 24px;
+  background-color: #1890ff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.reset-password-button:hover {
+  background-color: #40a9ff;
+}
+
