@@ -27,9 +27,17 @@ router.post('/', async (req, res) => {
         const decoded = jwt.verify(token, SECRET_KEY);
         const staff_id = decoded.staff_id;
 
+
         const { start_date, end_date, leave_type } = req.body;
+
+        // Check for overlapping leave records for the same staff_id
+        const checkSql = 'SELECT * FROM `leave` WHERE staff_id = ? AND ((start_date <= ? AND end_date >= ?) OR (start_date <= ? AND end_date >= ?) OR (start_date >= ? AND end_date <= ?))';
+        const [existing] = await db.query(checkSql, [staff_id, end_date, end_date, start_date, start_date, start_date, end_date]);
+        if (existing.length > 0) {
+            return res.status(400).json({ error: 'Leave already exists for the given date range.' });
+        }
+
         const sql = 'INSERT INTO `leave` (staff_id, start_date, end_date, leave_type) VALUES ( ?, ?, ?, ?)';
-        
         const [result] = await db.query(sql, [staff_id, start_date, end_date, leave_type]);
         res.json({ leave_id: result.insertId });
 
