@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from '../axios';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// Removed jsPDF and autoTable imports
 import PageWrapper from '../components/PageWrapper';
+import PdfTemplate from '../components/PdfTemplate';
 
 function DepartmentSummary() {
     const [mainCategory, setMainCategory] = useState('');
@@ -62,58 +62,45 @@ function DepartmentSummary() {
     }, [fetchDeptSummary]);
 
     const handleSaveAsPDF = () => {
-        const doc = new jsPDF();
-        doc.setFontSize(16);
-        doc.text('Department-wise Summary', 14, 16);
-        doc.setFontSize(12);
-        doc.text(
-            `Department: ${mainCategory === 'ALL'
-                ? 'ALL'
-                : (mainCategory === "Department Wise"
-                    ? selectedDept
-                    : (selectedDept === 'ALL' ? mainCategory : selectedDept)
-                )}`,
-            14, 26
-        );
-        doc.text(`From: ${date[0] || 'No date'}`, 14, 34);
-        doc.text(`To: ${date[1] || 'No date'}`, 14, 42);
-        let startY = 50;
-
-        const generateTable = (deptName, employees) => {
-            doc.text(`${deptName} Department`, 14, startY);
-            const tableColumn = ['Employee Name', 'Employee ID', 'Late Minutes', 'Leaves Detected'];
-            const tableRows = Array.isArray(employees)
-                ? employees.map(emp => [emp.name, emp.staff_id, emp.summary, emp.leaves])
-                : [];
-            autoTable(doc, {
-                head: [tableColumn],
-                body: tableRows,
-                startY: startY + 4,
-                styles: { fontSize: 10 },
-                headStyles: { fillColor: [49, 58, 98] },
-            });
-            startY = doc.lastAutoTable.finalY + 10;
-        };
+        const title = 'Department-wise Summary';
+        const tableHeaders = ['Employee Name', 'Employee ID', 'Late Minutes', 'Leaves Detected'];
 
         if (mainCategory === "ALL") {
+            // Multi-table: one table per department in each category
+            const tables = [];
             Object.entries(summaryData).forEach(([category, depts]) => {
-                doc.setFontSize(14);
-                doc.text(`${category}`, 14, startY);
-                startY += 6;
                 Object.entries(depts).forEach(([deptName, employees]) => {
-                    doc.setFontSize(12);
-                    generateTable(deptName, employees);
+                    tables.push({
+                        columns: tableHeaders,
+                        data: Array.isArray(employees)
+                            ? employees.map(emp => [emp.name, emp.staff_id, emp.summary, emp.leaves])
+                            : []
+                    });
                 });
-                startY += 6;
+            });
+            PdfTemplate({
+                title,
+                tables,
+                fileName: `dept_summary_ALL.pdf`
             });
         } else {
+            // Single table for selected department/category
+            let data = [];
             Object.entries(summaryData).forEach(([deptName, employees]) => {
-                generateTable(deptName, employees);
+                if (Array.isArray(employees)) {
+                    employees.forEach(emp => {
+                        data.push([emp.name, emp.staff_id, emp.summary, emp.leaves]);
+                    });
+                }
+            });
+            PdfTemplate({
+                title,
+                tables: [{ columns: tableHeaders, data }],
+                fileName: `dept_summary_${mainCategory}_${selectedDept || 'ALL'}.pdf`
             });
         }
-
-        doc.save(`dept_summary_${mainCategory}_${selectedDept || 'ALL'}.pdf`);
     };
+
 
     const renderTable = (deptName, employees) => {
         const empArray = Array.isArray(employees) ? employees : [];

@@ -175,7 +175,7 @@ function AppContent() {
             <div className="container m-large">
                 <Routes>
                     <Route path="/login" element={<LoginPage />} />
-                    <Route path="/reset-password" element={<ResetPasswordPage />} />
+
 
                     {/* HR Routes */}
                     <Route path="/view" element={<RequireHR><AttendanceViewer /></RequireHR>} />
