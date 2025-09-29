@@ -56,7 +56,7 @@ export default function ResetPasswordPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (passwordStrength.score < 3) {
+        if (passwordStrength.score < 1) {
             showAlert("Password too weak. Please make it stronger.", "error");
             return;
         }
