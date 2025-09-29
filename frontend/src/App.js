@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+
 import {
     BrowserRouter as Router,
     Routes,
@@ -174,7 +175,13 @@ function AppContent() {
             </div>
             <div className="container m-large">
                 <Routes>
-                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/login" element={
+                        isAuthenticated
+                            ? (designation === "HR"
+                                ? <Navigate to="/view" replace />
+                                : <Navigate to="/staffIndividualReport" replace />)
+                            : <LoginPage />
+                    } />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
 
                     {/* HR Routes */}
@@ -191,13 +198,20 @@ function AppContent() {
                     <Route path="/staffIndividualReport" element={<RequireStaff><IndividualStaffReport /></RequireStaff>} />
                     <Route path="/applyExemption" element={<RequireStaff><ExemptionApplyPage /></RequireStaff>} />
 
-                    <Route path="/" element={
-                        isAuthenticated
-                            ? (designation === "HR"
-                                ? <Navigate to="/view" replace />
-                                : <Navigate to="/staffIndividualReport" replace />)
-                            : <Navigate to="/login" replace />
-                    } />
+                    <Route
+                        path="/"
+                        element={
+                            (() => {
+                                const search = window.location.search;
+                                return isAuthenticated
+                                    ? (designation === "HR"
+                                        ? <Navigate to={`/view${search}`} replace />
+                                        : <Navigate to={`/staffIndividualReport${search}`} replace />)
+                                    : <Navigate to={`/login${search}`} replace />;
+                            })()
+                        }
+                    />
+
                 </Routes>
             </div>
         </Router>
