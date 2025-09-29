@@ -23,7 +23,7 @@ const transporter = nodemailer.createTransport({
 
 router.post('/login', async (req, res) => {
   console.log("Login request received");
-  const { userIdorEmail, password } = req.body;
+  const { userIdorEmail, password, remember } = req.body;
   console.log("User ID or Email:", userIdorEmail);
   const [rows] = await db.query('SELECT staff_id, password,designation FROM staff WHERE staff_id = ? or email = ?', [userIdorEmail, userIdorEmail]);
   const user = rows[0];
@@ -31,14 +31,19 @@ router.post('/login', async (req, res) => {
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return res.status(401).json({ message: 'Invalid credentials' });
   }
-  const token = jwt.sign({ staff_id: user.staff_id, designation: user.designation }, SECRET_KEY, { expiresIn: '7d' });
+  const jwtExpiry = remember ? '7d' : '1h';
+  const token = jwt.sign({ staff_id: user.staff_id, designation: user.designation }, SECRET_KEY, { expiresIn: jwtExpiry });
 
-  res.cookie('token', token, {
+  const cookieOptions = {
     httpOnly: true,
     secure: false,
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000
-  });
+    sameSite: 'lax'
+  };
+  if (remember) {
+    cookieOptions.maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+  }
+  // If remember is false, do not set maxAge (session cookie)
+  res.cookie('token', token, cookieOptions);
 
   res.json({ message: 'Logged in successfully', designation: user.designation, staff_id: user.staff_id });
 });

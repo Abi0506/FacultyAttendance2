@@ -94,7 +94,7 @@ function AppContent() {
                 <nav className="navbar navbar-expand-lg glassy-navbar">
                     <div className="container-fluid">
                         <a className="navbar-brand d-flex align-items-center fw-bold mx-3" href="/" title="Dashboard">
-                            <img src="https://psgitech.ac.in/assets/images/favicon.png" alt="Logo" style={{ height: '32px', width: '32px', marginRight: '10px' }} />
+                            <img src="logo.png" alt="Logo" style={{ height: '32px', width: '32px', marginRight: '10px' }} />
                             Attendance App
                         </a>
                         <button className="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -175,7 +175,7 @@ function AppContent() {
             <div className="container m-large">
                 <Routes>
                     <Route path="/login" element={<LoginPage />} />
-
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
 
                     {/* HR Routes */}
                     <Route path="/view" element={<RequireHR><AttendanceViewer /></RequireHR>} />
