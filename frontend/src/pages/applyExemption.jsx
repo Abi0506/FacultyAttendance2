@@ -209,6 +209,7 @@ function ApplyExemption() {
                             onChange={handleChange}
                             required
                             readOnly
+                            disabled
                         />
                     </div>
                     <div className="col-md-4">
