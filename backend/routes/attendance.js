@@ -292,8 +292,14 @@ router.post('/individual_data', async (req, res) => {
       WHERE staff.staff_id = ?
     `, [id]);
 
-    const [late_mins] = await db.query(`
+    let [late_mins] = await db.query(`
       SELECT late_mins, date
+      FROM report
+      WHERE staff_id = ? AND date BETWEEN ? AND ?
+    `, [id, start_date, end_date]);
+
+    let[late_mins_1] = await db.query(`
+      SELECT SUM(late_mins) AS late_mins
       FROM report
       WHERE staff_id = ? AND date BETWEEN ? AND ?
     `, [id, start_date, end_date]);
@@ -303,6 +309,22 @@ router.post('/individual_data', async (req, res) => {
       FROM report
       WHERE staff_id = ? AND date BETWEEN ? AND ?
     `, [id, start, end]);
+
+    let [absent_days] = await db.query(`
+        SELECT
+           COUNT(attendance) as absent
+        FROM
+            report
+      WHERE staff_id = ? AND date BETWEEN ? AND ? AND attendance = ?
+    `, [id, start_date, end_date , 'A']);
+
+    let [total_absent_days] = await db.query(`
+       SELECT
+           COUNT(attendance) as absent
+        FROM
+            report
+      WHERE staff_id = ? AND date BETWEEN ? AND ? AND attendance = ?
+    `, [id, start, end , 'a']);
 
     // Get filtered late minutes (between start_date and end_date)
     let [filtered_late_mins] = await db.query(`
@@ -343,8 +365,16 @@ router.post('/individual_data', async (req, res) => {
     total_late_mins = total_late_mins[0]?.total_late_mins || 0;
     filtered_late_mins = filtered_late_mins[0]?.filtered_late_mins || 0;
     const [absent_marked1] = absent_marked(total_late_mins);
-
+    console.log(late_mins_1[0].late_mins,total_absent_days[0].absent,absent_days[0].absent,)
+    
+    
+    
     res.json({
+      from:start,
+      end:end,
+      late_mins:late_mins_1[0].late_mins,
+      total_absent_days : total_absent_days[0].absent,
+      absent_days:absent_days[0].absent,
       absent_marked: absent_marked1,
       total_late_mins: total_late_mins,
       filtered_late_mins: filtered_late_mins,
@@ -509,7 +539,7 @@ router.get("/categories", async (req, res) => {
 
 router.get('/devices', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM devices');
+    const [rows] = await db.query('SELECT device_id, ip_address, device_name, device_location, maintenance FROM devices');
     res.json({ message: "Devices fetched successfully", success: true, devices: rows });
   } catch (err) {
     console.error("Error fetching devices:", err);
@@ -558,15 +588,33 @@ await db.query(
   }
 });
 
-router.post('/devices/add', async (req, res) => {
-  let { ip_address, device_name, device_location, image_url } = req.body;
-  if (!image_url) {
-    image_url = "https://5.imimg.com/data5/SELLER/Default/2021/8/YO/BR/DA/5651309/essl-ai-face-venus-face-attendance-system-with-artificial-intelligence-500x500.jpg";
+router.post("/categories/delete", async (req, res) => {
+  const { category_no } = req.body;
+
+  try {
+    // Check if category exists
+    const [rows] = await db.query("SELECT * FROM category WHERE category_no = ?", [category_no]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Category not found", success: false });
+    }
+
+    // Delete category
+    await db.query("DELETE FROM category WHERE category_no = ?", [category_no]);
+    res.json({ message: "Category deleted successfully", success: true });
+  } catch (err) {
+    console.error("Error deleting category:", err);
+    res.status(500).json({ message: "Failed to delete category", success: false });
   }
+});
+
+
+router.post('/devices/add', async (req, res) => {
+  let { ip_address, device_name, device_location} = req.body;
+  
   try {
     const [result] = await db.query(
-      'INSERT INTO devices (ip_address, device_name, device_location, image_url) VALUES (?, ?, ?, ?)',
-      [ip_address, device_name, device_location, image_url]
+      'INSERT INTO devices (ip_address, device_name, device_location) VALUES (?, ?, ?)',
+      [ip_address, device_name, device_location]
     );
 
     const [rows] = await db.query('SELECT * FROM devices WHERE device_id = ?', [result.insertId]);
@@ -579,12 +627,10 @@ router.post('/devices/add', async (req, res) => {
 
 
 router.post('/devices/update', async (req, res) => {
-  let { id, ip_address, device_name, device_location, image_url } = req.body;
-  if (image_url === undefined || image_url === null || image_url === "") {
-    image_url = "https://5.imimg.com/data5/SELLER/Default/2021/8/YO/BR/DA/5651309/essl-ai-face-venus-face-attendance-system-with-artificial-intelligence-500x500.jpg";
-  }
+  let { id, ip_address, device_name, device_location } = req.body;
+
   try {
-    await db.query('UPDATE devices SET ip_address = ?, device_name = ?, device_location = ?, image_url = ? WHERE device_id = ?', [ip_address, device_name, device_location, image_url, id]);
+    await db.query('UPDATE devices SET ip_address = ?, device_name = ?, device_location = ?  WHERE device_id = ?', [ip_address, device_name, device_location,  id]);
     res.json({ message: "Device updated successfully", success: true });
   } catch (err) {
     console.error("Error updating device:", err);
@@ -631,6 +677,22 @@ router.get('/get_user/:id', async (req, res) => {
   } catch (err) {
     console.error('Fetch user error:', err);
     res.status(500).json({ success: false, message: 'Failed to get user' });
+  }
+});
+
+router.post('/devices/toggle_maintenance', async (req, res) => {
+  const { id } = req.body;
+  try {
+    const [rows] = await db.query('SELECT maintenance FROM devices WHERE device_id = ?', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Device not found' });
+    }
+    const newMaintenance = rows[0].maintenance ? 0 : 1;
+    await db.query('UPDATE devices SET maintenance = ? WHERE device_id = ?', [newMaintenance, id]);
+    res.json({ success: true, message: `Device maintenance ${newMaintenance ? 'enabled' : 'disabled'}` });
+  } catch (err) {
+    console.error("Error toggling maintenance:", err);
+    res.status(500).json({ success: false, message: "Failed to toggle maintenance" });
   }
 });
 

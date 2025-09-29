@@ -1,6 +1,7 @@
 import sys
 from zk import ZK
 from connection import db
+import random
 
 
 def connect_to_device(reason , DEVICE_IP ):
@@ -19,7 +20,7 @@ def connect_to_device(reason , DEVICE_IP ):
 def set_user_credentials(user_id, name):
     connection = db()
     cursor = connection.cursor()
-    cursor.execute("SELECT ip_address FROM devices")
+    cursor.execute("SELECT ip_address FROM devices where maintenance = %s",(0,))
     rows = cursor.fetchall()
 
   
@@ -33,7 +34,7 @@ def set_user_credentials(user_id, name):
             if not user_id or not name:
                 return "Error: Missing ID or name in a device"
             try:
-                uid = int(user_id[1:])
+                uid = random.randint(100000000, 999999999)
             except ValueError:
                 return "Error: Invalid ID format"
             
@@ -58,7 +59,7 @@ def set_user_credentials(user_id, name):
 def delete_user(user_id):
     connection = db()
     cursor = connection.cursor()
-    cursor.execute("SELECT ip_address FROM devices")
+    cursor.execute("SELECT ip_address FROM devices where maintenance = %s",(0,))
     rows = cursor.fetchall()
 
   
@@ -73,13 +74,16 @@ def delete_user(user_id):
 
             if not user_id:
                 return "Error: Missing ID in a device"
-            try:
-                uid = int(user_id[1:])
-            except ValueError:
-                return "Error: Invalid ID format"
             
-            conn.delete_user(uid=uid)
-            return f"User {user_id} deleted successfully"
+            users = conn.get_users()
+            for user in users:
+                if(user.user_id == user_id):
+                    uid = user.uid
+                    break
+            if(uid):
+
+                conn.delete_user(uid=uid)
+                return f"User {user_id} deleted successfully"
 
         except Exception as e:
             return "Error: Delete user failed"
