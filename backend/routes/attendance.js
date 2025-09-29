@@ -593,12 +593,20 @@ router.post("/categories/delete", async (req, res) => {
 
   try {
     // Check if category exists
-    const [rows] = await db.query("SELECT * FROM category WHERE category_no = ?", [category_no]);
-    if (rows.length === 0) {
+    const [categoryRows] = await db.query("SELECT * FROM category WHERE category_no = ?", [category_no]);
+    if (categoryRows.length === 0) {
       return res.status(404).json({ message: "Category not found", success: false });
     }
 
-    // Delete category
+    // Check if category is linked to any staff
+    const [staffRows] = await db.query("SELECT * FROM staff WHERE category = ?", [category_no]);
+   
+    if (staffRows.length > 0) {
+       return res.status(400).json({ message: "Cannot delete category: It is linked to staff", success: false });
+      
+    }
+
+    // Delete the category
     await db.query("DELETE FROM category WHERE category_no = ?", [category_no]);
     res.json({ message: "Category deleted successfully", success: true });
   } catch (err) {
@@ -607,6 +615,19 @@ router.post("/categories/delete", async (req, res) => {
   }
 });
 
+router.get('/staff', async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT s.staff_id, s.name, s.dept, s.designation, s.email, s.category, c.category_description
+      FROM staff s
+      LEFT JOIN category c ON s.category = c.category_no
+    `);
+    res.json({ message: "Staff fetched successfully", success: true, staff: rows });
+  } catch (err) {
+    console.error("Error fetching staff:", err);
+    res.status(500).json({ message: "Failed to fetch staff", success: false });
+  }
+});
 
 router.post('/devices/add', async (req, res) => {
   let { ip_address, device_name, device_location} = req.body;
