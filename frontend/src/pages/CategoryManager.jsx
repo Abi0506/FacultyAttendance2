@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from '../axios';
 import { useAlert } from '../components/AlertProvider';
 import PageWrapper from '../components/PageWrapper';
+import PdfTemplate from '../components/PdfTemplate';
 
 function CategoryManagerPage() {
     const { showAlert } = useAlert();
@@ -103,7 +104,24 @@ function CategoryManagerPage() {
     };
 
     const downloadPDF = () => {
-        console.log("Downloading pdf")
+        const title = 'Categories';
+        const columns = ['#', 'Description', 'Type', 'In Time', 'Break In', 'Break Out', 'Out Time', 'Working Hrs', 'Break (mins)'];
+        const data = categories.map(cat => [
+            cat.category_no,
+            cat.category_description,
+            cat.type || 'fixed',
+            formatTime(cat.in_time),
+            formatTime(cat.break_in),
+            formatTime(cat.break_out),
+            formatTime(cat.out_time),
+            cat.working_hrs || '—',
+            cat.break_time_mins
+        ]);
+        PdfTemplate({
+            title,
+            tables: [{ columns, data }],
+            fileName: 'categories.pdf'
+        });
     };
 
     return (
@@ -284,7 +302,7 @@ function CategoryManagerPage() {
                 </form>
             </div>
         </PageWrapper>
-            );
+    );
 }
 
 export default CategoryManagerPage;
