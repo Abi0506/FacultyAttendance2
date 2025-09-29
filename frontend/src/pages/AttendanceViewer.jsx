@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from '../axios';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import PageWrapper from '../components/PageWrapper';
+import PdfTemplate from '../components/PdfTemplate';
 
 function AttendanceViewer() {
   const [selectedDate, setSelectedDate] = useState("");
@@ -10,6 +9,9 @@ function AttendanceViewer() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [columnsToShow, setColumnsToShow] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 25;
 
   const getLogs = useCallback(async (date) => {
     if (!date) return;
@@ -44,43 +46,70 @@ function AttendanceViewer() {
 
   useEffect(() => {
     getLogs(selectedDate);
+    setCurrentPage(1);
   }, [selectedDate, getLogs]);
 
   const handleSaveAsPDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text('Live Attendance Logs', 14, 16);
-    doc.setFontSize(12);
-    doc.text(`Date: ${selectedDate}`, 14, 26);
-    const tableColumn = ['Staff ID', 'Name', ...columnsToShow];
-    const tableRows = logs.map((log) => [
-      log.staff_id,
-      log.name,
-      ...columnsToShow.map(col => log[col] || '-')
-    ]);
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 35,
-      styles: { fontSize: 10 },
-      headStyles: { fillColor: [49, 58, 98] },
+    PdfTemplate({
+      title: 'Attendance Logs',
+      tables: [{
+        columns: ['Staff ID', 'Name', ...columnsToShow],
+        data: filteredLogs.map((log) => [
+          log.staff_id,
+          log.name,
+          ...columnsToShow.map(col => log[col] || '-')
+        ])
+      }],
+      fileName: `logs[${selectedDate}].pdf`
     });
-    doc.save(`attendance_logs_${selectedDate}.pdf`);
   };
+
+
+  const filteredLogs = logs.filter(log =>
+    log.staff_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const [isAtBottom, setIsAtBottom] = useState(false);
+
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    setIsAtBottom(scrollTop + clientHeight >= scrollHeight - 1); // near bottom
+  };
+
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentRows = filteredLogs.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(filteredLogs.length / rowsPerPage);
 
   return (
     <PageWrapper title="Live Logs">
-      <div className="form-group mb-0">
-        <label htmlFor="date" className="form-label me-2">Select Date:</label>
-        <input
-          type="date"
-          className="form-control"
-          id="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-        />
+      <div className="d-flex justify-content-between">
+        {/* Date Picker */}
+        <div className="form-group me-3 d-flex align-items-center">
+          <label htmlFor="date" className="form-label me-2">Select Date:</label>
+          <input
+            type="date"
+            className="form-control w-auto"
+            id="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+          />
+        </div>
+
+        {/* Search Bar */}
+        <div className="flex-grow-1 d-flex justify-content-end align-items-center">
+          <input
+            type="text"
+            className="form-control w-50"
+            placeholder="Search by Staff ID or Name..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1); // reset page on search
+            }}
+          />
+        </div>
       </div>
-      <hr className='hr w-75 m-auto my-4 '></hr>
 
       <button className="btn btn-outline-secondary mb-3" onClick={handleSaveAsPDF}>
         Save as PDF
@@ -89,38 +118,77 @@ function AttendanceViewer() {
       {loading && <div className="text-center my-4">Loading...</div>}
       {error && <div className="alert alert-danger">{error}</div>}
 
-      <table className="table table-c">
-        <thead className="table-secondary">
-          <tr>
-            <th>Staff ID</th>
-            <th>Name</th>
-            {columnsToShow.map((col, i) => (
-              <th key={i}>{col}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {logs.length > 0 ? (
-            logs.map((log) => (
-              <tr key={log.staff_id}>
-                <td>{log.staff_id}</td>
-                <td>{log.name}</td>
-                {columnsToShow.map((col, i) => (
-                  <td key={i}>{log[col] || '-'}</td>
-                ))}
-              </tr>
-            ))
-          ) : (
+      <div className="table-container" style={{ position: "relative", maxHeight: "500px", overflowY: "auto" }} onScroll={handleScroll}>
+        <table className="table table-c">
+          <thead className="table-secondary" style={{ position: "sticky", top: 0, zIndex: 2 }}>
             <tr>
-              <td colSpan="8" className="text-center">
-                {selectedDate ? "No records found" : "Please select a date"}
-              </td>
+              <th>Staff ID</th>
+              <th>Name</th>
+              {columnsToShow.map((col, i) => (
+                <th key={i}>{col}</th>
+              ))}
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {currentRows.length > 0 ? (
+              currentRows.map((log) => (
+                <tr key={log.staff_id}>
+                  <td>{log.staff_id}</td>
+                  <td>{log.name}</td>
+                  {columnsToShow.map((col, i) => (
+                    <td key={i}>{log[col] || '-'}</td>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="8" className="text-center">
+                  {selectedDate ? "No records found" : "Please select a date"}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+        <div className="fade-bottom" style={{ opacity: isAtBottom ? 0 : 1 }}></div>
+      </div>
 
-    </PageWrapper >
+      <div className="d-flex justify-content-center my-3">
+        <ul className="pagination">
+          <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+            <button
+              className="page-link page-link-c"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            >
+              &laquo;
+            </button>
+          </li>
+
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+            <li
+              key={num}
+              className={`page-item ${num === currentPage ? 'active' : ''}`}
+            >
+              <button
+                className="page-link shadow-none page-link-c"
+                onClick={() => setCurrentPage(num)}
+              >
+                {num}
+              </button>
+            </li>
+          ))}
+
+          <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+            <button
+              className="page-link"
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            >
+              &raquo;
+            </button>
+          </li>
+        </ul>
+      </div>
+
+    </PageWrapper>
   );
 }
 
