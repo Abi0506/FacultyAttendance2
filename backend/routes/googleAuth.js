@@ -23,7 +23,7 @@ passport.use(new GoogleStrategy({
             if (rows.length === 0) {
                 return done(null, false, { message: 'No staff found with this email' });
             }
-            
+
             const user = { ...profile, staff: rows[0] };
             return done(null, user);
         } catch (err) {
@@ -32,35 +32,49 @@ passport.use(new GoogleStrategy({
     }
 ));
 
-// Google OAuth login route
-router.get('/google',
-    passport.authenticate('google', { scope: ['profile', 'email'] })
-);
+// Google login route (no session needed)
+router.get('/google', (req, res, next) => {
+    const redirect = req.query.redirect ;
+    console.log("Redirect: ", redirect)
+    passport.authenticate('google', {
+        scope: ['profile', 'email'],
+        state: encodeURIComponent(redirect) 
+    })(req, res, next);
+});
 
-// Google OAuth callback route
+
+// Google callback route
 router.get('/google/callback',
     passport.authenticate('google', { failureRedirect: '/login', session: true }),
     (req, res) => {
+        // Use the redirect URL passed in state
+        const redirectUrl = decodeURIComponent(req.query.state || 'http://10.10.33.251:8000/');
+
+
         if (!req.user || !req.user.staff) {
-            return res.redirect('http://localhost:3000/?message=' + encodeURIComponent('No staff found with this Google account. Please contact admin.'));
+            return res.redirect(`${redirectUrl}/?message=${encodeURIComponent('No staff found with this Google account. Please contact admin.')}`);
         }
+
         const { staff_id, designation } = req.user.staff;
         const SECRET_KEY = process.env.SECRET_KEY;
         const token = jwt.sign({ staff_id, designation }, SECRET_KEY, { expiresIn: '7d' });
+
         res.cookie('token', token, {
             httpOnly: true,
             secure: false,
             sameSite: 'lax',
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
-        res.redirect('http://localhost:3000/?message=' + encodeURIComponent('Google login successful'));
+
+        res.redirect(`${redirectUrl}/?message=${encodeURIComponent('Google OAuth successful')}`);
     }
 );
+
 
 // Google logout
 router.get('/logout', (req, res) => {
     req.logout(() => {
-        res.redirect('http://localhost:3000');
+        res.redirect('http://10.10.33.251:8000/');
     });
 });
 

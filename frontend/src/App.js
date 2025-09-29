@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+
 import {
     BrowserRouter as Router,
     Routes,
@@ -94,7 +95,7 @@ function AppContent() {
                 <nav className="navbar navbar-expand-lg glassy-navbar">
                     <div className="container-fluid">
                         <a className="navbar-brand d-flex align-items-center fw-bold mx-3" href="/" title="Dashboard">
-                            <img src="https://psgitech.ac.in/assets/images/favicon.png" alt="Logo" style={{ height: '32px', width: '32px', marginRight: '10px' }} />
+                            <img src="logo.png" alt="Logo" style={{ height: '32px', width: '32px', marginRight: '10px' }} />
                             Attendance App
                         </a>
                         <button className="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -174,8 +175,14 @@ function AppContent() {
             </div>
             <div className="container m-large">
                 <Routes>
-                    <Route path="/login" element={<LoginPage />} />
-
+                    <Route path="/login" element={
+                        isAuthenticated
+                            ? (designation === "HR"
+                                ? <Navigate to="/view" replace />
+                                : <Navigate to="/staffIndividualReport" replace />)
+                            : <LoginPage />
+                    } />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
 
                     {/* HR Routes */}
                     <Route path="/view" element={<RequireHR><AttendanceViewer /></RequireHR>} />
@@ -191,13 +198,20 @@ function AppContent() {
                     <Route path="/staffIndividualReport" element={<RequireStaff><IndividualStaffReport /></RequireStaff>} />
                     <Route path="/applyExemption" element={<RequireStaff><ExemptionApplyPage /></RequireStaff>} />
 
-                    <Route path="/" element={
-                        isAuthenticated
-                            ? (designation === "HR"
-                                ? <Navigate to="/view" replace />
-                                : <Navigate to="/staffIndividualReport" replace />)
-                            : <Navigate to="/login" replace />
-                    } />
+                    <Route
+                        path="/"
+                        element={
+                            (() => {
+                                const search = window.location.search;
+                                return isAuthenticated
+                                    ? (designation === "HR"
+                                        ? <Navigate to={`/view${search}`} replace />
+                                        : <Navigate to={`/staffIndividualReport${search}`} replace />)
+                                    : <Navigate to={`/login${search}`} replace />;
+                            })()
+                        }
+                    />
+
                 </Routes>
             </div>
         </Router>

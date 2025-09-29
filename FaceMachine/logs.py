@@ -81,6 +81,7 @@ def logs_main():
             schedule.run_pending()
             time.sleep(1)
 
-logs_main()
+
+logs_main() 
 
         

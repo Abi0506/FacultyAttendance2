@@ -23,7 +23,7 @@ const transporter = nodemailer.createTransport({
 
 router.post('/login', async (req, res) => {
   console.log("Login request received");
-  const { userIdorEmail, password } = req.body;
+  const { userIdorEmail, password, remember } = req.body;
   console.log("User ID or Email:", userIdorEmail);
   const [rows] = await db.query('SELECT staff_id, password,designation FROM staff WHERE staff_id = ? or email = ?', [userIdorEmail, userIdorEmail]);
   const user = rows[0];
@@ -31,14 +31,19 @@ router.post('/login', async (req, res) => {
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return res.status(401).json({ message: 'Invalid credentials' });
   }
-  const token = jwt.sign({ staff_id: user.staff_id, designation: user.designation }, SECRET_KEY, { expiresIn: '7d' });
+  const jwtExpiry = remember ? '7d' : '1h';
+  const token = jwt.sign({ staff_id: user.staff_id, designation: user.designation }, SECRET_KEY, { expiresIn: jwtExpiry });
 
-  res.cookie('token', token, {
+  const cookieOptions = {
     httpOnly: true,
     secure: false,
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000
-  });
+    sameSite: 'lax'
+  };
+  if (remember) {
+    cookieOptions.maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+  }
+  // If remember is false, do not set maxAge (session cookie)
+  res.cookie('token', token, cookieOptions);
 
   res.json({ message: 'Logged in successfully', designation: user.designation, staff_id: user.staff_id });
 });
@@ -84,12 +89,15 @@ router.post('/logout', (req, res) => {
 
 
 router.post('/reset-password', async (req, res) => {
-  const { UserOrEmail } = req.body;
+  const { UserOrEmail, frontendOrigin } = req.body;
   if (!UserOrEmail) {
     return res.status(400).json({ success: false, message: 'User ID or Email is required' });
   }
   try {
-    const [rows] = await db.query('SELECT staff_id, email FROM staff WHERE staff_id = ? OR email = ?', [UserOrEmail, UserOrEmail]);
+    const [rows] = await db.query(
+      'SELECT staff_id, email FROM staff WHERE staff_id = ? OR email = ?',
+      [UserOrEmail, UserOrEmail]
+    );
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: 'No user found with this User ID or Email' });
     }
@@ -98,15 +106,20 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ success: false, message: 'No email associated with this account' });
     }
 
-    // Generate reset token randomyl
     const resetToken = crypto.randomBytes(32).toString('hex');
     const hashedToken = await bcrypt.hash(resetToken, 10);
-    const expiry = Date.now() + 15 * 60 * 1000; //15 mins
-
+    const expiry = Date.now() + 15 * 60 * 1000;
 
     await db.query('DELETE FROM password_resets WHERE user_id = ?', [user.staff_id]);
-    await db.query('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE token = ?, expires_at = ?', [user.staff_id, hashedToken, expiry, hashedToken, expiry]);
-    const resetLink = `http://localhost:3000/reset-password?token=${resetToken}&id=${user.staff_id}`;
+    await db.query(
+      'INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE token = ?, expires_at = ?',
+      [user.staff_id, hashedToken, expiry, hashedToken, expiry]
+    );
+
+    // Use frontendOrigin dynamically
+    const origin = frontendOrigin || process.env.FRONTEND_URL;
+    const resetLink = `${origin}/reset-password?token=${resetToken}&id=${user.staff_id}`;
+
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: user.email,
@@ -115,12 +128,14 @@ router.post('/reset-password', async (req, res) => {
              <a href="${resetLink}">${resetLink}</a>`
     };
     await transporter.sendMail(mailOptions);
+
     return res.json({ success: true, message: 'Password reset link sent to your email' });
   } catch (err) {
     console.error('Database error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
 
 
 router.get('/reset-password', async (req, res) => {
@@ -141,7 +156,6 @@ router.get('/reset-password', async (req, res) => {
     }
 
     const record = rows[0];
-    console.log("Token expiry time:", record.expires_at, "Current time:", Date.now());
     if (Date.now() > record.expires_at) {
       console.log("Token expired for user ID:", id);
       return res.status(400).json({ success: false, message: 'Token has expired' });
