@@ -22,7 +22,7 @@ function LoginPage() {
     }
     try {
       setLoading(true);
-      const res = await axios.post("/login/reset-password", { UserOrEmail: resetEmail });
+      const res = await axios.post("/login/reset-password", { UserOrEmail: resetEmail, frontendOrigin: window.location.origin });
       if (res.data.success) {
         showAlert(res.data.message || 'Password reset link sent to your email!', 'success');
       } else {
