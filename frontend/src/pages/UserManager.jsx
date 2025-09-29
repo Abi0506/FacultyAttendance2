@@ -7,30 +7,26 @@ function UserManager() {
   const { showAlert } = useAlert();
   const Departments = ['CSE', 'ECE', 'MECH', 'ADMIN', 'LIBRARY'];
 
-
   const [loading, setLoading] = useState(false);
   const [loading1, setLoading1] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
-
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
-
   const [addUser, setAddUser] = useState({
     id: '',
     name: '',
     dept: '',
     designation: '',
+    email: '',
   });
-
   const [editUser, setEditUser] = useState(null);
   const [editSearchId, setEditSearchId] = useState('');
-
   const [deleteId, setDeleteId] = useState('');
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await axios.get("/attendance/categories");
+        const res = await axios.get('/attendance/categories');
         if (res.data.success) setCategories(res.data.categories);
         else showAlert('Failed to fetch categories', 'error');
       } catch (err) {
@@ -42,29 +38,28 @@ function UserManager() {
   }, []);
 
   const formatTime = (timeStr) => {
-    if (timeStr === "0" || !timeStr) return "—";
+    if (timeStr === '0' || !timeStr) return '—';
     const [hh, mm] = timeStr.split(':');
     return `${hh}:${mm}`;
   };
 
-
-
   const handleCategoryChange = (e) => {
     const val = e.target.value;
     setSelectedCategory(val);
-    setAddUser(prev => ({ ...prev, dept: '' }));
+    setAddUser((prev) => ({ ...prev, dept: '' }));
   };
 
   const handleAddUser = async (e) => {
     e.preventDefault();
-    if (!/^[A-Za-z]\d+$/.test(addUser.id)) {
-      showAlert("Invalid ID format", "danger");
+   
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addUser.email)) {
+      showAlert('Invalid email format', 'danger');
       return;
     }
 
     const payload = {
       ...addUser,
-      category: Number(selectedCategory)
+      category: Number(selectedCategory),
     };
 
     setLoading(true);
@@ -72,47 +67,60 @@ function UserManager() {
       const res = await axios.post('/essl/add_user', payload);
       if (res.data.success) {
         showAlert(res.data.message, 'success');
-        setAddUser({ id: '', name: '', dept: '', designation: '' });
+        setAddUser({ id: '', name: '', dept: '', designation: '', email: '' });
         setSelectedCategory('');
       }
     } catch (err) {
-      showAlert("Add user failed", 'danger');
+      showAlert('Add user failed', 'danger');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSearchEditUser = async () => {
-    if (!editSearchId.trim()) return;
+    if (!editSearchId.trim()) {
+      showAlert('Please enter a Staff ID', 'danger');
+      return;
+    }
     try {
       const res = await axios.get(`/attendance/get_user/${editSearchId}`);
+      console.log('Fetched user response:', res.data); // Debug full response
       if (res.data.success) {
         const user = res.data.user;
-        console.log('Fetched user:', user);
-        setEditUser({
-          id: user.staff_id,
-          name: user.name,
-          dept: user.dept,
-          designation: user.designation,
-          category: user.category.toString(),
-        });
+        const newEditUser = {
+          id: user.staff_id || '',
+          name: user.name || '',
+          dept: user.dept || '',
+          designation: user.designation || '',
+          email: user.email || '', // Ensure email is set
+          category: user.category ? user.category.toString() : '',
+        };
+        setEditUser(newEditUser);
+        console.log('Set editUser state:', newEditUser); // Debug state after setting
       } else {
-        showAlert(res.data.message, 'danger');
+        showAlert(res.data.message || 'User not found', 'danger');
         setEditUser(null);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching user:', err);
       showAlert('Fetch user failed', 'danger');
+      setEditUser(null);
     }
   };
 
   const handleEditUser = async (e) => {
     e.preventDefault();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editUser.email)) {
+      showAlert('Invalid email format', 'danger');
+      return;
+    }
+
     const payload = {
       id: editUser.id,
       name: editUser.name,
       dept: editUser.dept,
       designation: editUser.designation,
+      email: editUser.email,
       category: Number(editUser.category),
     };
 
@@ -136,10 +144,7 @@ function UserManager() {
 
   const handleDeleteUser = async (e) => {
     e.preventDefault();
-    if (!/^[A-Za-z]\d+$/.test(deleteId)) {
-      showAlert('Invalid ID format', 'danger');
-      return;
-    }
+    
     setLoading1(true);
     try {
       const res = await axios.post('/essl/delete_user', { id: deleteId });
@@ -154,7 +159,6 @@ function UserManager() {
 
   return (
     <PageWrapper title="User Manager">
-
       {/* Add User */}
       <div className="mb-5 p-4 rounded-4 border bg-light">
         <h4 className="mb-4 text-c-primary fw-bold">Add User</h4>
@@ -162,26 +166,60 @@ function UserManager() {
           <div className="row g-3">
             <div className="col-md-6">
               <label className="form-label">Staff ID</label>
-              <input type="text" className="form-control" value={addUser.id} onChange={(e) => setAddUser({ ...addUser, id: e.target.value })} required />
+              <input
+                type="text"
+                className="form-control"
+                value={addUser.id}
+                onChange={(e) => setAddUser({ ...addUser, id: e.target.value })}
+                required
+              />
             </div>
             <div className="col-md-6">
               <label className="form-label">Name</label>
-              <input type="text" className="form-control" value={addUser.name} onChange={(e) => setAddUser({ ...addUser, name: e.target.value })} required />
+              <input
+                type="text"
+                className="form-control"
+                value={addUser.name}
+                onChange={(e) => setAddUser({ ...addUser, name: e.target.value })}
+                required
+              />
             </div>
-            <div className="col-md-12">
+            <div className="col-md-6">
+              <label className="form-label">Email</label>
+              <input
+                type="email"
+                className="form-control"
+                value={addUser.email}
+                onChange={(e) => setAddUser({ ...addUser, email: e.target.value })}
+                required
+              />
+            </div>
+            <div className="col-md-6">
               <label className="form-label">Category</label>
-              <select className="form-select" value={selectedCategory} onChange={handleCategoryChange} required>
+              <select
+                className="form-select"
+                value={selectedCategory}
+                onChange={handleCategoryChange}
+                required
+              >
                 <option value="">Choose Category</option>
                 {categories.map((cat, idx) => (
                   <option key={idx} value={cat.category_no}>
-                    {cat.category_no} - {cat.category_description} - {formatTime(cat.in_time)} - {formatTime(cat.break_in)} - {formatTime(cat.break_out)} - {formatTime(cat.out_time)} - {cat.break_time_mins}
+                    {cat.category_no} - {cat.category_description} - {formatTime(cat.in_time)} -{' '}
+                    {formatTime(cat.break_in)} - {formatTime(cat.break_out)} -{' '}
+                    {formatTime(cat.out_time)} - {cat.break_time_mins}
                   </option>
                 ))}
               </select>
             </div>
             <div className="col-md-6">
               <label className="form-label">Designation</label>
-              <select className="form-select" value={addUser.designation} onChange={(e) => setAddUser({ ...addUser, designation: e.target.value })} required>
+              <select
+                className="form-select"
+                value={addUser.designation}
+                onChange={(e) => setAddUser({ ...addUser, designation: e.target.value })}
+                required
+              >
                 <option value="">Choose Designation</option>
                 <option value="Assistant Professor">Assistant Professor</option>
                 <option value="Associate Professor">Associate Professor</option>
@@ -192,10 +230,17 @@ function UserManager() {
             </div>
             <div className="col-md-6">
               <label className="form-label">Department</label>
-              <select className="form-select" value={addUser.dept} onChange={(e) => setAddUser({ ...addUser, dept: e.target.value })} required>
+              <select
+                className="form-select"
+                value={addUser.dept}
+                onChange={(e) => setAddUser({ ...addUser, dept: e.target.value })}
+                required
+              >
                 <option value="">Choose Department</option>
-                {Departments.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
+                {Departments.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
                 ))}
               </select>
             </div>
@@ -212,19 +257,47 @@ function UserManager() {
       <div className="mb-5 p-4 rounded-3 bg-light border">
         <h4 className="mb-3 text-c-primary fw-bold">Edit User</h4>
         <div className="mb-3 d-flex gap-2">
-          <input className="form-control" placeholder="Enter Staff ID" value={editSearchId} onChange={(e) => setEditSearchId(e.target.value)} />
-          <button className="btn btn-outline-primary" onClick={handleSearchEditUser}>Search</button>
+          <input
+            className="form-control"
+            placeholder="Enter Staff ID"
+            value={editSearchId}
+            onChange={(e) => setEditSearchId(e.target.value)}
+          />
+          <button className="btn btn-outline-primary" onClick={handleSearchEditUser}>
+            Search
+          </button>
         </div>
-        {editUser && (
+        {editUser ? (
           <form onSubmit={handleEditUser}>
             <div className="row g-3">
               <div className="col-md-6">
                 <label className="form-label">Name</label>
-                <input type="text" className="form-control" value={editUser.name} onChange={(e) => setEditUser({ ...editUser, name: e.target.value })} required />
+                <input
+                  type="text"
+                  className="form-control"
+                  value={editUser.name}
+                  onChange={(e) => setEditUser({ ...editUser, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label">Email</label>
+                <input
+                  type="email"
+                  className="form-control"
+                  value={editUser.email || ''} // Fallback to empty string
+                  onChange={(e) => setEditUser({ ...editUser, email: e.target.value })}
+                  required
+                />
               </div>
               <div className="col-md-6">
                 <label className="form-label">Designation</label>
-                <select className="form-select" value={editUser.designation} onChange={(e) => setEditUser({ ...editUser, designation: e.target.value })} required>
+                <select
+                  className="form-select"
+                  value={editUser.designation}
+                  onChange={(e) => setEditUser({ ...editUser, designation: e.target.value })}
+                  required
+                >
                   <option value="">Choose Designation</option>
                   <option value="Assistant Professor">Assistant Professor</option>
                   <option value="Associate Professor">Associate Professor</option>
@@ -235,49 +308,72 @@ function UserManager() {
               </div>
               <div className="col-md-6">
                 <label className="form-label">Department</label>
-                <select className="form-select" value={editUser.dept} onChange={(e) => setEditUser({ ...editUser, dept: e.target.value })} required>
+                <select
+                  className="form-select"
+                  value={editUser.dept}
+                  onChange={(e) => setEditUser({ ...editUser, dept: e.target.value })}
+                  required
+                >
                   <option value="">Choose Department</option>
-                  {Departments.map(dept => (
-                    <option key={dept} value={dept}>{dept}</option>
+                  {Departments.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
                   ))}
                 </select>
               </div>
               <div className="col-md-6">
                 <label className="form-label">Category</label>
-                <select className="form-select" value={editUser.category} onChange={(e) => setEditUser({ ...editUser, category: e.target.value })} required>
+                <select
+                  className="form-select"
+                  value={editUser.category}
+                  onChange={(e) => setEditUser({ ...editUser, category: e.target.value })}
+                  required
+                >
                   <option value="">Choose Category</option>
                   {categories.map((cat, idx) => (
                     <option key={idx} value={cat.category_no}>
-                      {cat.category_no} - {cat.category_description} - {formatTime(cat.in_time)} - {formatTime(cat.break_in)} - {formatTime(cat.break_out)} - {formatTime(cat.out_time)} - {cat.break_time_mins}
+                      {cat.category_no} - {cat.category_description} - {formatTime(cat.in_time)} -{' '}
+                      {formatTime(cat.break_in)} - {formatTime(cat.break_out)} -{' '}
+                      {formatTime(cat.out_time)} - {cat.break_time_mins}
                     </option>
                   ))}
                 </select>
-                <p><a href='/categories'>Click here</a> to add a new category</p>
+                <p>
+                  <a href="/categories">Click here</a> to add a new category
+                </p>
               </div>
             </div>
             <div className="mt-4">
-              <button type="submit" className="btn btn-primary px-5" disabled={loading}>
-                {loading ? 'Editing...' : 'Edit User'}
+              <button type="submit" className="btn btn-primary px-5" disabled={editLoading}>
+                {editLoading ? 'Editing...' : 'Edit User'}
               </button>
-
             </div>
           </form>
+        ) : (
+          <p>No user selected for editing.</p>
         )}
       </div>
 
-
+      {/* Delete User */}
       <div className="mb-5 p-4 rounded-3 bg-light border">
         <h4 className="text-c-primary mb-3 fw-bold">Delete User</h4>
         <form onSubmit={handleDeleteUser}>
           <div className="mb-2">
-            <input type="text" className="form-control" placeholder="Staff ID (e.g., S123)" value={deleteId} onChange={(e) => setDeleteId(e.target.value)} required />
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Staff ID (e.g., S123)"
+              value={deleteId}
+              onChange={(e) => setDeleteId(e.target.value)}
+              required
+            />
           </div>
           <button className="btn btn-c-secondary" type="submit" disabled={loading1}>
             {loading1 ? 'Deleting...' : 'Delete User'}
           </button>
         </form>
       </div>
-
     </PageWrapper>
   );
 }

@@ -35,7 +35,7 @@ def get_attendance_list():
      
         connection = db()
         cursor = connection.cursor()
-        cursor.execute("SELECT ip_address FROM devices")
+        cursor.execute("SELECT ip_address FROM devices where maintenance = %s",(0,))
         rows = cursor.fetchall()
 
   
@@ -81,7 +81,6 @@ def logs_main():
             schedule.run_pending()
             time.sleep(1)
 
+logs_main()
 
-   
-if __name__ == "__main__":
-    logs_main()        
+        
