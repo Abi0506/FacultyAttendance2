@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import axios from '../axios';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import PdfTemplate from '../components/PdfTemplate';
 import { useAuth } from '../auth/authProvider';
 import PageWrapper from '../components/PageWrapper';
 
@@ -54,15 +53,12 @@ function IndividualAttendanceTable() {
     };
 
     const handleSaveAsPDF = () => {
-        const doc = new jsPDF();
-        doc.setFontSize(16);
-        doc.text('Individual Attendance Report', 14, 16);
-        doc.setFontSize(12);
-        doc.text(`Name: ${staffInfo.name || ''}`, 14, 26);
-        doc.text(`Department: ${staffInfo.department || ''}`, 14, 42);
-        doc.text(`Total Late Mins: ${total_late_mins}`, 14, 50);
-        doc.text(`Marked Days: ${marked_days}`, 14, 58);
-
+        const details = [
+            { label: 'Name', value: staffInfo.name || '' },
+            { label: 'Department', value: staffInfo.department || '' },
+            { label: 'Total Late Mins', value: total_late_mins },
+            { label: 'Marked Days', value: marked_days }
+        ];
         const tableColumn = ['S.No', 'Date', ...columnsToShow, 'Late Mins', 'Working Hours'];
         const tableRows = records.map((rec, idx) => [
             idx + 1,
@@ -71,14 +67,12 @@ function IndividualAttendanceTable() {
             rec.late_mins,
             rec.working_hours
         ]);
-        autoTable(doc, {
-            head: [tableColumn],
-            body: tableRows,
-            startY: 65,
-            styles: { fontSize: 10 },
-            headStyles: { fillColor: [49, 58, 98] },
+        PdfTemplate({
+            title: 'Individual Attendance Report',
+            tables: [{ columns: tableColumn, data: tableRows }],
+            details,
+            fileName: `attendance_${staffInfo.name || 'employee'}.pdf`
         });
-        doc.save(`attendance_${staffInfo.name || 'employee'}.pdf`);
     };
 
     React.useEffect(() => {
