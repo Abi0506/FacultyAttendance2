@@ -59,7 +59,6 @@ function CategoryManagerPage() {
         let out_time = form.out_time;
         let working_hrs = '';
         if (form.type === 'hrs') {
-            // Combine working_hrs and working_mins to HH:MM format
             const hrs = String(form.working_hrs || '0').padStart(2, '0');
             const mins = String(form.working_mins || '0').padStart(2, '0');
             out_time = `${hrs}:${mins}`;
@@ -101,6 +100,23 @@ function CategoryManagerPage() {
             }
         }
         setLoading(false);
+    };
+
+    const handleDelete = async (categoryNo) => {
+        if (window.confirm("Are you sure you want to delete this category? This action cannot be undone.")) {
+            try {
+                const res = await axios.post('/attendance/categories/delete', { category_no: categoryNo });
+                if (res.data.success) {
+                    showAlert('Category deleted successfully', 'success');
+                    setCategories(categories.filter(cat => cat.category_no !== categoryNo));
+                } else {
+                    showAlert('Failed to delete category', 'error');
+                }
+            } catch (error) {
+                showAlert('Failed to delete category', 'error');
+                console.error("Error deleting category:", error);
+            }
+        }
     };
 
     const downloadPDF = () => {
@@ -150,11 +166,12 @@ function CategoryManagerPage() {
                                     <th>Out Time</th>
                                     <th>Working Hrs</th>
                                     <th>Break (mins)</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {categories.map((cat, index) => (
-                                    <tr key={index}>
+                                    <tr key={cat.category_no}>
                                         <td>{cat.category_no}</td>
                                         <td>{cat.category_description}</td>
                                         <td>{cat.type || 'fixed'}</td>
@@ -164,6 +181,16 @@ function CategoryManagerPage() {
                                         <td>{formatTime(cat.out_time)}</td>
                                         <td>{cat.working_hrs || '—'}</td>
                                         <td>{cat.break_time_mins}</td>
+                                        <td>
+                                            <button
+                                                className="btn btn-outline-danger btn-sm"
+                                                onClick={() => handleDelete(cat.category_no)}
+                                                aria-label="Delete category"
+                                                title="Delete category"
+                                            >
+                                                <i className="bi bi-trash-fill"></i>
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
