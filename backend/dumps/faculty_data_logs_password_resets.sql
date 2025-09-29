@@ -1,8 +1,8 @@
--- MySQL dump 10.13  Distrib 8.0.38, for Win64 (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.43, for Win64 (x86_64)
 --
 -- Host: localhost    Database: faculty_data_logs
 -- ------------------------------------------------------
--- Server version	9.0.1
+-- Server version	8.0.43
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -16,32 +16,29 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `category`
+-- Table structure for table `password_resets`
 --
 
-DROP TABLE IF EXISTS `category`;
+DROP TABLE IF EXISTS `password_resets`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `category` (
-  `category_no` int NOT NULL,
-  `category_description` varchar(100) DEFAULT NULL,
-  `in_time` varchar(15) DEFAULT NULL,
-  `break_in` varchar(15) DEFAULT NULL,
-  `break_out` varchar(15) DEFAULT NULL,
-  `out_time` varchar(15) DEFAULT NULL,
-  `break_time_mins` int DEFAULT NULL,
-  PRIMARY KEY (`category_no`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE `password_resets` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` varchar(50) NOT NULL,
+  `token` varchar(255) NOT NULL,
+  `expires_at` bigint NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `category`
+-- Dumping data for table `password_resets`
 --
 
-LOCK TABLES `category` WRITE;
-/*!40000 ALTER TABLE `category` DISABLE KEYS */;
-INSERT INTO `category` VALUES (1,'Teaching Staff','08:45:00','10:15:00','15:00:00','16:45:00',70),(2,'Non Teaching Staff','0','0','0','08:00:00',70);
-/*!40000 ALTER TABLE `category` ENABLE KEYS */;
+LOCK TABLES `password_resets` WRITE;
+/*!40000 ALTER TABLE `password_resets` DISABLE KEYS */;
+INSERT INTO `password_resets` VALUES (9,'I0215','$2b$10$mRBpnL3inVCUTbhXyH/p5O1Y5olD4vUZ6oFJHIzp9G7Pn096vEfSS',1758731085706),(12,'I01001','$2b$10$5O0Eckq1CY0wJhRuImjkMumqFgo0gbpG.n6zB.ehEgWLczK7wcK3y',1758764721805);
+/*!40000 ALTER TABLE `password_resets` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -53,4 +50,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-07-11 11:03:09
+-- Dump completed on 2025-09-25 19:30:29

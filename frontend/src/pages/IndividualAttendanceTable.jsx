@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../axios';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import PdfTemplate from '../components/PdfTemplate';
 import PageWrapper from '../components/PageWrapper';
 
 function IndividualAttendanceTable() {
@@ -57,16 +56,13 @@ function IndividualAttendanceTable() {
     };
 
     const handleSaveAsPDF = () => {
-        const doc = new jsPDF();
-        doc.setFontSize(16);
-        doc.text('Individual Attendance Report', 14, 16);
-        doc.setFontSize(12);
-        doc.text(`Name: ${employeeInfo.name || ''}`, 14, 26);
-        doc.text(`Category: ${employeeInfo.category || ''}`, 14, 34);
-        doc.text(`Department: ${employeeInfo.department || ''}`, 14, 42);
-        doc.text(`Total Late Mins: ${totalLateMins}`, 14, 50);
-        doc.text(`Marked Days: ${markedDays}`, 14, 58);
-
+        const details = [
+            { label: 'Name', value: employeeInfo.name || '' },
+            { label: 'Category', value: employeeInfo.category || '' },
+            { label: 'Department', value: employeeInfo.department || '' },
+            { label: 'Total Late Mins', value: totalLateMins },
+            { label: 'Marked Days', value: markedDays }
+        ];
         const tableColumn = ['S.No', 'Date', ...columnsToShow, 'Late Mins', 'Working Hours'];
         const tableRows = records.map((rec, idx) => [
             idx + 1,
@@ -75,14 +71,12 @@ function IndividualAttendanceTable() {
             rec.late_mins,
             rec.working_hours
         ]);
-        autoTable(doc, {
-            head: [tableColumn],
-            body: tableRows,
-            startY: 65,
-            styles: { fontSize: 10 },
-            headStyles: { fillColor: [49, 58, 98] },
+        PdfTemplate({
+            title: 'Individual Attendance Report',
+            tables: [{ columns: tableColumn, data: tableRows }],
+            details,
+            fileName: `attendance_${employeeInfo.name || 'employee'}.pdf`
         });
-        doc.save(`attendance_${employeeInfo.name || 'employee'}.pdf`);
     };
 
     useEffect(() => {
@@ -134,7 +128,7 @@ function IndividualAttendanceTable() {
                     <p><strong>Category:</strong> {employeeInfo.category}</p>
                     <p><strong>Department:</strong> {employeeInfo.department}</p>
                     <p><strong>Total Late Mins(Since prev. reset): </strong>{totalLateMins}</p>
-                    
+
                     <p><strong>Marked Days:</strong> {markedDays}</p>
                     <button className="btn btn-outline-secondary mb-3" onClick={handleSaveAsPDF}>
                         Save as PDF

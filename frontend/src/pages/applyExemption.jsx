@@ -81,7 +81,7 @@ function ApplyExemption() {
             if (res.data.message === "Exemption added successfully") {
                 showAlert('Exemption added successfully!', 'success');
                 setFormData({
-                     staffId: user.staffId || '',
+                    staffId: user.staffId || '',
                     exemptionType: 'Day',
                     exemptionSession: [],
                     exemptionDate: todayDate,
@@ -89,7 +89,7 @@ function ApplyExemption() {
                     otherReason: '',
                     start_time: '',
                     end_time: '',
-                     exemptionStatus: 'pending',
+                    exemptionStatus: 'pending',
                 });
                 setSelectedSessions([]);
                 fetchExemptions();

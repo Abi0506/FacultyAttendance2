@@ -16,7 +16,7 @@ function HRLeaveManager() {
 
     const [leaves, setLeaves] = useState([]);
     const [filteredLeaves, setFilteredLeaves] = useState([]);
-    const [status, setStatus] = useState('');
+    
     const [filterStaffId, setFilterStaffId] = useState(''); // For filtering the list
     const [startDate, setStartDate] = useState(firstDayOfMonth);
     const [endDate, setEndDate] = useState(lastDayOfMonth);
@@ -57,7 +57,6 @@ function HRLeaveManager() {
             setLeaves(res.data);
         } catch (error) {
             showAlert('Failed to fetch leave records', 'error');
-            console.error("Error fetching leaves:", error);
         }
     };
 
@@ -74,16 +73,14 @@ function HRLeaveManager() {
         if (endDate) {
             filtered = filtered.filter(leave => new Date(leave.end_date) <= new Date(endDate));
         }
-        if (status) {
-            filtered = filtered.filter(leave => leave.status === status);
-        }
+        // The 'status' filter has been removed from this block
         if (filterStaffId) {
             filtered = filtered.filter(leave =>
                 leave.staff_id && leave.staff_id.toLowerCase().includes(filterStaffId.toLowerCase())
             );
         }
         setFilteredLeaves(filtered);
-    }, [startDate, endDate, status, filterStaffId, leaves]);
+    }, [startDate, endDate, filterStaffId, leaves]); // 'status' removed from dependency array
     
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -107,7 +104,12 @@ function HRLeaveManager() {
                 showAlert('Failed to submit leave request', 'error');
             }
         } catch (error) {
-            showAlert('Submission failed!', 'error');
+            // This logic will display specific error messages from the backend (like for duplicates)
+            if (error.response && error.response.data && error.response.data.message) {
+                showAlert(error.response.data.message, 'error');
+            } else {
+                showAlert('Submission failed!', 'error');
+            }
         }
     };
 
