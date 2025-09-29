@@ -32,18 +32,22 @@ passport.use(new GoogleStrategy({
     }
 ));
 
-// Google login route
+// Google login route (no session needed)
 router.get('/google', (req, res, next) => {
-    // Store redirect URL in session or pass as query param to callback
-    req.session.redirectUrl = req.query.redirect;
-    passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+    const redirect = req.query.redirect ;
+    passport.authenticate('google', {
+        scope: ['profile', 'email'],
+        state: encodeURIComponent(redirect) 
+    })(req, res, next);
 });
+
 
 // Google callback route
 router.get('/google/callback',
     passport.authenticate('google', { failureRedirect: '/login', session: true }),
     (req, res) => {
-        const redirectUrl = req.session.redirectUrl || 'http://localhost:3000';
+        // Use the redirect URL passed in state
+        const redirectUrl = decodeURIComponent(req.query.state || '');
 
         if (!req.user || !req.user.staff) {
             return res.redirect(`${redirectUrl}/?message=${encodeURIComponent('No staff found with this Google account. Please contact admin.')}`);
