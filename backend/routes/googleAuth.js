@@ -35,6 +35,7 @@ passport.use(new GoogleStrategy({
 // Google login route (no session needed)
 router.get('/google', (req, res, next) => {
     const redirect = req.query.redirect ;
+    console.log("Redirect: ", redirect)
     passport.authenticate('google', {
         scope: ['profile', 'email'],
         state: encodeURIComponent(redirect) 
@@ -47,7 +48,8 @@ router.get('/google/callback',
     passport.authenticate('google', { failureRedirect: '/login', session: true }),
     (req, res) => {
         // Use the redirect URL passed in state
-        const redirectUrl = decodeURIComponent(req.query.state || '');
+        const redirectUrl = decodeURIComponent(req.query.state || 'http://10.10.33.251:8000/');
+
 
         if (!req.user || !req.user.staff) {
             return res.redirect(`${redirectUrl}/?message=${encodeURIComponent('No staff found with this Google account. Please contact admin.')}`);
@@ -72,7 +74,7 @@ router.get('/google/callback',
 // Google logout
 router.get('/logout', (req, res) => {
     req.logout(() => {
-        res.redirect('http://localhost:3000');
+        res.redirect('http://10.10.33.251:8000/');
     });
 });
 
