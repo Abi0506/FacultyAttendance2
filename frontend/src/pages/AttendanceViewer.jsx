@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from '../axios';
 import PageWrapper from '../components/PageWrapper';
 import PdfTemplate from '../components/PdfTemplate';
+import { useAlert } from '../components/AlertProvider';
+import { useLocation } from 'react-router-dom';
 
 function AttendanceViewer() {
   const [selectedDate, setSelectedDate] = useState("");
@@ -12,6 +14,20 @@ function AttendanceViewer() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 25;
+  const { showAlert } = useAlert();
+  const location = useLocation();
+
+  // Message as alert
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const message = params.get('message');
+    if (message) {
+      showAlert(message, 'success');
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [location.search, showAlert]);
+
 
   const getLogs = useCallback(async (date) => {
     if (!date) return;
