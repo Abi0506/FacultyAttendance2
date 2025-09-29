@@ -89,12 +89,15 @@ router.post('/logout', (req, res) => {
 
 
 router.post('/reset-password', async (req, res) => {
-  const { UserOrEmail } = req.body;
+  const { UserOrEmail, frontendOrigin } = req.body;
   if (!UserOrEmail) {
     return res.status(400).json({ success: false, message: 'User ID or Email is required' });
   }
   try {
-    const [rows] = await db.query('SELECT staff_id, email FROM staff WHERE staff_id = ? OR email = ?', [UserOrEmail, UserOrEmail]);
+    const [rows] = await db.query(
+      'SELECT staff_id, email FROM staff WHERE staff_id = ? OR email = ?',
+      [UserOrEmail, UserOrEmail]
+    );
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: 'No user found with this User ID or Email' });
     }
@@ -103,15 +106,20 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ success: false, message: 'No email associated with this account' });
     }
 
-    // Generate reset token randomyl
     const resetToken = crypto.randomBytes(32).toString('hex');
     const hashedToken = await bcrypt.hash(resetToken, 10);
-    const expiry = Date.now() + 15 * 60 * 1000; //15 mins
-
+    const expiry = Date.now() + 15 * 60 * 1000;
 
     await db.query('DELETE FROM password_resets WHERE user_id = ?', [user.staff_id]);
-    await db.query('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE token = ?, expires_at = ?', [user.staff_id, hashedToken, expiry, hashedToken, expiry]);
-    const resetLink = `http://localhost:3000/reset-password?token=${resetToken}&id=${user.staff_id}`;
+    await db.query(
+      'INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE token = ?, expires_at = ?',
+      [user.staff_id, hashedToken, expiry, hashedToken, expiry]
+    );
+
+    // Use frontendOrigin dynamically
+    const origin = frontendOrigin || process.env.FRONTEND_URL;
+    const resetLink = `${origin}/reset-password?token=${resetToken}&id=${user.staff_id}`;
+
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: user.email,
@@ -120,12 +128,14 @@ router.post('/reset-password', async (req, res) => {
              <a href="${resetLink}">${resetLink}</a>`
     };
     await transporter.sendMail(mailOptions);
+
     return res.json({ success: true, message: 'Password reset link sent to your email' });
   } catch (err) {
     console.error('Database error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+
 
 
 router.get('/reset-password', async (req, res) => {
