@@ -146,7 +146,6 @@ router.get('/reset-password', async (req, res) => {
     }
 
     const record = rows[0];
-    console.log("Token expiry time:", record.expires_at, "Current time:", Date.now());
     if (Date.now() > record.expires_at) {
       console.log("Token expired for user ID:", id);
       return res.status(400).json({ success: false, message: 'Token has expired' });
