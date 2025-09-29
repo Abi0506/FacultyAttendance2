@@ -7,7 +7,7 @@ import { useAlert } from '../components/AlertProvider';
 import { ScaleLoader } from "react-spinners";
 
 function LoginPage() {
-  const [formData, setFormData] = useState({ userIdorEmail: '', password: '' });
+  const [formData, setFormData] = useState({ userIdorEmail: '', password: '', remember: false });
   const [resetEmail, setResetEmail] = useState('');
   const [showResetModal, setShowResetModal] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -39,8 +39,12 @@ function LoginPage() {
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
+  const handleChange1 = (e) => {
+    setFormData({ ...formData, ['remember']: e.target.checked });
+  };
 
   const handleSubmit = async (e) => {
+    console.log(formData)
     e.preventDefault();
     try {
       const result = await login(formData);
@@ -71,11 +75,13 @@ function LoginPage() {
         <div className="text-center mb-3">
           <button
             className="btn btn-outline-danger me-2"
-            onClick={() => window.location.href = 'http://localhost:5050/auth/google'}
+            onClick={() => {
+              const redirectUrl = encodeURIComponent(window.location.origin); // auto-detects frontend origin
+              window.location.href = `http://localhost:5050/auth/google?redirect=${redirectUrl}`;
+            }}
           >
             <i className="bi bi-google me-2"></i> Google
           </button>
-
         </div>
 
         {/* Divider */}
@@ -113,7 +119,7 @@ function LoginPage() {
           {/* Remember me + Reset password */}
           <div className="d-flex justify-content-between align-items-center mb-3">
             <div className="form-check">
-              <input className="form-check-input" type="checkbox" id="rememberMe" />
+              <input className="form-check-input" type="checkbox" id="rememberMe" onChange={handleChange1} />
               <label className="form-check-label small" htmlFor="rememberMe">
                 Remember me
               </label>
