@@ -46,10 +46,16 @@ def check_log_info(log):
     fetch_result = cursor.fetchall()
 
     if fetch_result:
-        print(f"Log already exists for User ID: {log.user_id}, Timestamp: {log.timestamp}")
+        # print(f"Log already exists for User ID: {log.user_id}, Timestamp: {log.timestamp}")
         return False
     else:
-        print(f"Log does not exist, inserting: User ID: {log.user_id}, Timestamp: {log.timestamp}")
+        # print(f"Log does not exist, inserting: User ID: {log.user_id}, Timestamp: {log.timestamp}")
+        find_query = "SELECT * FROM staff WHERE staff_id = %s"
+        cursor.execute(find_query, (log.user_id,))
+        find_result = cursor.fetchall()
+        if not find_result:
+            print("User is not added to the staff table. User ID: ", log.user_id)
+            return False
         insert_query = """
             INSERT INTO logs (staff_id, time, date)
             VALUES (%s, %s, %s)
