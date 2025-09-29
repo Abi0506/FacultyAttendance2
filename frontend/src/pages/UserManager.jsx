@@ -6,7 +6,6 @@ import { useAlert } from '../components/AlertProvider';
 function UserManager() {
   const { showAlert } = useAlert();
   const Departments = ['CSE', 'ECE', 'MECH', 'ADMIN', 'LIBRARY'];
-
   const [loading, setLoading] = useState(false);
   const [loading1, setLoading1] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
@@ -22,6 +21,9 @@ function UserManager() {
   const [editUser, setEditUser] = useState(null);
   const [editSearchId, setEditSearchId] = useState('');
   const [deleteId, setDeleteId] = useState('');
+  const [staff, setStaff] = useState([]); // State for staff list
+  const [staffLoading, setStaffLoading] = useState(false); // Loading state for staff
+  const [showStaffTable, setShowStaffTable] = useState(false); // Toggle table visibility
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -37,6 +39,32 @@ function UserManager() {
     fetchCategories();
   }, []);
 
+  const fetchStaff = async () => {
+    setStaffLoading(true);
+    try {
+      const res = await axios.get('/attendance/staff');
+      console.log('Fetched staff response:', res.data); // Debug log for email autofill
+      if (res.data.success) {
+        setStaff(res.data.staff);
+        setStaffLoading(false);
+      } else {
+        showAlert('Failed to fetch staff', 'error');
+      }
+    } catch (error) {
+      showAlert('Failed to fetch staff', 'error');
+      console.error("Error fetching staff:", error);
+    } finally {
+      setStaffLoading(false);
+    }
+  };
+
+  const handleToggleStaffTable = () => {
+    if (!showStaffTable && staff.length === 0) {
+      fetchStaff(); // Fetch data only on first toggle
+    }
+    setShowStaffTable(!showStaffTable);
+  };
+
   const formatTime = (timeStr) => {
     if (timeStr === '0' || !timeStr) return '—';
     const [hh, mm] = timeStr.split(':');
@@ -51,7 +79,6 @@ function UserManager() {
 
   const handleAddUser = async (e) => {
     e.preventDefault();
-   
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addUser.email)) {
       showAlert('Invalid email format', 'danger');
       return;
@@ -69,6 +96,10 @@ function UserManager() {
         showAlert(res.data.message, 'success');
         setAddUser({ id: '', name: '', dept: '', designation: '', email: '' });
         setSelectedCategory('');
+        if (showStaffTable) {
+          // Refresh staff list if table is visible
+          await fetchStaff();
+        }
       }
     } catch (err) {
       showAlert('Add user failed', 'danger');
@@ -131,6 +162,10 @@ function UserManager() {
         showAlert(res.data.message, 'success');
         setEditUser(null);
         setEditSearchId('');
+        if (showStaffTable) {
+          // Refresh staff list if table is visible
+          await fetchStaff();
+        }
       } else {
         showAlert(res.data.message || 'Update failed', 'danger');
       }
@@ -144,12 +179,15 @@ function UserManager() {
 
   const handleDeleteUser = async (e) => {
     e.preventDefault();
-    
     setLoading1(true);
     try {
       const res = await axios.post('/essl/delete_user', { id: deleteId });
       showAlert(res.data.message, 'success');
       setDeleteId('');
+      if (showStaffTable) {
+        // Refresh staff list if table is visible
+        await fetchStaff();
+      }
     } catch (err) {
       showAlert('User deletion failed', 'danger');
     } finally {
@@ -159,8 +197,63 @@ function UserManager() {
 
   return (
     <PageWrapper title="User Manager">
+      {/* View Staff */}
+      <div className="mb-5 p-4 rounded-4 bg-light border">
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h4 className="text-c-primary fw-bold mb-0">View Staff</h4>
+          <button
+            className="btn btn-c-primary"
+            onClick={handleToggleStaffTable}
+          >
+            {showStaffTable ? 'Hide Staff' : 'View Staff'}
+          </button>
+        </div>
+        {showStaffTable && (
+          <>
+            {staffLoading ? (
+              <div className="text-center py-4">
+                <div className="spinner-border text-c-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            ) : staff.length === 0 ? (
+              <p className="text-muted text-center py-3">No staff found.</p>
+            ) : (
+              <div className="table-responsive rounded-3">
+                <table className="table table-hover">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Staff ID</th>
+                      <th>Name</th>
+                      <th>Dept</th>
+                      <th>Designation</th>
+                      <th>Email</th>
+                      <th>Category</th>
+                      <th>Category Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {staff.map((member) => (
+                      <tr key={member.staff_id}>
+                        <td>{member.staff_id}</td>
+                        <td>{member.name || '—'}</td>
+                        <td>{member.dept || '—'}</td>
+                        <td>{member.designation || '—'}</td>
+                        <td>{member.email || '—'}</td>
+                        <td>{member.category || '—'}</td>
+                        <td>{member.category_description || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
       {/* Add User */}
-      <div className="mb-5 p-4 rounded-4 border bg-light">
+      <div className="mb-5 p-4 rounded-4 bg-light border">
         <h4 className="mb-4 text-c-primary fw-bold">Add User</h4>
         <form onSubmit={handleAddUser}>
           <div className="row g-3">
@@ -285,7 +378,7 @@ function UserManager() {
                 <input
                   type="email"
                   className="form-control"
-                  value={editUser.email || ''} // Fallback to empty string
+                  value={editUser.email || ''}
                   onChange={(e) => setEditUser({ ...editUser, email: e.target.value })}
                   required
                 />
@@ -345,13 +438,13 @@ function UserManager() {
               </div>
             </div>
             <div className="mt-4">
-              <button type="submit" className="btn btn-primary px-5" disabled={editLoading}>
+              <button type="submit" className="btn btn-c-primary px-5" disabled={editLoading}>
                 {editLoading ? 'Editing...' : 'Edit User'}
               </button>
             </div>
           </form>
         ) : (
-          <p>No user selected for editing.</p>
+          <p className="text-muted">No user selected for editing.</p>
         )}
       </div>
 
