@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from '../axios';
-// Removed jsPDF and autoTable imports
 import PageWrapper from '../components/PageWrapper';
 import PdfTemplate from '../components/PdfTemplate';
 
@@ -21,7 +20,7 @@ function DepartmentSummary() {
     }
     const [startDate, setStartDate] = useState(getDefaultStartDate());
     const [endDate, setEndDate] = useState(getDefaultEndDate());
-    const [leavesDetectedCol, setLeavesDetectedCol] = useState('Leaves Detected');
+    const [totalMarkedDaysCol, setTotalMarkedDaysCol] = useState('Total Marked Days');
 
     const allDepartments = ["CSE", "ECE", "MECH"];
     const nonTeachingDepartments = ["ADMIN", "LIBRARY", "ECE", "CSE"];
@@ -70,7 +69,7 @@ function DepartmentSummary() {
             console.log('API response:', response.data);
             setSummaryData(response.data.data || {});
             setDate(response.data.date || []);
-            setLeavesDetectedCol(response.data.leaves_detected_col || 'Leaves Detected');
+            setTotalMarkedDaysCol(response.data.total_marked_days_col || 'Total Marked Days');
         } catch (error) {
             console.error("Error fetching summary:", error);
             setSummaryData({});
@@ -79,7 +78,6 @@ function DepartmentSummary() {
     }, [mainCategory, selectedDept, startDate, endDate]);
 
     useEffect(() => {
-        // If no startDate or endDate, auto-fill them
         if (!startDate) setStartDate(getDefaultStartDate());
         if (!endDate) setEndDate(getDefaultEndDate());
         if (mainCategory && (mainCategory === "ALL" || selectedDept !== "") && startDate && endDate) {
@@ -96,18 +94,35 @@ function DepartmentSummary() {
     }, [mainCategory, selectedDept, startDate, endDate, fetchDeptSummary]);
 
     const handleSaveAsPDF = () => {
-        const title = 'Department-wise Summary';
-        const tableHeaders = ['Employee Name', 'Employee ID', 'Late Minutes', 'Leaves Detected'];
+        const title = `Department-wise Summary (${date[0]} to ${date[1]})`;
+        const tableHeaders = [
+            'Employee Name',
+            'Employee ID',
+            'Designation',
+            `Late Minutes (${date[0]} to ${date[1]})`,
+            `Absent Days (${date[0]} to ${date[1]})`,
+            'Total Late Minutes',
+            'Total Absent Days',
+            totalMarkedDaysCol
+        ];
 
         if (mainCategory === "ALL") {
-            // Multi-table: one table per department in each category
             const tables = [];
             Object.entries(summaryData).forEach(([category, depts]) => {
                 Object.entries(depts).forEach(([deptName, employees]) => {
                     tables.push({
                         columns: tableHeaders,
                         data: Array.isArray(employees)
-                            ? employees.map(emp => [emp.name, emp.staff_id, emp.summary, emp.leaves])
+                            ? employees.map(emp => [
+                                  emp.name || 'N/A',
+                                  emp.staff_id || 'N/A',
+                                  emp.designation || 'N/A',
+                                  emp.summary || 0,
+                                  emp.absent_days || 0,
+                                  emp.total_late_mins || 0,
+                                  emp.total_absent_days || 0,
+                                  emp.total_marked_days || 0
+                              ])
                             : []
                     });
                 });
@@ -115,33 +130,37 @@ function DepartmentSummary() {
             PdfTemplate({
                 title,
                 tables,
-                fileName: `dept_summary_ALL.pdf`
+                fileName: `dept_summary_ALL_${date[0]}_to_${date[1]}.pdf`
             });
         } else {
-            // Single table for selected department/category
             let data = [];
             Object.entries(summaryData).forEach(([deptName, employees]) => {
                 if (Array.isArray(employees)) {
                     employees.forEach(emp => {
-                        data.push([emp.name, emp.staff_id, emp.summary, emp.leaves]);
+                        data.push([
+                            emp.name || 'N/A',
+                            emp.staff_id || 'N/A',
+                            emp.designation || 'N/A',
+                            emp.summary || 0,
+                            emp.absent_days || 0,
+                            emp.total_late_mins || 0,
+                            emp.total_absent_days || 0,
+                            emp.total_marked_days || 0
+                        ]);
                     });
                 }
             });
             PdfTemplate({
                 title,
                 tables: [{ columns: tableHeaders, data }],
-                fileName: `dept_summary_${mainCategory}_${selectedDept || 'ALL'}.pdf`
+                fileName: `dept_summary_${mainCategory}_${selectedDept || 'ALL'}_${date[0]}_to_${date[1]}.pdf`
             });
         }
     };
 
-
     const renderTable = (deptName, employees) => {
         const empArray = Array.isArray(employees) ? employees : [];
         console.log(`Rendering table for ${deptName}:`, empArray);
-        const leavesColHeader = (
-            <span>{leavesDetectedCol.split(' ').slice(0, 2).join(' ')}<br />{leavesDetectedCol.split(' ').slice(2).join(' ')}</span>
-        );
         return (
             <div key={deptName} className="mt-4 ms-4">
                 <h5>{deptName} Department</h5>
@@ -151,9 +170,11 @@ function DepartmentSummary() {
                             <th>Employee Name</th>
                             <th>Staff ID</th>
                             <th>Designation</th>
-                            <th>Late Minutes</th>
-                            <th>Absent Days</th>
-                            <th>{leavesColHeader}</th>
+                            <th>Late Minutes<br />({date[0]} to {date[1]})</th>
+                            <th>Absent Days<br />({date[0]} to {date[1]})</th>
+                            <th>Total Late Minutes</th>
+                            <th>Total Absent Days</th>
+                            <th>{totalMarkedDaysCol}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -165,12 +186,14 @@ function DepartmentSummary() {
                                     <td>{emp.designation || 'N/A'}</td>
                                     <td>{emp.summary || 0}</td>
                                     <td>{emp.absent_days || 0}</td>
-                                    <td>{emp.leaves_detected || 0}</td>
+                                    <td>{emp.total_late_mins || 0}</td>
+                                    <td>{emp.total_absent_days || 0}</td>
+                                    <td>{emp.total_marked_days || 0}</td>
                                 </tr>
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={6} className="text-center">No employees found.</td>
+                                <td colSpan={8} className="text-center">No employees found.</td>
                             </tr>
                         )}
                     </tbody>
@@ -196,7 +219,7 @@ function DepartmentSummary() {
 
             <div className="row mb-3">
                 <div className="col-md-4 mb-1">
-                    <label className='mb-2'>&nbsp;Category:</label>
+                    <label className="mb-2">&nbsp;Category:</label>
                     <select
                         className="form-control"
                         value={mainCategory}
@@ -218,7 +241,7 @@ function DepartmentSummary() {
                     mainCategory === 'Non Teaching Staff' ||
                     mainCategory === 'Department Wise') && (
                         <div className="col-md-4 mb-2">
-                            <label className='mb-2'>Department:</label>
+                            <label className="mb-2">Department:</label>
                             <select
                                 className="form-control"
                                 value={selectedDept}
@@ -264,7 +287,6 @@ function DepartmentSummary() {
                         />
                         <button className="btn btn-primary ms-2" onClick={fetchDeptSummary}>Go</button>
                     </div>
-                   
                 </div>
             )}
 
