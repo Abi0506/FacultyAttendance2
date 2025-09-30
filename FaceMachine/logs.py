@@ -74,8 +74,8 @@ def logs_main():
         # process_logs()
         # process_exemptions()
         # schedule.every(10).minutes.do(get_attendance_list)
-        schedule.every().day.at("22:30:00").do(process_logs)
-        schedule.every().day.at("23:30:00").do(process_exemptions)
+        # schedule.every().day.at("08:41:55").do(process_logs)
+        # schedule.every().day.at("23:30:00").do(process_exemptions)
 
         while True:
             schedule.run_pending()
