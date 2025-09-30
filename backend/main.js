@@ -6,7 +6,7 @@ const session = require('express-session');
 const passport = require('passport');
 require('dotenv').config();
 const app = express();
-
+const { startPythonScript } = require('./server');
 const PORT = 5050;
 const corsOptions = {
   origin: ['http://10.10.33.251:8000', 'http://localhost:8000', 'http://localhost:3001', 'http://10.10.33.251:3000', 'http://localhost:3000'],
@@ -14,6 +14,7 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
+// const pythonProcess = startPythonScript();
 
 app.use(cors(corsOptions));
 app.use(express.json());
@@ -41,6 +42,12 @@ passport.serializeUser((user, done) => {
 passport.deserializeUser((user, done) => {
   done(null, user);
 });
+
+// process.on('SIGINT', () => {
+//   console.log('Shutting down Node.js server...');
+//   pythonProcess.kill(); // Terminate Python process
+//   process.exit();
+// });
 
 
 const loginRouter = require("./routes/login");
