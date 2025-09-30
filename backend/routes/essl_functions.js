@@ -21,25 +21,25 @@ function runPythonScript(args) {
 
 
 router.post('/edit_user', async (req, res) => {
-  const { id, name, dept, designation, category } = req.body;
+  const { id, name, dept, email, designation, category } = req.body;
   console.log(req.body);
   try {
     const [name1] = await db.query(`SELECT name FROM staff WHERE staff_id = ?`, [id]);
-    if (name1 !== name[0].name){
+    if (name1 !== name[0].name) {
       const pythonResult = await runPythonScript(['set_user_credentials', id, name]);
       if (pythonResult.includes('Error')) {
         throw new Error(pythonResult);
       }
     }
   } catch (err) {
-      return res.status(500).json({ success: false, error: "Error updating user credentials" });
-    }
+    return res.status(500).json({ success: false, error: "Error updating user credentials" });
+  }
 
-    try{
+  try {
 
     await db.query(
-      `UPDATE staff SET name = ?, dept = ?, designation = ?, category = ? WHERE staff_id = ?`,
-      [name, dept, designation, category, id]
+      `UPDATE staff SET name = ?, dept = ?, designation = ?,email=?, category = ? WHERE staff_id = ?`,
+      [name, dept, designation, email, category, id]
     );
     res.json({ success: true, message: "User updated successfully" });
   } catch (err) {
