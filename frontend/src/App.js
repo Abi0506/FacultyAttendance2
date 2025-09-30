@@ -52,6 +52,7 @@ function RequireStaff({ children }) {
     return children;
 }
 
+
 // --- Main Application Content ---
 function AppContent() {
     const { isAuthenticated, logout, designation } = useAuth();
@@ -85,9 +86,17 @@ function AppContent() {
             }
         };
 
-        fetchData();
+        fetchData(); 
+        window.addEventListener('exemptionStatusChanged', fetchData); // ✅ pass function reference
+
+        return () => {
+            window.removeEventListener('exemptionStatusChanged', fetchData); // cleanup
+        };
+
         // The interval has been removed for efficiency
     }, [isAuthenticated, designation]);
+
+
 
     return (
         <Router>

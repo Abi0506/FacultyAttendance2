@@ -10,6 +10,7 @@ function LoginPage() {
   const [formData, setFormData] = useState({ userIdorEmail: '', password: '', remember: false });
   const [resetEmail, setResetEmail] = useState('');
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -71,16 +72,17 @@ function LoginPage() {
       <PageWrapper title="Login">
 
         {/* Social logins */}
-        <div className="text-center mb-3">
-          <button
-            className="btn btn-outline-danger me-2"
-            onClick={() => {
-              const redirectUrl = encodeURIComponent(window.location.origin); // auto-detects frontend origin
-              window.location.href = `http://localhost:5050/auth/google?redirect=${redirectUrl}`;
-            }}
-          >
-            <i className="bi bi-google me-2"></i> Google
-          </button>
+        <div className="text-center mb-3" style={{ cursor: 'not-allowed' }}>
+          <div style={{ pointerEvents: 'none', display: 'inline-block' }}>
+            <button className="btn btn-outline-danger me-2" title="Feature under maintenance"
+              onClick={() => {
+                const redirectUrl = encodeURIComponent(window.location.origin); // auto-detects frontend origin
+                window.location.href = `http://localhost:5050/auth/google?redirect=${redirectUrl}`;
+              }}
+            >
+              <i className="bi bi-google me-2"></i> Google
+            </button>
+          </div>
         </div>
 
         {/* Divider */}
@@ -103,16 +105,27 @@ function LoginPage() {
               required
             />
           </div>
-          <div className="mb-3">
+          <div className="mb-3 position-relative">
             <label className="form-label fw-medium">Password</label>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               name="password"
               value={formData.password}
               onChange={handleChange}
               className="form-control"
               required
             />
+            <i
+              className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"} position-absolute`}
+              style={{
+                right: "10px",
+                top: "38px",
+                cursor: "pointer",
+                fontSize: "1.2rem",
+                color: "#666",
+              }}
+              onClick={() => setShowPassword(!showPassword)}
+            ></i>
           </div>
 
           {/* Remember me + Reset password */}
