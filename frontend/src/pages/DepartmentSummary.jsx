@@ -6,8 +6,14 @@ import PdfTemplate from '../components/PdfTemplate';
 function DepartmentSummary() {
     const [mainCategory, setMainCategory] = useState('');
     const [selectedDept, setSelectedDept] = useState('');
+    const [selectedSubCategory, setSelectedSubCategory] = useState(''); // e.g., "Teaching Staff"
     const [summaryData, setSummaryData] = useState({});
+    const [filteredData, setFilteredData] = useState({});
     const [date, setDate] = useState([]);
+    const [departments, setDepartments] = useState([]);
+    const [categoryMappings, setCategoryMappings] = useState({});
+    const [totalMarkedDaysCol, setTotalMarkedDaysCol] = useState('Total Marked Days');
+
     // Auto-fill startDate as 1st of current month, endDate as today
     function getDefaultStartDate() {
         const today = new Date();
@@ -20,48 +26,76 @@ function DepartmentSummary() {
     }
     const [startDate, setStartDate] = useState(getDefaultStartDate());
     const [endDate, setEndDate] = useState(getDefaultEndDate());
-    const [totalMarkedDaysCol, setTotalMarkedDaysCol] = useState('Total Marked Days');
 
-    const allDepartments = ["CSE", "ECE", "MECH"];
-    const nonTeachingDepartments = ["ADMIN", "LIBRARY", "ECE", "CSE"];
-    const departments = [
-        "ALL",
-        "Teaching Staff",
-        "Non Teaching Staff",
-        "Department Wise"
-    ];
+    const categories = ["ALL", "Department Wise"];
+
+    // Fetch departments and category mappings
+    useEffect(() => {
+        const fetchDepartments = async () => {
+            try {
+                const response = await axios.post('/attendance/department');
+                if (response.data.success) {
+                    setDepartments(response.data.departments.map(d => d.dept));
+                } else {
+                    console.error('Failed to fetch departments:', response.data.message);
+                }
+            } catch (error) {
+                console.error('Error fetching departments:', error);
+            }
+        };
+
+        const fetchCategoryMappings = async () => {
+            try {
+                const response = await axios.get('/attendance/department_categories');
+                if (response.data.success) {
+                    console.log("Response", response.data)
+                    setCategoryMappings(response.data.categories);
+                } else {
+                    console.error('Failed to fetch category mappings:', response.data.message);
+                }
+            } catch (error) {
+                console.error('Error fetching category mappings:', error);
+            }
+        };
+
+        fetchDepartments();
+        fetchCategoryMappings();
+    }, []);
+
+    // Filter data based on selectedSubCategory
+    useEffect(() => {
+        if (!selectedSubCategory || selectedSubCategory === 'ALL') {
+            setFilteredData(summaryData);
+        } else {
+            const filtered = {};
+            Object.entries(summaryData).forEach(([catType, depts]) => {
+                if (catType === selectedSubCategory) {
+                    filtered[catType] = depts;
+                }
+            });
+            setFilteredData(filtered);
+        }
+    }, [summaryData, selectedSubCategory]);
 
     const getSubDepartments = () => {
-        if (mainCategory === 'Teaching Staff') return allDepartments;
-        if (mainCategory === 'Non Teaching Staff') return nonTeachingDepartments;
-        if (mainCategory === 'Department Wise') return allDepartments;
+        if (mainCategory === 'Department Wise') {
+            return departments;
+        }
         return [];
     };
 
     const fetchDeptSummary = useCallback(async () => {
-        if (!mainCategory || (mainCategory !== "ALL" && mainCategory !== "Department Wise" && selectedDept === "")) {
+        if (!mainCategory || (mainCategory === 'Department Wise' && selectedDept === '')) {
             setSummaryData({});
+            setFilteredData({});
             return;
         }
 
-        let categoryToSend = mainCategory;
-        let deptToSend = "";
-
-        if (mainCategory === "Department Wise" && selectedDept) {
-            deptToSend = selectedDept;
-            categoryToSend = "";
-        } else if (
-            (mainCategory === "Teaching Staff" || mainCategory === "Non Teaching Staff") &&
-            selectedDept && selectedDept !== "ALL"
-        ) {
-            deptToSend = selectedDept;
-        } else if (mainCategory === "ALL") {
-            categoryToSend = "ALL";
-        }
+        let deptToSend = mainCategory === 'Department Wise' ? selectedDept : '';
 
         try {
             const response = await axios.post('/attendance/dept_summary', {
-                category: categoryToSend,
+                category: mainCategory,
                 dept: deptToSend,
                 start_date: startDate,
                 end_date: endDate
@@ -71,8 +105,9 @@ function DepartmentSummary() {
             setDate(response.data.date || []);
             setTotalMarkedDaysCol(response.data.total_marked_days_col || 'Total Marked Days');
         } catch (error) {
-            console.error("Error fetching summary:", error);
+            console.error('Error fetching summary:', error);
             setSummaryData({});
+            setFilteredData({});
             setDate([]);
         }
     }, [mainCategory, selectedDept, startDate, endDate]);
@@ -80,15 +115,17 @@ function DepartmentSummary() {
     useEffect(() => {
         if (!startDate) setStartDate(getDefaultStartDate());
         if (!endDate) setEndDate(getDefaultEndDate());
-        if (mainCategory && (mainCategory === "ALL" || selectedDept !== "") && startDate && endDate) {
+        if (mainCategory && (mainCategory === 'ALL' || selectedDept !== '') && startDate && endDate) {
             if (new Date(endDate) >= new Date(startDate)) {
                 fetchDeptSummary();
             } else {
                 setSummaryData({});
+                setFilteredData({});
                 setDate([]);
             }
         } else {
             setSummaryData({});
+            setFilteredData({});
             setDate([]);
         }
     }, [mainCategory, selectedDept, startDate, endDate, fetchDeptSummary]);
@@ -106,9 +143,9 @@ function DepartmentSummary() {
             totalMarkedDaysCol
         ];
 
-        if (mainCategory === "ALL") {
+        if (mainCategory === 'ALL') {
             const tables = [];
-            Object.entries(summaryData).forEach(([category, depts]) => {
+            Object.entries(filteredData).forEach(([category, depts]) => {
                 Object.entries(depts).forEach(([deptName, employees]) => {
                     tables.push({
                         columns: tableHeaders,
@@ -134,7 +171,7 @@ function DepartmentSummary() {
             });
         } else {
             let data = [];
-            Object.entries(summaryData).forEach(([deptName, employees]) => {
+            Object.entries(filteredData).forEach(([_, employees]) => {
                 if (Array.isArray(employees)) {
                     employees.forEach(emp => {
                         data.push([
@@ -160,7 +197,6 @@ function DepartmentSummary() {
 
     const renderTable = (deptName, employees) => {
         const empArray = Array.isArray(employees) ? employees : [];
-        console.log(`Rendering table for ${deptName}:`, empArray);
         return (
             <div key={deptName} className="mt-4 ms-4">
                 <h5>{deptName} Department</h5>
@@ -204,7 +240,7 @@ function DepartmentSummary() {
 
     const renderCategory = (categoryName, departments) => (
         <div key={categoryName} className="mt-4">
-            <h3>{categoryName}</h3>
+            <h3>{categoryName}</h3> {/* Removed replace logic */}
             {Object.entries(departments).map(([deptName, employees]) =>
                 renderTable(deptName, employees)
             )}
@@ -226,37 +262,55 @@ function DepartmentSummary() {
                         onChange={(e) => {
                             setMainCategory(e.target.value);
                             setSelectedDept('');
+                            setSelectedSubCategory('');
                             setSummaryData({});
+                            setFilteredData({});
                             setDate([]);
                         }}
                     >
                         <option value="">Choose Category</option>
-                        {departments.map(cat => (
+                        {categories.map(cat => (
                             <option key={cat} value={cat}>{cat}</option>
                         ))}
                     </select>
                 </div>
 
-                {(mainCategory === 'Teaching Staff' ||
-                    mainCategory === 'Non Teaching Staff' ||
-                    mainCategory === 'Department Wise') && (
-                        <div className="col-md-4 mb-2">
-                            <label className="mb-2">Department:</label>
-                            <select
-                                className="form-control"
-                                value={selectedDept}
-                                onChange={(e) => setSelectedDept(e.target.value)}
-                            >
-                                <option value="">Choose a department</option>
-                                {mainCategory !== 'Department Wise' && (
-                                    <option value="ALL">ALL</option>
-                                )}
-                                {getSubDepartments().map(dept => (
-                                    <option key={dept} value={dept}>{dept}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
+                {mainCategory === 'Department Wise' && (
+                    <div className="col-md-4 mb-2">
+                        <label className="mb-2">Department:</label>
+                        <select
+                            className="form-control"
+                            value={selectedDept}
+                            onChange={(e) => {
+                                setSelectedDept(e.target.value);
+                                setSelectedSubCategory('');
+                            }}
+                        >
+                            <option value="">Choose a department</option>
+                            {getSubDepartments().map(dept => (
+                                <option key={dept} value={dept}>{dept}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
+                {Object.keys(summaryData).length > 0 && (
+                    <div className="col-md-4 mb-2">
+                        <label className="mb-2">Filter by Category:</label>
+                        <select
+                            className="form-control"
+                            value={selectedSubCategory}
+                            onChange={(e) => setSelectedSubCategory(e.target.value)}
+                        >
+                            <option value="ALL">All Categories</option>
+                            {Object.keys(categoryMappings).map(cat => (
+                                <option key={cat} value={cat}>
+                                    {cat} {/* Removed replace logic */}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
             </div>
 
             {mainCategory && (mainCategory === "ALL" || selectedDept !== "") && (
@@ -290,19 +344,19 @@ function DepartmentSummary() {
                 </div>
             )}
 
-            {mainCategory && (mainCategory === "ALL" || selectedDept !== "") && Object.keys(summaryData).length > 0 ? (
+            {mainCategory && (mainCategory === "ALL" || selectedDept !== "") && Object.keys(filteredData).length > 0 ? (
                 <>
                     {mainCategory === "ALL"
-                        ? Object.entries(summaryData).map(([categoryName, departments]) =>
+                        ? Object.entries(filteredData).map(([categoryName, departments]) =>
                             renderCategory(categoryName, departments)
                         )
-                        : Object.entries(summaryData).map(([deptName, employees]) =>
+                        : Object.entries(filteredData).map(([deptName, employees]) =>
                             renderTable(deptName, employees)
                         )}
                 </>
             ) : mainCategory === "" ? (
                 <div className="alert alert-info mt-3">Please select a category to view the summary.</div>
-            ) : (mainCategory !== "ALL" && selectedDept === "") ? (
+            ) : (mainCategory === "Department Wise" && selectedDept === "") ? (
                 <div className="alert alert-info mt-3">Please choose a department.</div>
             ) : (
                 <div className="alert alert-info mt-3">No data available for the selected department.</div>
