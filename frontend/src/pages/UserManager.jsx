@@ -155,6 +155,7 @@ function UserManager() {
           id: user.staff_id || '',
           name: user.name || '',
           dept: user.dept || '',
+          email: user.email || '',
           designation: user.designation || '',
           email: user.email || '',
           category: user.category ? user.category.toString() : '',
@@ -183,6 +184,7 @@ function UserManager() {
       id: editUser.id,
       name: editUser.name,
       dept: editUser.dept,
+      email: editUser.email || null,
       designation: editUser.designation,
       email: editUser.email,
       category: Number(editUser.category),
@@ -419,7 +421,7 @@ function UserManager() {
                 <input
                   type="text"
                   className="form-control"
-                  value={editUser.name}
+                  value={editUser.name ?? ''}
                   onChange={(e) => setEditUser({ ...editUser, name: e.target.value })}
                   required
                 />
@@ -436,12 +438,7 @@ function UserManager() {
               </div>
               <div className="col-md-6">
                 <label className="form-label">Designation</label>
-                <select
-                  className="form-select"
-                  value={editUser.designation}
-                  onChange={(e) => setEditUser({ ...editUser, designation: e.target.value })}
-                  required
-                >
+                <select className="form-select" value={editUser.designation ?? ''} onChange={(e) => setEditUser({ ...editUser, designation: e.target.value })} required>
                   <option value="">Choose Designation</option>
                   {designations.map((des, idx) => (
                     <option key={idx} value={des.designation}>
@@ -467,13 +464,18 @@ function UserManager() {
                 </select>
               </div>
               <div className="col-md-6">
+                <label className="form-label">Email</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={editUser.email ?? ''}
+                  onChange={(e) => setEditUser({ ...editUser, email: e.target.value || null })}
+                  placeholder="Email (optional)"
+                />
+              </div>
+              <div className="col-md-6">
                 <label className="form-label">Category</label>
-                <select
-                  className="form-select"
-                  value={editUser.category}
-                  onChange={(e) => setEditUser({ ...editUser, category: e.target.value })}
-                  required
-                >
+                <select className="form-select" value={editUser.category ?? ''} onChange={(e) => setEditUser({ ...editUser, category: e.target.value })} required>
                   <option value="">Choose Category</option>
                   {categories.map((cat, idx) => (
                     <option key={idx} value={cat.category_no}>
@@ -515,7 +517,8 @@ function UserManager() {
           </button>
         </form>
       </div>
-    </PageWrapper>
+
+    </PageWrapper >
   );
 }
 

@@ -108,31 +108,31 @@ router.get('/department_categories', async (req, res) => {
 
 
 router.post('/dept_summary', async (req, res) => {
-    let { start_date, end_date, category, dept } = req.body;
-    const today = new Date();
-    const year = today.getFullYear();
-    let resetDate;
-    if (today < new Date(`${year}-06-01`)) {
-        resetDate = `${year}-01-01`;
-    } else {
-        resetDate = `${year}-06-01`;
-    }
+  let { start_date, end_date, category, dept } = req.body;
+  const today = new Date();
+  const year = today.getFullYear();
+  let resetDate;
+  if (today < new Date(`${year}-06-01`)) {
+    resetDate = `${year}-01-01`;
+  } else {
+    resetDate = `${year}-06-01`;
+  }
 
-    // Handle empty or invalid dates
-    if (!start_date || start_date === '') {
-        start_date = resetDate;
-    }
-    if (!end_date || end_date === '') {
-        end_date = today.toISOString().split('T')[0];
-    }
+  // Handle empty or invalid dates
+  if (!start_date || start_date === '') {
+    start_date = resetDate;
+  }
+  if (!end_date || end_date === '') {
+    end_date = today.toISOString().split('T')[0];
+  }
 
     // Validate dates
     if (new Date(end_date) < new Date(start_date)) {
         return res.status(400).json({ error: 'End date cannot be before start date' });
     }
 
-    let rows = [];
-    let result = {};
+  let rows = [];
+  let result = {};
 
     function addEntry(category, dept, entry) {
         if (!result[category]) result[category] = {};
@@ -210,17 +210,17 @@ router.post('/dept_summary', async (req, res) => {
             }
         }
 
-        function formatDate(dateStr) {
-            if (!dateStr || typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-                return 'Invalid date';
-            }
-            const date = new Date(dateStr);
-            if (isNaN(date.getTime())) {
-                return 'Invalid date';
-            }
-            const [yyyy, mm, dd] = dateStr.split('-');
-            return `${dd.padStart(2, '0')}-${mm.padStart(2, '0')}-${yyyy}`;
-        }
+    function formatDate(dateStr) {
+      if (!dateStr || typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        return 'Invalid date';
+      }
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        return 'Invalid date';
+      }
+      const [yyyy, mm, dd] = dateStr.split('-');
+      return `${dd.padStart(2, '0')}-${mm.padStart(2, '0')}-${yyyy}`;
+    }
 
         const start_Date = formatDate(start_date);
         const end_Date = formatDate(end_date);
@@ -403,7 +403,7 @@ router.post('/applyExemption', async (req, res) => {
     );
 
     if (duplicates.length > 0) {
-    
+
       return res.status(409).json({ message: "An identical exemption request is already pending or approved." });
     }
   } catch (error) {
@@ -466,7 +466,7 @@ router.get("/staff_exemptions/:staffId", async (req, res) => {
 
 router.post('/hr_exemptions/approve', async (req, res) => {
   const { exemptionId } = req.body;
-  
+
   try {
     let sql = 'UPDATE exemptions SET exemptionStatus = "approved" WHERE exemptionId = ?';
     let params = [exemptionId];
@@ -546,8 +546,8 @@ router.post("/add_categories", async (req, res) => {
     // Append seconds
     const in_time1 = (in_time) ? in_time + ':00' : null;
     const break_in1 = (break_in) ? break_in + ':00' : null;
-    const break_out1 = (break_out) ? break_out + ':00': null;
-    const out_time1 = (out_time) ? out_time + ':00':null;
+    const break_out1 = (break_out) ? break_out + ':00' : null;
+    const out_time1 = (out_time) ? out_time + ':00' : null;
 
     // Check if category already exists using SQL
     const [rows] = await db.query(
@@ -565,13 +565,13 @@ router.post("/add_categories", async (req, res) => {
       return res.status(400).json({ message: "Category already exists" });
     }
 
-   const [countResult] = await db.query("SELECT COUNT(*) AS total FROM category");
-  let count = Number(countResult[0].total) + 1;
+    const [countResult] = await db.query("SELECT COUNT(*) AS total FROM category");
+    let count = Number(countResult[0].total) + 1;
 
-await db.query(
-  "INSERT INTO category (category_no, category_description, in_time, break_in, break_out, out_time, break_time_mins) VALUES (?, ?, ?, ?, ?, ?, ?)",
-  [count, category_description, in_time1, break_in1, break_out1, out_time1, break_time_mins]
-);
+    await db.query(
+      "INSERT INTO category (category_no, category_description, in_time, break_in, break_out, out_time, break_time_mins) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [count, category_description, in_time1, break_in1, break_out1, out_time1, break_time_mins]
+    );
 
     res.json({ message: "Category added successfully", success: true });
   } catch (err) {
@@ -671,6 +671,7 @@ router.get('/get_user/:id', async (req, res) => {
             staff.staff_id,
             staff.name,
             staff.dept,
+            staff.email,
             staff.designation,
             staff.category,
             category.category_description,
