@@ -119,6 +119,7 @@ function HRExcemptions() {
                 });
                 setSelectedSessions([]);
                 fetchExemptions();
+                window.dispatchEvent(new Event('exemptionStatusChanged'));
             } else {
                 showAlert('Failed to add exemption', 'error');
             }
@@ -178,6 +179,8 @@ function HRExcemptions() {
             }
             showAlert('Exemption approved successfully!', 'success');
             updated[index].exemptionStatus = 'approved';
+            // Trigger a refetch of pending counts by emitting a custom event
+            window.dispatchEvent(new Event('exemptionStatusChanged'));
         } else {
             const res = await axios.post("/attendance/hr_exemptions/reject", { exemptionId });
             if (res.data.message !== "Exemption rejected successfully") {
@@ -186,6 +189,8 @@ function HRExcemptions() {
             }
             showAlert('Exemption rejected successfully!', 'success');
             updated[index].exemptionStatus = 'rejected';
+            // Trigger a refetch of pending counts by emitting a custom event
+            window.dispatchEvent(new Event('exemptionStatusChanged'));
         }
         setExemptions(updated);
     };
