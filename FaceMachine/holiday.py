@@ -10,6 +10,7 @@ SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 CALENDAR_ID = 'c_f65646ec47f509e6a093824790c28766188222d525707dfb817f80ac21e9e24c@group.calendar.google.com'
 
 
+
 def get_holidays():
     """Fetches upcoming holiday dates from a specified Google Calendar."""
     creds = None
