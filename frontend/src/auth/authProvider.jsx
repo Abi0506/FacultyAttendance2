@@ -17,12 +17,11 @@ export function AuthProvider({ children }) {
     async function checkSession() {
       try {
         const res = await axios.get('/login/check_session');
-        console.log('Session check response:', res.data);
         if (res.data.message === 'Valid token') {
           setIsAuthenticated(true);
           setDesignation(res.data.designation || '');
           setUser({ staffId: res.data.staff_id, designation: res.data.designation });
-          
+
         } else {
           setIsAuthenticated(false);
           setDesignation('');
