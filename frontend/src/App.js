@@ -86,7 +86,7 @@ function AppContent() {
             }
         };
 
-        fetchData(); 
+        fetchData();
         window.addEventListener('exemptionStatusChanged', fetchData); // ✅ pass function reference
 
         return () => {
@@ -100,23 +100,39 @@ function AppContent() {
 
     return (
         <Router>
-            <div className="glassy-navbar-wrapper d-flex justify-content-center">
+            <div className="glassy-navbar-wrapper">
                 <nav className="navbar navbar-expand-lg glassy-navbar">
-                    <div className="container-fluid">
-                        <a className="navbar-brand d-flex align-items-center fw-bold mx-3" href="/" title="Dashboard">
-                            <img src="logo.png" alt="Logo" style={{ height: '32px', width: '32px', marginRight: '10px' }} />
-                            Attendance App
-                        </a>
-                        <button className="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                            <span className="navbar-toggler-icon"></span>
-                        </button>
-                        <div className="collapse navbar-collapse" id="navbarNav">
+                    <div className="container-fluid flex-column p-0">
+
+                        <div className="d-flex align-items-center justify-content-between w-100 px-4">
+                            <a className="navbar-brand d-flex align-items-center fw-bold" href="/" title="Dashboard">
+                                <img src="psgitarlogo.jpg" alt="Logo" className="psgitarlogo me-3" />
+                                <span className="header-title float-end">Faculty Biometric Attendance</span>
+                            </a>
+                            <button
+                                className="navbar-toggler border-0"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#navbarNav"
+                            >
+                                <span className="navbar-toggler-icon"></span>
+                            </button>
+                        </div>
+
+                        <div className="collapse navbar-collapse w-100 mt-2 p-3 py-2 shadow-md" id="navbarNav">
                             {isAuthenticated && designation === "HR" && (
                                 <ul className="navbar-nav me-auto mb-2 mb-lg-0 gap-3">
                                     <li className="nav-item dropdown"
                                         onMouseEnter={e => e.currentTarget.classList.add("show")}
                                         onMouseLeave={e => e.currentTarget.classList.remove("show")}>
-                                        <button type="button" className="nav-link dropdown-toggle btn btn-link" id="attendanceDropdown" data-bs-toggle="dropdown" aria-expanded="false" style={{ textDecoration: "none" }}>
+                                        <button
+                                            type="button"
+                                            className="nav-link dropdown-toggle btn btn-link"
+                                            id="attendanceDropdown"
+                                            data-bs-toggle="dropdown"
+                                            aria-expanded="false"
+                                            style={{ textDecoration: "none" }}
+                                        >
                                             Logs
                                         </button>
                                         <ul className="dropdown-menu show-on-hover" aria-labelledby="attendanceDropdown">
@@ -130,19 +146,30 @@ function AppContent() {
                                     <li className="nav-item position-relative">
                                         <Link className="nav-link" to="/exemptions">Exemptions</Link>
                                         {pendingExemptions > 0 && (
-                                            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark">{pendingExemptions}</span>
+                                            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark">
+                                                {pendingExemptions}
+                                            </span>
                                         )}
                                     </li>
                                     <li className="nav-item position-relative">
                                         <Link className="nav-link" to="/leave">Leaves</Link>
                                         {pendingLeaves > 0 && (
-                                            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-info text-dark">{pendingLeaves}</span>
+                                            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-info text-dark">
+                                                {pendingLeaves}
+                                            </span>
                                         )}
                                     </li>
                                     <li className="nav-item dropdown"
                                         onMouseEnter={e => e.currentTarget.classList.add("show")}
                                         onMouseLeave={e => e.currentTarget.classList.remove("show")}>
-                                        <button type="button" className="nav-link dropdown-toggle btn btn-link" id="usersDropdown" data-bs-toggle="dropdown" aria-expanded="false" style={{ textDecoration: "none" }}>
+                                        <button
+                                            type="button"
+                                            className="nav-link dropdown-toggle btn btn-link"
+                                            id="usersDropdown"
+                                            data-bs-toggle="dropdown"
+                                            aria-expanded="false"
+                                            style={{ textDecoration: "none" }}
+                                        >
                                             Users
                                         </button>
                                         <ul className="dropdown-menu show-on-hover" aria-labelledby="usersDropdown">
@@ -156,6 +183,7 @@ function AppContent() {
                                     </li>
                                 </ul>
                             )}
+
                             {isAuthenticated && designation !== "HR" && (
                                 <ul className="navbar-nav me-auto mb-2 mb-lg-0 gap-3">
                                     <li className="nav-item">
@@ -164,24 +192,36 @@ function AppContent() {
                                     <li className="nav-item">
                                         <Link className="nav-link" to="/applyExemption">Apply Exemption</Link>
                                     </li>
-
                                 </ul>
                             )}
+
                             <div className="ms-auto">
                                 {isAuthenticated ? (
-                                    <button className="nav-link d-flex align-items-center btn btn-link" onClick={logout} title="Logout">
-                                        <i className="bi bi-box-arrow-right fs-4"></i>
+                                    <button
+                                        className="nav-link d-flex align-items-center btn btn-link"
+                                        onClick={logout}
+                                        title="Logout"
+                                    >
+                                        <i className="bi bi-box-arrow-right fs-4 me-1" aria-hidden="true"></i>
+                                        Logout
                                     </button>
                                 ) : (
-                                    <Link className="nav-link d-flex align-items-center" to="/login" title="Login">
-                                        <i className="bi bi-box-arrow-in-right fs-4"></i>
+                                    <Link
+                                        className="nav-link d-flex align-items-center"
+                                        to="/login"
+                                        title="Login"
+                                    >
+                                        <i className="bi bi-box-arrow-in-right fs-4 me-1" aria-hidden="true"></i>
+                                        Login
                                     </Link>
                                 )}
                             </div>
+
                         </div>
                     </div>
                 </nav>
             </div>
+
             <div className="container m-large">
                 <Routes>
                     <Route path="/login" element={

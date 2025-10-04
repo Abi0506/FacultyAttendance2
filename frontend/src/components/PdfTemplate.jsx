@@ -2,59 +2,59 @@ import React from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-
+const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+};
 
 const PdfTemplate = ({
     title = '',
     tables = [],
-    logoBase64 = 'logo.png',
+    logoBase64 = null, // optional
+    fileName = 'report.pdf',
     details = null,
-    fileName = 'report.pdf'
+    banner = 'psgitarlogo.jpg',
+    fromDate = null,
+    toDate = null
 }) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const headerHeight = 30;
-    const footerHeight = 15;
+    // Banner ratio - 60*9
+    const bannerWidth = 120;
+    const bannerHeight = 18;
+    doc.addImage(banner, 'JPEG', (pageWidth - bannerWidth) / 2, 5, bannerWidth, bannerHeight);
 
-    // header background
-    doc.setFillColor(230, 230, 230);
-    doc.rect(0, 0, pageWidth, headerHeight, 'F');
-
-    // (left)
-    const logoWidth = 20;
-    const logoHeight = 20;
-    if (logoBase64) {
-        doc.addImage(logoBase64, 'PNG', 14, 5, logoWidth, logoHeight);
-    }
-
-    // (center)
-    doc.setFontSize(18);
+    doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
     const titleWidth = doc.getTextWidth(title);
-    doc.text(title, (pageWidth - titleWidth) / 2, 17);
+    doc.text(title, (pageWidth - titleWidth) / 2, bannerHeight + 20);
 
-    // (right)
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    const rightText = 'PSG iTech';
-    const rightTextWidth = doc.getTextWidth(rightText);
-    doc.text(rightText, pageWidth - rightTextWidth - 14, 17);
-
-    // Details section (if provided)
-    let startY = headerHeight + 10;
-    if (details && Array.isArray(details)) {
-        let y = startY;
-        details.forEach((item) => {
-            doc.text(`${item.label}: ${item.value}`, 14, y);
-            y += 8; // adjust spacing as needed
-        });
-        startY = y;
+    let startY = bannerHeight + 35;
+    doc.setFontSize(15); // smaller font for record dates
+    if (fromDate && toDate) {
+        if (fromDate === toDate) {
+            doc.text(`Records for ${formatDate(fromDate)}`, 14, startY);
+            startY += 6;
+        } else {
+            doc.text(`Records from ${formatDate(fromDate)} to ${formatDate(toDate)}`, 14, startY);
+            startY += 6;
+        }
     }
 
-    // Multi-table support
+    if (details && Array.isArray(details)) {
+        details.forEach((item) => {
+            doc.text(`${item.label}: ${item.value}`, 14, startY);
+            startY += 6;
+        });
+    }
+
     if (Array.isArray(tables) && tables.length > 0) {
-        tables.forEach((table, idx) => {
+        tables.forEach((table) => {
             autoTable(doc, {
                 startY,
                 head: [table.columns],
@@ -62,24 +62,28 @@ const PdfTemplate = ({
                 theme: 'plain',
                 styles: { fontSize: 10, cellPadding: 3 },
                 headStyles: { fillColor: [63, 63, 149], textColor: [255, 255, 255] },
+                didDrawPage: () => {
+                    const footerText = `Report generated on ${new Date().toLocaleString()}`;
+                    doc.setFontSize(10);
+                    doc.text(
+                        footerText,
+                        pageWidth - doc.getTextWidth(footerText) - 10,
+                        pageHeight - 10
+                    );
+                }
             });
             startY = doc.lastAutoTable.finalY + 10;
         });
+    } else {
+        // Footer even if no tables
+        const footerText = `Report generated on ${new Date().toLocaleString()}`;
+        doc.setFontSize(10);
+        doc.text(
+            footerText,
+            pageWidth - doc.getTextWidth(footerText) - 10,
+            pageHeight - 10
+        );
     }
-
-    // footer background
-    doc.setFillColor(230, 230, 230);
-    doc.rect(0, pageHeight - footerHeight, pageWidth, footerHeight, 'F');
-
-    // footer text
-    const footerText = `Generated on ${new Date().toLocaleDateString()}`;
-    doc.setFontSize(10);
-    const footerTextWidth = doc.getTextWidth(footerText);
-    doc.text(
-        footerText,
-        (pageWidth - footerTextWidth) / 2,
-        pageHeight - footerHeight / 2 + 1
-    );
 
     doc.save(fileName);
 };
