@@ -9,6 +9,7 @@
   --color-6: #ffffff;
 }
 
+/* 
 .glassy-navbar-wrapper {
   background: transparent;
   max-width: 1400px;
@@ -77,7 +78,7 @@
     font-size: 1.5rem;
     cursor: pointer;
   }
-}
+} */
 
 .btn-c-primary {
   background-color: var(--primary);
@@ -86,6 +87,8 @@
   padding: 6px 16px;
   font-weight: bold;
   transition: all 0.3s ease;
+  border: none;
+  outline: none;
 }
 
 .btn-c-primary:hover {
@@ -94,11 +97,20 @@
   box-shadow: 0px 0px 8px 4px rgba(0, 0, 0, 0.1);
 }
 
-.btn-c-primary:focus {
-  color: var(--color-6);
+.btn-c-primary:active {
   background-color: var(--secondary);
-  box-shadow: 0px 0px 10px 3px rgba(0, 0, 0, 0.3);
+  transform: scale(0.97);
+  box-shadow: 0px 0px 6px 2px rgba(0, 0, 0, 0.2);
 }
+
+.btn-c-primary:focus {
+  outline: none;
+}
+
+.btn-c-primary:focus-visible {
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.5);
+}
+
 
 .btn-c-secondary {
   background-color: var(--secondary);
@@ -270,21 +282,6 @@
   background-color: #40a9ff;
 }
 
-.table-container {
-  position: relative;
-  max-height: 500px;
-  overflow-y: auto;
-}
-
-.fade-bottom {
-  position: sticky;
-  bottom: 0;
-  height: 30px;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(0, 0, 0, 0.2));
-  pointer-events: none;
-  transition: opacity 0.3s;
-}
-
 .page-link-c {
   position: relative;
   display: block;
@@ -301,4 +298,86 @@
 .page-link-c:focus {
   background-color: var(--primary) !important;
   border-color: var(--primary) !important;
+}
+
+.psgitarlogo {
+  max-height: 60px;
+}
+
+.header-title {
+  font-size: 1.5rem;
+  color: #2c2c54;
+  /* deep PSG purple */
+}
+
+
+
+/* Navbar Links as Tabs */
+.navbar-nav .nav-link {
+  background-color: var(--primary) !important;
+  color: #fff !important;
+}
+
+.navbar-nav .nav-link:hover,
+.navbar-nav .nav-link:focus {
+  background-color: #000;
+  color: #fff !important;
+}
+
+#navbarNav {
+  background-color: var(--primary);
+  color: var(--color-6);
+}
+
+.sortable-header {
+  position: relative;
+  padding-right: 12px;
+  transition: background-color 0.2s ease;
+}
+
+
+.sortable-header span {
+  font-size: 0.8em;
+  color: #999;
+  margin-left: 4px;
+}
+
+.refresh-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  /* keep the button compact for the icon */
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.refresh-btn i {
+  transition: transform 0.3s ease;
+}
+
+.refresh-text {
+  position: absolute;
+  right: -25px;
+  opacity: 0;
+  transform: translateX(-10px);
+  /* start slightly left */
+  color: #4d4d4d;
+  white-space: nowrap;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.refresh-btn:hover .refresh-text {
+  opacity: 1;
+  transform: translateX(20px);
+  /* slides right */
+}
+
+.refresh-btn:hover i {
+
+  transform: rotate(360deg);
 }
