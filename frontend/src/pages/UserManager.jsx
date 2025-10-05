@@ -67,7 +67,7 @@ function UserManager() {
     fetchCategories();
     fetchDepartments();
     fetchDesignations();
-  }, []);
+  }, [showAlert]);
 
   const fetchStaff = async () => {
     setStaffLoading(true);
@@ -157,7 +157,6 @@ function UserManager() {
           dept: user.dept || '',
           email: user.email || '',
           designation: user.designation || '',
-          email: user.email || '',
           category: user.category ? user.category.toString() : '',
         };
         setEditUser(newEditUser);
@@ -186,7 +185,6 @@ function UserManager() {
       dept: editUser.dept,
       email: editUser.email || null,
       designation: editUser.designation,
-      email: editUser.email,
       category: Number(editUser.category),
     };
 
