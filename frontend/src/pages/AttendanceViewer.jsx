@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from '../axios';
 import PageWrapper from '../components/PageWrapper';
 import PdfTemplate from '../components/PdfTemplate';
+import Table from '../components/Table';
 import { useAlert } from '../components/AlertProvider';
 import { useLocation } from 'react-router-dom';
 
@@ -12,9 +13,7 @@ function AttendanceViewer() {
   const [error, setError] = useState("");
   const [columnsToShow, setColumnsToShow] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(100);
-  const [totalPages, setTotalPages] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
   const [sortConfig, setSortConfig] = useState({ key: 'IN1', direction: 'asc' });
 
   const { showAlert } = useAlert();
@@ -41,11 +40,8 @@ function AttendanceViewer() {
       const fetchedLogs = response.data || [];
       setLogs(fetchedLogs);
 
-      const allColumns = ['IN1', 'OUT1', 'IN2', 'OUT2', 'IN3', 'OUT3'];
-      const visibleCols = allColumns.filter(col =>
-        fetchedLogs.some(row => row[col])
-      );
-      setColumnsToShow(visibleCols);
+      const allColumns = fetchedLogs[0] ? Object.keys(fetchedLogs[0]) : [];
+      setColumnsToShow(allColumns);
 
     } catch (error) {
       console.error('Error fetching logs:', error);
@@ -69,13 +65,11 @@ function AttendanceViewer() {
 
   useEffect(() => {
     getLogs(selectedDate);
-    setCurrentPage(1);
   }, [selectedDate, getLogs]);
 
   // Sorting
   const handleSort = (column) => {
     setSortConfig((prev) => {
-      setCurrentPage(1)
       if (prev.key === column) {
         return { key: column, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
       }
@@ -111,19 +105,6 @@ function AttendanceViewer() {
     return sortableLogs;
   }, [filteredLogs, sortConfig]);
 
-
-  const indexOfLastRow = currentPage * rowsPerPage;
-  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentRows = sortedLogs.slice(indexOfFirstRow, indexOfLastRow);
-
-  // set pages 
-  useEffect(() => {
-    setTotalPages(Math.ceil(filteredLogs.length / rowsPerPage));
-    if (currentPage > Math.ceil(filteredLogs.length / rowsPerPage)) {
-      setCurrentPage(1);
-    }
-  }, [filteredLogs, rowsPerPage]);
-
   const handleSaveAsPDF = () => {
     // Convert selectedDate to newDate format DD-MM-YYYY
     let newDate = selectedDate.split('-').reverse().join('-');
@@ -143,7 +124,6 @@ function AttendanceViewer() {
 
   return (
     <PageWrapper>
-      {/* Header with title centered and Save as PDF button on the right */}
       <div className="d-flex align-items-center justify-content-center position-relative mb-4">
         <button
           className="refresh-btn"
@@ -204,7 +184,6 @@ function AttendanceViewer() {
             value={rowsPerPage}
             onChange={(e) => {
               setRowsPerPage(parseInt(e.target.value));
-              setCurrentPage(1);
             }}
           >
             {[10, 25, 50, 100, 200].map(num => (
@@ -222,7 +201,6 @@ function AttendanceViewer() {
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setCurrentPage(1);
             }}
           />
         </div>
@@ -231,97 +209,16 @@ function AttendanceViewer() {
       {loading && <div className="text-center my-4">Loading...</div>}
       {error && <div className="alert alert-danger">{error}</div>}
 
-      <div className="table-container" style={{ position: "relative" }}>
-        <table className="table table-c">
-          <thead className="table-secondary" style={{ position: "sticky", top: 0, zIndex: 2 }}>
-            <tr>
-              <th
-                onClick={() => handleSort('staff_id')}
-                style={{ cursor: 'pointer', userSelect: 'none' }}
-                className="sortable-header"
-              >
-                Staff ID {sortConfig.key === 'staff_id' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '⇅'}
-              </th>
-
-              <th
-                onClick={() => handleSort('name')}
-                style={{ cursor: 'pointer', userSelect: 'none' }}
-                className="sortable-header"
-              >
-                Name {sortConfig.key === 'name' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '⇅'}
-              </th>
-
-              {columnsToShow.map((col, i) => (
-                <th
-                  key={i}
-                  onClick={() => handleSort(col)}
-                  style={{ cursor: 'pointer', userSelect: 'none' }}
-                  className="sortable-header"
-                >
-                  {col} {sortConfig.key === col ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '⇅'}
-                </th>
-              ))}
+      <Table
+        columns={columnsToShow}
+        data={sortedLogs}
+        sortConfig={sortConfig}
+        onSort={handleSort}
+        selectedDate={selectedDate}
+        rowsPerPage={rowsPerPage}
+      />
 
 
-            </tr>
-          </thead>
-          <tbody>
-            {currentRows.length > 0 ? (
-              currentRows.map((log) => (
-                <tr key={log.staff_id}>
-                  <td>{log.staff_id}</td>
-                  <td>{log.name}</td>
-                  {columnsToShow.map((col, i) => (
-                    <td key={i}>{log[col] || '-'}</td>
-                  ))}
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={2 + columnsToShow.length} className="text-center">
-                  {selectedDate ? "No records found" : "Please select a date"}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className={`justify-content-center my-3 ${totalPages === 1 ? 'd-none' : 'd-flex'}`}>
-        <ul className="pagination">
-          <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-            <button
-              className="page-link page-link-c"
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            >
-              &laquo;
-            </button>
-          </li>
-
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
-            <li
-              key={num}
-              className={`page-item ${num === currentPage ? 'active' : ''}`}
-            >
-              <button
-                className="page-link shadow-none page-link-c"
-                onClick={() => setCurrentPage(num)}
-              >
-                {num}
-              </button>
-            </li>
-          ))}
-
-          <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-            <button
-              className="page-link"
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-            >
-              &raquo;
-            </button>
-          </li>
-        </ul>
-      </div>
     </PageWrapper>
   );
 }
