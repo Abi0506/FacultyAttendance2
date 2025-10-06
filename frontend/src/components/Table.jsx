@@ -20,7 +20,7 @@ function Table({ columns, data, sortConfig, onSort, selectedDate, rowsPerPage = 
         return str
             .split('_')
             .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()) // capitalize first letter
-            .join(' ');                  // join with space
+            .join(' ');
     };
     return (
         <div className="table-container" style={{ position: "relative" }}>
