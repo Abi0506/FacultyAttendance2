@@ -96,13 +96,16 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
         except mysql.connector.Error as err:
             print(f"Error inserting log for {staff_id}: {err}")
 
-def process_logs():
+def process_logs(date1):
     conn = db_connect()
     if not conn:
         print("Database connection failed.")
         return
     cursor = conn.cursor()
-    today = datetime.now().date()
+    if(date1 ):
+        today = date1
+    else:    
+        today = datetime.now().date()
     holidays = get_holidays()
     is_holiday = today in holidays
     try:

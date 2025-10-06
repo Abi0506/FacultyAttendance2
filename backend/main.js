@@ -6,7 +6,7 @@ const session = require('express-session');
 const passport = require('passport');
 require('dotenv').config();
 const app = express();
-const { startPythonScript } = require('./server');
+// const { startPythonScript } = require('./server');
 const PORT = 5050;
 const corsOptions = {
   origin: ['http://10.10.33.251:8000', 'http://localhost:8000', 'http://localhost:3001', 'http://10.10.33.251:3000', 'http://localhost:3000'],
@@ -54,11 +54,13 @@ const loginRouter = require("./routes/login");
 const attendanceRouter = require("./routes/attendance");
 const esslFunctionsRouter = require("./routes/essl_functions");
 const leaveRouter = require("./routes/leave");
+const instantRouter = require("./routes/live_attendance");
 
 app.use("/api/essl", esslFunctionsRouter);
 app.use("/api/login", loginRouter);
 app.use("/api/attendance", attendanceRouter);
 app.use("/api/leave", leaveRouter);
+app.use("/api/instant_attendance", instantRouter);
 
 
 app.listen(PORT, '0.0.0.0', () => {
