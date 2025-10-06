@@ -31,8 +31,8 @@ def check_log_info(log):
     date_value = dt.date()
     time_value = dt.time()
 
-    if date_value < datetime.datetime.now().date():
-        return False
+    # if date_value < datetime.datetime.now().date():
+    #     return False
 
     mydb = db()
     cursor = mydb.cursor()

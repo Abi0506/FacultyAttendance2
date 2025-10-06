@@ -66,3 +66,4 @@ def logs_main():
 # process_logs()
 # process_exemptions()
 logs_main()
+# get_attendance_list()
