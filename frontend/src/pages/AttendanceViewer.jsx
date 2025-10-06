@@ -53,6 +53,7 @@ function AttendanceViewer() {
     }
   }, []);
 
+  // Convert date format
   useEffect(() => {
     const today = new Date();
     const yyyy = today.getFullYear();
@@ -111,10 +112,8 @@ function AttendanceViewer() {
     PdfTemplate({
       title: 'Faculty Attendance Record - ' + newDate,
       tables: [{
-        columns: ['Staff ID', 'Name', ...columnsToShow],
+        columns: [...columnsToShow],
         data: sortedLogs.map((log) => [
-          log.staff_id,
-          log.name,
           ...columnsToShow.map(col => log[col] || '-')
         ])
       }],
@@ -145,14 +144,12 @@ function AttendanceViewer() {
           <span className="refresh-text">Refresh</span>
         </button>
 
-
-
         {/* Title centered */}
         <h2 className="fw-bold text-c-primary text-center m-0 flex-grow-1">Live Logs</h2>
 
         {/* Save as PDF button on the right */}
         <button
-          className="btn btn-c-primary position-absolute end-0 top-50 translate-middle-y"
+          className="btn btn-c-primary btn-pdf"
           onClick={handleSaveAsPDF}
         >
           Download PDF
@@ -217,8 +214,6 @@ function AttendanceViewer() {
         selectedDate={selectedDate}
         rowsPerPage={rowsPerPage}
       />
-
-
     </PageWrapper>
   );
 }
