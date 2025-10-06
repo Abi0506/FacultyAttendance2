@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from '../axios';
 import PageWrapper from '../components/PageWrapper';
 import PdfTemplate from '../components/PdfTemplate';
+import Table from '../components/Table';
 import { useAlert } from '../components/AlertProvider';
 import { useLocation } from 'react-router-dom';
 
@@ -12,8 +13,9 @@ function AttendanceViewer() {
   const [error, setError] = useState("");
   const [columnsToShow, setColumnsToShow] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 25;
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [sortConfig, setSortConfig] = useState({ key: 'IN1', direction: 'asc' });
+
   const { showAlert } = useAlert();
   const location = useLocation();
 
@@ -28,7 +30,6 @@ function AttendanceViewer() {
     }
   }, [location.search, showAlert]);
 
-
   const getLogs = useCallback(async (date) => {
     if (!date) return;
 
@@ -39,11 +40,8 @@ function AttendanceViewer() {
       const fetchedLogs = response.data || [];
       setLogs(fetchedLogs);
 
-      const allColumns = ['IN1', 'OUT1', 'IN2', 'OUT2', 'IN3', 'OUT3'];
-      const visibleCols = allColumns.filter(col =>
-        fetchedLogs.some(row => row[col])
-      );
-      setColumnsToShow(visibleCols);
+      const allColumns = fetchedLogs[0] ? Object.keys(fetchedLogs[0]) : [];
+      setColumnsToShow(allColumns);
 
     } catch (error) {
       console.error('Error fetching logs:', error);
@@ -55,155 +53,167 @@ function AttendanceViewer() {
     }
   }, []);
 
+  // Convert date format
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    setSelectedDate(today);
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+    const dd = String(today.getDate()).padStart(2, '0');
+
+    setSelectedDate(`${yyyy}-${mm}-${dd}`);
   }, []);
+
 
   useEffect(() => {
     getLogs(selectedDate);
-    setCurrentPage(1);
   }, [selectedDate, getLogs]);
 
-  const handleSaveAsPDF = () => {
-    PdfTemplate({
-      title: 'Attendance Logs',
-      tables: [{
-        columns: ['Staff ID', 'Name', ...columnsToShow],
-        data: filteredLogs.map((log) => [
-          log.staff_id,
-          log.name,
-          ...columnsToShow.map(col => log[col] || '-')
-        ])
-      }],
-      fileName: `logs[${selectedDate}].pdf`
+  // Sorting
+  const handleSort = (column) => {
+    setSortConfig((prev) => {
+      if (prev.key === column) {
+        return { key: column, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key: column, direction: 'asc' };
     });
   };
-
 
   const filteredLogs = logs.filter(log =>
     log.staff_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  const [isAtBottom, setIsAtBottom] = useState(false);
 
-  const handleScroll = (e) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.target;
-    setIsAtBottom(scrollTop + clientHeight >= scrollHeight - 1); // near bottom
+  const sortedLogs = React.useMemo(() => {
+    let sortableLogs = [...filteredLogs];
+    if (sortConfig.key) {
+      sortableLogs.sort((a, b) => {
+        let valA = a[sortConfig.key];
+        let valB = b[sortConfig.key];
+
+        // Move non-empty above empty
+        if (!valA && valB) return 1;
+        if (valA && !valB) return -1;
+        if (!valA && !valB) return 0;
+
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableLogs;
+  }, [filteredLogs, sortConfig]);
+
+  const handleSaveAsPDF = () => {
+    // Convert selectedDate to newDate format DD-MM-YYYY
+    let newDate = selectedDate.split('-').reverse().join('-');
+    PdfTemplate({
+      title: 'Faculty Attendance Record - ' + newDate,
+      tables: [{
+        columns: [...columnsToShow],
+        data: sortedLogs.map((log) => [
+          ...columnsToShow.map(col => log[col] || '-')
+        ])
+      }],
+      fileName: `logs[${newDate}].pdf`
+    });
   };
 
-  const indexOfLastRow = currentPage * rowsPerPage;
-  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentRows = filteredLogs.slice(indexOfFirstRow, indexOfLastRow);
-  const totalPages = Math.ceil(filteredLogs.length / rowsPerPage);
-
   return (
-    <PageWrapper title="Live Logs">
-      <div className="d-flex justify-content-between">
+    <PageWrapper>
+      <div className="d-flex align-items-center justify-content-center position-relative mb-4">
+        <button
+          className="refresh-btn"
+          onClick={async () => {
+            if (!selectedDate) return;
+            try {
+              setLoading(true);
+              await getLogs(selectedDate);
+              showAlert('Data refreshed successfully', 'success');
+            } catch (err) {
+              showAlert('Data fetch failed', 'danger');
+            } finally {
+              setLoading(false);
+            }
+          }}
+          title="Reload logs"
+        >
+          <i className="bi bi-arrow-clockwise fs-4"></i>
+          <span className="refresh-text">Refresh</span>
+        </button>
+
+        {/* Title centered */}
+        <h2 className="fw-bold text-c-primary text-center m-0 flex-grow-1">Live Logs</h2>
+
+        {/* Save as PDF button on the right */}
+        <button
+          className="btn btn-c-primary btn-pdf"
+          onClick={handleSaveAsPDF}
+        >
+          Download PDF
+        </button>
+      </div>
+
+
+      <hr className="hr w-75 m-auto my-4" />
+
+      <div className="d-flex flex-wrap align-items-center justify-content-between p-3 mb-4">
         {/* Date Picker */}
         <div className="form-group me-3 d-flex align-items-center">
-          <label htmlFor="date" className="form-label me-2">Select Date:</label>
+          <label htmlFor="date" className="form-label me-2 fw-semibold">Date:</label>
           <input
             type="date"
-            className="form-control w-auto"
             id="date"
+            className="form-control form-control-sm"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
           />
         </div>
 
-        {/* Search Bar */}
-        <div className="flex-grow-1 d-flex justify-content-end align-items-center">
+        {/* Rows per Page */}
+        <div className="d-flex align-items-center me-3">
+          <label htmlFor="rowsPerPage" className="me-2 fw-semibold">Rows:</label>
+          <select
+            id="rowsPerPage"
+            className="form-select form-select-sm"
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value));
+            }}
+          >
+            {[10, 25, 50, 100, 200].map(num => (
+              <option key={num} value={num}>{num}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Search */}
+        <div className="flex-grow-1 d-flex justify-content-end">
           <input
             type="text"
-            className="form-control w-50"
+            className="form-control form-control-sm w-100"
             placeholder="Search by Staff ID or Name..."
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setCurrentPage(1); // reset page on search
             }}
           />
         </div>
       </div>
 
-      <button className="btn btn-outline-secondary mb-3" onClick={handleSaveAsPDF}>
-        Save as PDF
-      </button>
-
       {loading && <div className="text-center my-4">Loading...</div>}
       {error && <div className="alert alert-danger">{error}</div>}
 
-      <div className="table-container" style={{ position: "relative", maxHeight: "500px", overflowY: "auto" }} onScroll={handleScroll}>
-        <table className="table table-c">
-          <thead className="table-secondary" style={{ position: "sticky", top: 0, zIndex: 2 }}>
-            <tr>
-              <th>Staff ID</th>
-              <th>Name</th>
-              {columnsToShow.map((col, i) => (
-                <th key={i}>{col}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {currentRows.length > 0 ? (
-              currentRows.map((log) => (
-                <tr key={log.staff_id}>
-                  <td>{log.staff_id}</td>
-                  <td>{log.name}</td>
-                  {columnsToShow.map((col, i) => (
-                    <td key={i}>{log[col] || '-'}</td>
-                  ))}
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="8" className="text-center">
-                  {selectedDate ? "No records found" : "Please select a date"}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-        <div className="fade-bottom" style={{ opacity: isAtBottom ? 0 : 1 }}></div>
-      </div>
-
-      <div className="d-flex justify-content-center my-3">
-        <ul className="pagination">
-          <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-            <button
-              className="page-link page-link-c"
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            >
-              &laquo;
-            </button>
-          </li>
-
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
-            <li
-              key={num}
-              className={`page-item ${num === currentPage ? 'active' : ''}`}
-            >
-              <button
-                className="page-link shadow-none page-link-c"
-                onClick={() => setCurrentPage(num)}
-              >
-                {num}
-              </button>
-            </li>
-          ))}
-
-          <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-            <button
-              className="page-link"
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-            >
-              &raquo;
-            </button>
-          </li>
-        </ul>
-      </div>
-
+      <Table
+        columns={columnsToShow}
+        data={sortedLogs}
+        sortConfig={sortConfig}
+        onSort={handleSort}
+        selectedDate={selectedDate}
+        rowsPerPage={rowsPerPage}
+      />
     </PageWrapper>
   );
 }

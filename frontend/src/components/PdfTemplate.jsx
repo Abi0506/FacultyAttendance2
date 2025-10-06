@@ -1,85 +1,131 @@
-import React from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+};
 
-
+const capitalize = (str) => {
+    return str
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()) // capitalize first letter
+        .join(' ');
+};
 const PdfTemplate = ({
     title = '',
     tables = [],
-    logoBase64 = 'logo.png',
+    logoBase64 = null, // optional
+    fileName = 'report.pdf',
     details = null,
-    fileName = 'report.pdf'
+    banner = 'psgitarlogo.jpg',
+    fromDate = null,
+    toDate = null
 }) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const headerHeight = 30;
-    const footerHeight = 15;
 
-    // header background
-    doc.setFillColor(230, 230, 230);
-    doc.rect(0, 0, pageWidth, headerHeight, 'F');
+    // Helper function for footer
+    const drawFooter = () => {
+        doc.setDrawColor(150);
+        doc.setLineWidth(0.5);
+        doc.line(10, pageHeight - 16, pageWidth - 10, pageHeight - 16);
+        const footerText = `Report generated on ${new Date().toLocaleString()}`;
+        doc.setFontSize(10);
+        doc.text(
+            footerText,
+            pageWidth - doc.getTextWidth(footerText) - 10,
+            pageHeight - 10
+        );
+    };
 
-    // (left)
-    const logoWidth = 20;
-    const logoHeight = 20;
-    if (logoBase64) {
-        doc.addImage(logoBase64, 'PNG', 14, 5, logoWidth, logoHeight);
-    }
+    // Draw banner
+    const bannerWidth = 120;
+    const bannerHeight = 18;
+    doc.addImage(banner, 'JPEG', (pageWidth - bannerWidth) / 2, 5, bannerWidth, bannerHeight);
 
-    // (center)
-    doc.setFontSize(18);
+    // Draw title
+    doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
     const titleWidth = doc.getTextWidth(title);
-    doc.text(title, (pageWidth - titleWidth) / 2, 17);
+    doc.text(title, (pageWidth - titleWidth) / 2, bannerHeight + 20);
 
-    // (right)
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    const rightText = 'PSG iTech';
-    const rightTextWidth = doc.getTextWidth(rightText);
-    doc.text(rightText, pageWidth - rightTextWidth - 14, 17);
+    let startY = bannerHeight + 35;
 
-    // Details section (if provided)
-    let startY = headerHeight + 10;
-    if (details && Array.isArray(details)) {
-        let y = startY;
-        details.forEach((item) => {
-            doc.text(`${item.label}: ${item.value}`, 14, y);
-            y += 8; // adjust spacing as needed
-        });
-        startY = y;
+    // Record date text
+    doc.setFontSize(15);
+    if (fromDate && toDate) {
+        if (fromDate === toDate) {
+            doc.text(`Records for ${formatDate(fromDate)}`, 14, startY);
+            startY += 8;
+        } else {
+            doc.text(`Records from ${formatDate(fromDate)} to ${formatDate(toDate)}`, 14, startY);
+            startY += 8;
+        }
     }
 
-    // Multi-table support
+    // Draw details using autoTable (Change 1)
+    if (details && Array.isArray(details) && details.length > 0) {
+        const detailData = details.map(d => [d.label, d.value]);
+        autoTable(doc, {
+            startY,
+            head: [['Label', 'Value']],
+            body: detailData,
+            theme: 'plain',
+            styles: { fontSize: 12, cellPadding: 3, overflow: 'linebreak' },
+            margin: { top: startY, bottom: 20, left: 14, right: 14 },
+            didDrawPage: () => {
+                drawFooter();
+            }
+        });
+        startY = doc.lastAutoTable.finalY + 10;
+    }
+
+    // Draw tables
     if (Array.isArray(tables) && tables.length > 0) {
-        tables.forEach((table, idx) => {
-            autoTable(doc, {
+        tables.forEach((table) => {
+            const minTableSpace = 40; // Minimum space needed for a table title + at least one row
+            const footerReserve = 26; // Space for footer and line
+            if (startY > pageHeight - minTableSpace - footerReserve) {
+                doc.addPage();
+                startY = 20; // Top margin for new page
+            }
+            if (table.title) {
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.text(String(table.title), 14, startY);
+                startY += 8;
+            }
+
+            // If after title, not enough space for table, add a new page
+            if (startY > pageHeight - minTableSpace - footerReserve) {
+                doc.addPage();
+                startY = 20;
+            }
+
+            const margin = { top: startY, bottom: 20, left: 14, right: 14 };
+            autoTable(doc, {    
                 startY,
-                head: [table.columns],
+                head: [table.columns.map(col => capitalize(col))],
                 body: table.data,
-                theme: 'plain',
-                styles: { fontSize: 10, cellPadding: 3 },
-                headStyles: { fillColor: [63, 63, 149], textColor: [255, 255, 255] },
+                theme: "plain",
+                styles: { fontSize: 10, cellPadding: 3, overflow: 'linebreak' },
+                headStyles: { fillColor: [63, 63, 149], textColor: [255, 255, 255], fontStyle: 'bold' },
+                margin,
+                didDrawPage: () => {
+                    drawFooter();
+                }
             });
             startY = doc.lastAutoTable.finalY + 10;
         });
+    } else {
+        drawFooter(); // Footer even if no tables
     }
-
-    // footer background
-    doc.setFillColor(230, 230, 230);
-    doc.rect(0, pageHeight - footerHeight, pageWidth, footerHeight, 'F');
-
-    // footer text
-    const footerText = `Generated on ${new Date().toLocaleDateString()}`;
-    doc.setFontSize(10);
-    const footerTextWidth = doc.getTextWidth(footerText);
-    doc.text(
-        footerText,
-        (pageWidth - footerTextWidth) / 2,
-        pageHeight - footerHeight / 2 + 1
-    );
 
     doc.save(fileName);
 };
