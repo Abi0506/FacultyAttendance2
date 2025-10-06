@@ -5,7 +5,8 @@ import { useAlert } from '../components/AlertProvider';
 
 function UserManager() {
   const { showAlert } = useAlert();
-  const Departments = ['CSE', 'ECE', 'MECH', 'ADMIN', 'LIBRARY'];
+  const [departments, setDepartments] = useState([]); // Dynamic departments
+  const [designations, setDesignations] = useState([]); // Dynamic designations
   const [loading, setLoading] = useState(false);
   const [loading1, setLoading1] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
@@ -21,11 +22,13 @@ function UserManager() {
   const [editUser, setEditUser] = useState(null);
   const [editSearchId, setEditSearchId] = useState('');
   const [deleteId, setDeleteId] = useState('');
-  const [staff, setStaff] = useState([]); // State for staff list
-  const [staffLoading, setStaffLoading] = useState(false); // Loading state for staff
-  const [showStaffTable, setShowStaffTable] = useState(false); // Toggle table visibility
+  const [staff, setStaff] = useState([]);
+  const [staffLoading, setStaffLoading] = useState(false);
+  const [showStaffTable, setShowStaffTable] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(''); // Search input
 
   useEffect(() => {
+    // Fetch categories
     const fetchCategories = async () => {
       try {
         const res = await axios.get('/attendance/categories');
@@ -36,17 +39,47 @@ function UserManager() {
         showAlert('Error fetching categories', 'danger');
       }
     };
+
+    // Fetch departments
+    const fetchDepartments = async () => {
+      try {
+        const res = await axios.post('/attendance/department');
+        if (res.data.success) setDepartments(res.data.departments);
+        else showAlert('Failed to fetch departments', 'error');
+      } catch (err) {
+        console.error(err);
+        showAlert('Error fetching departments', 'danger');
+      }
+    };
+
+    // Fetch designations
+    const fetchDesignations = async () => {
+      try {
+        const res = await axios.post('/attendance/designation');
+        if (res.data.success) setDesignations(res.data.designations);
+        else showAlert('Failed to fetch designations', 'error');
+      } catch (err) {
+        console.error(err);
+        showAlert('Error fetching designations', 'danger');
+      }
+    };
+
     fetchCategories();
-  }, []);
+    fetchDepartments();
+    fetchDesignations();
+  }, [showAlert]);
 
   const fetchStaff = async () => {
     setStaffLoading(true);
     try {
       const res = await axios.get('/attendance/staff');
-      console.log('Fetched staff response:', res.data); // Debug log for email autofill
+      console.log('Fetched staff response:', res.data);
       if (res.data.success) {
-        setStaff(res.data.staff);
-        setStaffLoading(false);
+        // Sort staff by staff_id in ascending order
+        const sortedStaff = res.data.staff.sort((a, b) =>
+          a.staff_id.localeCompare(b.staff_id)
+        );
+        setStaff(sortedStaff);
       } else {
         showAlert('Failed to fetch staff', 'error');
       }
@@ -60,9 +93,10 @@ function UserManager() {
 
   const handleToggleStaffTable = () => {
     if (!showStaffTable && staff.length === 0) {
-      fetchStaff(); // Fetch data only on first toggle
+      fetchStaff();
     }
     setShowStaffTable(!showStaffTable);
+    setSearchQuery(''); // Clear search on toggle
   };
 
   const formatTime = (timeStr) => {
@@ -97,7 +131,6 @@ function UserManager() {
         setAddUser({ id: '', name: '', dept: '', designation: '', email: '' });
         setSelectedCategory('');
         if (showStaffTable) {
-          // Refresh staff list if table is visible
           await fetchStaff();
         }
       }
@@ -115,7 +148,7 @@ function UserManager() {
     }
     try {
       const res = await axios.get(`/attendance/get_user/${editSearchId}`);
-      console.log('Fetched user response:', res.data); // Debug full response
+      console.log('Fetched user response:', res.data);
       if (res.data.success) {
         const user = res.data.user;
         const newEditUser = {
@@ -127,7 +160,7 @@ function UserManager() {
           category: user.category ? user.category.toString() : '',
         };
         setEditUser(newEditUser);
-        console.log('Set editUser state:', newEditUser); // Debug state after setting
+        console.log('Set editUser state:', newEditUser);
       } else {
         showAlert(res.data.message || 'User not found', 'danger');
         setEditUser(null);
@@ -152,7 +185,6 @@ function UserManager() {
       dept: editUser.dept,
       email: editUser.email || null,
       designation: editUser.designation,
-      email: editUser.email,
       category: Number(editUser.category),
     };
 
@@ -164,7 +196,6 @@ function UserManager() {
         setEditUser(null);
         setEditSearchId('');
         if (showStaffTable) {
-          // Refresh staff list if table is visible
           await fetchStaff();
         }
       } else {
@@ -186,7 +217,6 @@ function UserManager() {
       showAlert(res.data.message, 'success');
       setDeleteId('');
       if (showStaffTable) {
-        // Refresh staff list if table is visible
         await fetchStaff();
       }
     } catch (err) {
@@ -195,6 +225,15 @@ function UserManager() {
       setLoading1(false);
     }
   };
+
+  // Filter staff by staff_id or name
+  const filteredStaff = staff.filter(
+    (member) =>
+      !searchQuery ||
+      (member.staff_id &&
+        member.staff_id.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (member.name && member.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   return (
     <PageWrapper title="User Manager">
@@ -211,14 +250,25 @@ function UserManager() {
         </div>
         {showStaffTable && (
           <>
+            <div className="mb-3">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Search by Staff ID or Name"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
             {staffLoading ? (
               <div className="text-center py-4">
                 <div className="spinner-border text-c-primary" role="status">
                   <span className="visually-hidden">Loading...</span>
                 </div>
               </div>
-            ) : staff.length === 0 ? (
-              <p className="text-muted text-center py-3">No staff found.</p>
+            ) : filteredStaff.length === 0 ? (
+              <p className="text-muted text-center py-3">
+                {searchQuery ? 'No staff found matching the search.' : 'No staff found.'}
+              </p>
             ) : (
               <div className="table-responsive rounded-3">
                 <table className="table table-hover">
@@ -234,7 +284,7 @@ function UserManager() {
                     </tr>
                   </thead>
                   <tbody>
-                    {staff.map((member) => (
+                    {filteredStaff.map((member) => (
                       <tr key={member.staff_id}>
                         <td>{member.staff_id}</td>
                         <td>{member.name || '—'}</td>
@@ -315,11 +365,11 @@ function UserManager() {
                 required
               >
                 <option value="">Choose Designation</option>
-                <option value="Assistant Professor">Assistant Professor</option>
-                <option value="Associate Professor">Associate Professor</option>
-                <option value="Professor">Professor</option>
-                <option value="HOD">HOD</option>
-                <option value="HR">HR</option>
+                {designations.map((des, idx) => (
+                  <option key={idx} value={des.designation}>
+                    {des.designation}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="col-md-6">
@@ -331,9 +381,9 @@ function UserManager() {
                 required
               >
                 <option value="">Choose Department</option>
-                {Departments.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
+                {departments.map((dept, idx) => (
+                  <option key={idx} value={dept.dept}>
+                    {dept.dept}
                   </option>
                 ))}
               </select>
@@ -388,11 +438,11 @@ function UserManager() {
                 <label className="form-label">Designation</label>
                 <select className="form-select" value={editUser.designation ?? ''} onChange={(e) => setEditUser({ ...editUser, designation: e.target.value })} required>
                   <option value="">Choose Designation</option>
-                  <option value="Assistant Professor">Assistant Professor</option>
-                  <option value="Associate Professor">Associate Professor</option>
-                  <option value="Professor">Professor</option>
-                  <option value="HOD">HOD</option>
-                  <option value="HR">HR</option>
+                  {designations.map((des, idx) => (
+                    <option key={idx} value={des.designation}>
+                      {des.designation}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="col-md-6">
@@ -404,9 +454,9 @@ function UserManager() {
                   required
                 >
                   <option value="">Choose Department</option>
-                  {Departments.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
+                  {departments.map((dept, idx) => (
+                    <option key={idx} value={dept.dept}>
+                      {dept.dept}
                     </option>
                   ))}
                 </select>
@@ -433,9 +483,6 @@ function UserManager() {
                     </option>
                   ))}
                 </select>
-                <p>
-                  <a href="/categories">Click here</a> to add a new category
-                </p>
               </div>
             </div>
             <div className="mt-4">
