@@ -96,7 +96,7 @@ function IndividualAttendanceTable() {
     const today = new Date();
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const startDate = `${yyyy}-${mm}-01`;
+    const startDate = `2025-07-01`;
     const lastDay = new Date(yyyy, today.getMonth() + 1, 0).getDate();
     const endDate = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`;
     const empId = user.staffId || '';
