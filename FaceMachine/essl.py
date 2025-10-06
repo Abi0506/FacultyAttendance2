@@ -126,4 +126,5 @@ def process_logs(date1):
         cursor.close()
         conn.close()
 
-
+if __name__ == "__main__":
+    process_logs()

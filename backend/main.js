@@ -9,12 +9,13 @@ const app = express();
 // const { startPythonScript } = require('./server');
 const PORT = 5050;
 const corsOptions = {
-  origin: ['http://10.10.33.251:8000', 'http://localhost:8000', 'http://localhost:3001', 'http://10.10.33.251:3000', 'http://localhost:3000'],
+  origin: ['http://10.10.33.251:8000', 'http://localhost:8000', 'http://localhost:3001','http://bio.psgitech.ac.in:8000','http://bio.psgitech.ac.in',"http://bio.psgitech.ac.in:8000/", 'http://10.10.33.251:3000', 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
-// const pythonProcess = startPythonScript();
+
+const pythonProcess = startPythonScript();
 
 app.use(cors(corsOptions));
 app.use(express.json());
@@ -43,11 +44,11 @@ passport.deserializeUser((user, done) => {
   done(null, user);
 });
 
-// process.on('SIGINT', () => {
-//   console.log('Shutting down Node.js server...');
-//   pythonProcess.kill(); // Terminate Python process
-//   process.exit();
-// });
+process.on('SIGINT', () => {
+  console.log('Shutting down Node.js server...');
+  pythonProcess.kill(); // Terminate Python process
+  process.exit();
+});
 
 
 const loginRouter = require("./routes/login");
