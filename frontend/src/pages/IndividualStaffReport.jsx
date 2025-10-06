@@ -1,4 +1,4 @@
-import React, { useState ,useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from '../axios';
 import PdfTemplate from '../components/PdfTemplate';
 import { useAuth } from '../auth/authProvider';
@@ -74,10 +74,7 @@ function IndividualAttendanceTable() {
       { label: 'Department', value: staffInfo.department || '' },
       { label: 'Date Range', value: `${fromDate} to ${endDate}` },
       { label: `Late Minutes (${fromDate} to ${endDate})`, value: lateMins },
-      { label: `Absent Days (${fromDate} to ${endDate})`, value: absentDays },
       { label: 'Total Late Minutes (Since Previous Reset)', value: totalLateMins },
-      { label: 'Total Absent Days (Since Previous Reset)', value: totalAbsentDays },
-      { label: 'Total Marked Days (Since Previous Reset)', value: markedDays },
     ];
     const tableColumn = ['S.No', 'Date', ...columnsToShow, 'Late Mins', 'Working Hours'];
     const tableRows = records.map((rec, idx) => [
@@ -88,7 +85,7 @@ function IndividualAttendanceTable() {
       rec.working_hours,
     ]);
     PdfTemplate({
-      title: 'Individual Attendance Report',
+      title: 'Attendance Report for ' + (staffInfo.name),
       tables: [{ columns: tableColumn, data: tableRows }],
       details,
       fileName: `attendance_${staffInfo.name || 'employee'}.pdf`,
@@ -113,13 +110,25 @@ function IndividualAttendanceTable() {
 
   useEffect(() => {
     if (formData.startDate && formData.endDate && formData.employeeId) {
-      handleSubmit({ preventDefault: () => {} });
+      handleSubmit({ preventDefault: () => { } });
     }
     // eslint-disable-next-line
   }, [formData.startDate, formData.endDate, formData.employeeId]);
 
   return (
-    <PageWrapper title={`Attendance Report for ${staffInfo.name}`}>
+    <PageWrapper >
+      <div className="d-flex align-items-center justify-content-center position-relative mb-4">
+        <h2 className="fw-bold text-c-primary text-center m-0 flex-grow-1">Attendance Report for {staffInfo.name}</h2>
+        <button
+          className="btn btn-c-primary btn-pdf"
+          onClick={handleSaveAsPDF}
+        >
+          Download PDF
+        </button>
+      </div>
+      <hr className="hr w-75 m-auto my-4" />
+
+
       <form className="mb-4">
         <div className="row mb-3">
           <div className="col">
@@ -151,25 +160,25 @@ function IndividualAttendanceTable() {
 
       {submitted && (
         <>
-          <p><strong>Designation:</strong> {staffInfo.designation}</p>
-          <p><strong>Department:</strong> {staffInfo.department}</p>
-          <h5 className="mt-4 mb-3">Details for {fromDate} to {endDate}:</h5>
-          <p>
-            <strong>Late Minutes:</strong> {lateMins}
-            <span style={{ display: 'inline-block', width: '2em' }}></span>
-            <strong>Absent Days:</strong> {absentDays}
-          </p>
-          <h5 className="mt-4 mb-3">Details since Previous Reset:</h5>
-          <p>
-            <strong>Total Late Minutes:</strong> {totalLateMins}
-            <span style={{ display: 'inline-block', width: '2em' }}></span>
-            <strong>Total Absent Days:</strong> {totalAbsentDays}
-            <span style={{ display: 'inline-block', width: '2em' }}></span>
-            <strong>Total Marked Days:</strong> {markedDays}
-          </p>
-          <button className="btn btn-outline-secondary mb-3 mt-3" onClick={handleSaveAsPDF}>
-            Save as PDF
-          </button>
+          <div className="mb-4">
+            <div className="border rounded p-3 bg-white d-flex flex-wrap gap-4 align-items-center justify-content-start">
+              {/* <div className="col-md-4">
+                <div className="fw-semibold">Designation:</div>
+                <div className="fs-6">{staffInfo.designation}</div>
+              </div>
+              <div className="col-md-4">
+                <div className="fw-semibold">Department:</div>
+                <div className="fs-6">{staffInfo.department}</div>
+              </div> */}
+              <div className="col-md-6">
+                <span className="fw-semibold">Late Minutes (Filtered): </span> {lateMins}
+              </div>
+              <div className="col-md-6">
+                <span className="fw-semibold">Total Late Minutes (Since Prev. Reset): </span>{totalLateMins}
+              </div>
+            </div>
+          </div>
+
           <h4 className="mt-4 mb-3">Attendance Details for {fromDate} to {endDate}:</h4>
           <table className="table table-c mt-3">
             <thead className="table-secondary">

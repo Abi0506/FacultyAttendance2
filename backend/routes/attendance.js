@@ -64,23 +64,49 @@ router.post('/attendance_viewer', async (req, res) => {
 
 
 async function getAbsentDays(staff_id, fromDate, toDate) {
-    const [absents] = await db.query(
-        `SELECT COUNT(*) AS absent_days FROM report WHERE staff_id = ? AND date BETWEEN ? AND ? AND attendance = 'A'`,
-        [staff_id, fromDate, toDate]
-    );
-    return absents[0]?.absent_days || 0;
+  const [absents] = await db.query(
+    `SELECT COUNT(*) AS absent_days FROM report WHERE staff_id = ? AND date BETWEEN ? AND ? AND attendance = 'A'`,
+    [staff_id, fromDate, toDate]
+  );
+  return absents[0]?.absent_days || 0;
 }
 
 // Helper to get total late minutes
 async function getTotalLateMins(staff_id, fromDate, toDate) {
-    const [result] = await db.query(
-        `SELECT SUM(late_mins) AS total_late_mins FROM report WHERE staff_id = ? AND date BETWEEN ? AND ?`,
-        [staff_id, fromDate, toDate]
-    );
-    return result[0]?.total_late_mins || 0;
+  const [result] = await db.query(
+    `SELECT SUM(late_mins) AS total_late_mins FROM report WHERE staff_id = ? AND date BETWEEN ? AND ?`,
+    [staff_id, fromDate, toDate]
+  );
+  return result[0]?.total_late_mins || 0;
 }
 
-// Department Summary Route
+router.get('/department_categories', async (req, res) => {
+
+  try {
+
+    const [rows] = await db.query(`
+            SELECT DISTINCT c.category_description, s.dept
+            FROM staff s
+            JOIN category c ON s.category = c.category_no
+            JOIN department d ON s.dept = d.dept
+            ORDER BY c.category_description, s.dept
+        `);
+    const categories = {};
+    for (const row of rows) {
+      const key = row.category_description;
+      if (!categories[key]) {
+        categories[key] = [];
+      }
+      categories[key].push(row.dept);
+    }
+    res.json({ success: true, categories });
+  } catch (error) {
+    console.error('Error fetching department categories:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+
 router.post('/dept_summary', async (req, res) => {
   let { start_date, end_date, category, dept } = req.body;
   const today = new Date();
@@ -102,150 +128,87 @@ router.post('/dept_summary', async (req, res) => {
 
   // Validate dates
   if (new Date(end_date) < new Date(start_date)) {
-    return res.status(400).json({ error: "End date cannot be before start date" });
+    return res.status(400).json({ error: 'End date cannot be before start date' });
   }
 
   let rows = [];
   let result = {};
 
-    function addEntry(category, dept, entry) {
-        if (!result[category]) result[category] = {};
-        if (!result[category][dept]) result[category][dept] = [];
-        result[category][dept].push(entry);
-    }
+  function addEntry(category, dept, entry) {
+    if (!result[category]) result[category] = {};
+    if (!result[category][dept]) result[category][dept] = [];
+    result[category][dept].push(entry);
+  }
 
-    try {
-        if (category === 'ALL') {
-            [rows] = await db.query(`
-                SELECT staff.staff_id, staff.name, staff.dept, staff.designation, staff.email,
-                       SUM(report.late_mins) AS summary,
-                       category.category_description AS category
-                FROM report
-                JOIN staff ON staff.staff_id = report.staff_id
-                JOIN category ON category.category_no = staff.category
-                WHERE report.date BETWEEN ? AND ?
-                GROUP BY staff.dept, staff.staff_id, staff.name, staff.designation, staff.email, category.category_description
-                ORDER BY staff.dept, staff.staff_id
+
+  try {
+
+
+    if (category === 'ALL') {
+      [rows] = await db.query(`
+                SELECT s.staff_id, s.name, s.dept, s.designation, s.email,
+                       SUM(r.late_mins) AS summary,
+                       c.category_description AS category
+                FROM report r
+                JOIN staff s ON s.staff_id = r.staff_id
+                JOIN category c ON c.category_no = s.category
+                JOIN department d ON s.dept = d.dept
+                WHERE r.date BETWEEN ? AND ?
+                GROUP BY s.dept, s.staff_id, s.name, s.designation, s.email, c.category_description
+                ORDER BY s.staff_id
             `, [start_date, end_date]);
 
-            for (const row of rows) {
-                const { dept, summary, category, staff_id, ...rest } = row;
-                const [leaves, num1] = absent_marked(summary || 0);
-                const absent_days = await getAbsentDays(staff_id, start_date, end_date);
-                const total_late_mins = await getTotalLateMins(staff_id, resetDate, today.toISOString().split('T')[0]);
-                const [leaves_reset] = absent_marked(total_late_mins);
-                const total_absent_days = await getAbsentDays(staff_id, resetDate, today.toISOString().split('T')[0]);
-                const total_marked_days = total_absent_days + leaves_reset;
-                addEntry(category, dept, {
-                    staff_id,
-                    ...rest,
-                    summary: num1,
-                    absent_days,
-                    total_late_mins,
-                    total_absent_days,
-                    total_marked_days,
-                    dept
-                });
-            }
-        } else if (
-            (category === "Teaching Staff" || category === "Non Teaching Staff") &&
-            dept && dept !== "ALL"
-        ) {
-            [rows] = await db.query(`
-                SELECT staff.staff_id, staff.name, staff.dept, staff.designation, staff.email,
-                       SUM(report.late_mins) AS summary
-                FROM report
-                JOIN staff ON staff.staff_id = report.staff_id
-                JOIN category ON category.category_no = staff.category
-                WHERE report.date BETWEEN ? AND ?
-                  AND category.category_description = ?
-                  AND staff.dept = ?
-                GROUP BY staff.dept, staff.staff_id, staff.name, staff.designation, staff.email
-                ORDER BY staff.dept, staff.staff_id
-            `, [start_date, end_date, category, dept]);
-
-            for (const row of rows) {
-                const { dept, summary, staff_id, ...rest } = row;
-                const [leaves, num1] = absent_marked(summary || 0);
-                const absent_days = await getAbsentDays(staff_id, start_date, end_date);
-                const total_late_mins = await getTotalLateMins(staff_id, resetDate, today.toISOString().split('T')[0]);
-                const [leaves_reset] = absent_marked(total_late_mins);
-                const total_absent_days = await getAbsentDays(staff_id, resetDate, today.toISOString().split('T')[0]);
-                const total_marked_days = total_absent_days + leaves_reset;
-                if (!result[dept]) result[dept] = [];
-                result[dept].push({
-                    staff_id,
-                    ...rest,
-                    summary: num1,
-                    absent_days,
-                    total_late_mins,
-                    total_absent_days,
-                    total_marked_days
-                });
-            }
-        } else if (category === "Teaching Staff" || category === "Non Teaching Staff") {
-            [rows] = await db.query(`
-                SELECT staff.staff_id, staff.name, staff.dept, staff.designation, staff.email,
-                       SUM(report.late_mins) AS summary
-                FROM report
-                JOIN staff ON staff.staff_id = report.staff_id
-                JOIN category ON category.category_no = staff.category
-                WHERE report.date BETWEEN ? AND ?
-                  AND category.category_description = ?
-                GROUP BY staff.dept, staff.staff_id, staff.name, staff.designation, staff.email
-                ORDER BY staff.dept, staff.staff_id
-            `, [start_date, end_date, category]);
-
-            for (const row of rows) {
-                const { dept, summary, staff_id, ...rest } = row;
-                const [leaves, num1] = absent_marked(summary || 0);
-                const absent_days = await getAbsentDays(staff_id, start_date, end_date);
-                const total_late_mins = await getTotalLateMins(staff_id, resetDate, today.toISOString().split('T')[0]);
-                const [leaves_reset] = absent_marked(total_late_mins);
-                const total_absent_days = await getAbsentDays(staff_id, resetDate, today.toISOString().split('T')[0]);
-                const total_marked_days = total_absent_days + leaves_reset;
-                if (!result[dept]) result[dept] = [];
-                result[dept].push({
-                    staff_id,
-                    ...rest,
-                    summary: num1,
-                    absent_days,
-                    total_late_mins,
-                    total_absent_days,
-                    total_marked_days
-                });
-            }
-        } else if (dept && dept !== "ALL") {
-            [rows] = await db.query(`
-                SELECT staff.staff_id, staff.name, staff.dept, staff.designation, staff.email,
-                       SUM(report.late_mins) AS summary
-                FROM report
-                JOIN staff ON staff.staff_id = report.staff_id
-                WHERE report.date BETWEEN ? AND ? AND staff.dept = ?
-                GROUP BY staff.dept, staff.staff_id, staff.name, staff.designation, staff.email
-                ORDER BY staff.dept, staff.staff_id
+      for (const row of rows) {
+        const { dept, summary, category, staff_id, ...rest } = row;
+        const [leaves, num1] = absent_marked(summary || 0);
+        const absent_days = await getAbsentDays(staff_id, start_date, end_date);
+        const total_late_mins = await getTotalLateMins(staff_id, resetDate, today.toISOString().split('T')[0]);
+        const [leaves_reset] = absent_marked(total_late_mins);
+        const total_absent_days = await getAbsentDays(staff_id, resetDate, today.toISOString().split('T')[0]);
+        const total_marked_days = total_absent_days + leaves_reset;
+        addEntry(category, dept, {
+          staff_id,
+          ...rest,
+          summary: Number(num1) || 0,
+          absent_days: Number(absent_days) || 0,
+          total_late_mins: Number(total_late_mins) || 0,
+          total_absent_days: Number(total_absent_days) || 0,
+          total_marked_days: Number(total_marked_days) || 0,
+          dept
+        });
+      }
+    } else if (dept && dept !== 'ALL') {
+      [rows] = await db.query(`
+                SELECT s.staff_id, s.name, s.dept, s.designation, s.email,
+                       SUM(r.late_mins) AS summary
+                FROM report r
+                JOIN staff s ON s.staff_id = r.staff_id
+                JOIN department d ON s.dept = d.dept
+                WHERE r.date BETWEEN ? AND ? AND s.dept = ?
+                GROUP BY s.dept, s.staff_id, s.name, s.designation, s.email
+                ORDER BY s.staff_id
             `, [start_date, end_date, dept]);
 
-            for (const row of rows) {
-                const { dept, summary, staff_id, ...rest } = row;
-                const [leaves, num1] = absent_marked(summary || 0);
-                const absent_days = await getAbsentDays(staff_id, start_date, end_date);
-                const total_late_mins = await getTotalLateMins(staff_id, resetDate, today.toISOString().split('T')[0]);
-                const [leaves_reset] = absent_marked(total_late_mins);
-                const total_absent_days = await getAbsentDays(staff_id, resetDate, today.toISOString().split('T')[0]);
-                const total_marked_days = total_absent_days + leaves_reset;
-                if (!result[dept]) result[dept] = [];
-                result[dept].push({
-                    staff_id,
-                    ...rest,
-                    summary: num1,
-                    absent_days,
-                    total_late_mins,
-                    total_absent_days,
-                    total_marked_days
-                });
-            }
-        }
+      for (const row of rows) {
+        const { dept, summary, staff_id, ...rest } = row;
+        const [leaves, num1] = absent_marked(summary || 0);
+        const absent_days = await getAbsentDays(staff_id, start_date, end_date);
+        const total_late_mins = await getTotalLateMins(staff_id, resetDate, today.toISOString().split('T')[0]);
+        const [leaves_reset] = absent_marked(total_late_mins);
+        const total_absent_days = await getAbsentDays(staff_id, resetDate, today.toISOString().split('T')[0]);
+        const total_marked_days = total_absent_days + leaves_reset;
+        if (!result[dept]) result[dept] = [];
+        result[dept].push({
+          staff_id,
+          ...rest,
+          summary: Number(num1) || 0,
+          absent_days: Number(absent_days) || 0,
+          total_late_mins: Number(total_late_mins) || 0,
+          total_absent_days: Number(total_absent_days) || 0,
+          total_marked_days: Number(total_marked_days) || 0
+        });
+      }
+    }
 
     function formatDate(dateStr) {
       if (!dateStr || typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
@@ -259,16 +222,39 @@ router.post('/dept_summary', async (req, res) => {
       return `${dd.padStart(2, '0')}-${mm.padStart(2, '0')}-${yyyy}`;
     }
 
-        const start_Date = formatDate(start_date);
-        const end_Date = formatDate(end_date);
-        const total_marked_days_col = `Total Marked Days`;
+    const start_Date = formatDate(start_date);
+    const end_Date = formatDate(end_date);
+    const total_marked_days_col = `Total Marked Days`;
 
-        console.log('Response data:', { date: [start_Date, end_Date], data: result, total_marked_days_col });
-        res.json({ date: [start_Date, end_Date], data: result, total_marked_days_col });
-    } catch (err) {
-        console.error("Error in /dept_summary:", err);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
+    res.json({ date: [start_Date, end_Date], data: result, total_marked_days_col });
+  } catch (error) {
+
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.post('/department', async (req, res) => {
+
+  try {
+
+    const [departments] = await db.query('SELECT dept FROM department ORDER BY dept ASC');
+    res.json({ success: true, departments });
+  } catch (error) {
+
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.post('/designation', async (req, res) => {
+
+  try {
+
+    const [designations] = await db.query('SELECT designation FROM designation ORDER BY designation ASC');
+    res.json({ success: true, designations });
+  } catch (error) {
+
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 router.post('/individual_data', async (req, res) => {
@@ -293,7 +279,7 @@ router.post('/individual_data', async (req, res) => {
     `, [start_date, end_date, id]);
 
     const [staffInfo] = await db.query(`
-      SELECT staff.name, staff.dept, staff.category
+      SELECT staff.name, staff.dept, staff.category, staff.designation
       FROM staff
       WHERE staff.staff_id = ?
     `, [id]);
@@ -304,7 +290,7 @@ router.post('/individual_data', async (req, res) => {
       WHERE staff_id = ? AND date BETWEEN ? AND ?
     `, [id, start_date, end_date]);
 
-    let[late_mins_1] = await db.query(`
+    let [late_mins_1] = await db.query(`
       SELECT SUM(late_mins) AS late_mins
       FROM report
       WHERE staff_id = ? AND date BETWEEN ? AND ?
@@ -322,7 +308,7 @@ router.post('/individual_data', async (req, res) => {
         FROM
             report
       WHERE staff_id = ? AND date BETWEEN ? AND ? AND attendance = ?
-    `, [id, start_date, end_date , 'A']);
+    `, [id, start_date, end_date, 'A']);
 
     let [total_absent_days] = await db.query(`
        SELECT
@@ -330,7 +316,7 @@ router.post('/individual_data', async (req, res) => {
         FROM
             report
       WHERE staff_id = ? AND date BETWEEN ? AND ? AND attendance = ?
-    `, [id, start, end , 'a']);
+    `, [id, start, end, 'a']);
 
     // Get filtered late minutes (between start_date and end_date)
     let [filtered_late_mins] = await db.query(`
@@ -371,16 +357,16 @@ router.post('/individual_data', async (req, res) => {
     total_late_mins = total_late_mins[0]?.total_late_mins || 0;
     filtered_late_mins = filtered_late_mins[0]?.filtered_late_mins || 0;
     const [absent_marked1] = absent_marked(total_late_mins);
-    console.log(late_mins_1[0].late_mins,total_absent_days[0].absent,absent_days[0].absent,)
-    
-    
-    
+    console.log(late_mins_1[0].late_mins, total_absent_days[0].absent, absent_days[0].absent,)
+
+
+
     res.json({
-      from:start,
-      end:end,
-      late_mins:late_mins_1[0].late_mins,
-      total_absent_days : total_absent_days[0].absent,
-      absent_days:absent_days[0].absent,
+      from: start,
+      end: end,
+      late_mins: late_mins_1[0].late_mins,
+      total_absent_days: total_absent_days[0].absent,
+      absent_days: absent_days[0].absent,
       absent_marked: absent_marked1,
       total_late_mins: total_late_mins,
       filtered_late_mins: filtered_late_mins,
@@ -606,10 +592,10 @@ router.post("/categories/delete", async (req, res) => {
 
     // Check if category is linked to any staff
     const [staffRows] = await db.query("SELECT * FROM staff WHERE category = ?", [category_no]);
-   
+
     if (staffRows.length > 0) {
-       return res.status(400).json({ message: "Cannot delete category: It is linked to staff", success: false });
-      
+      return res.status(400).json({ message: "Cannot delete category: It is linked to staff", success: false });
+
     }
 
     // Delete the category
@@ -636,8 +622,8 @@ router.get('/staff', async (req, res) => {
 });
 
 router.post('/devices/add', async (req, res) => {
-  let { ip_address, device_name, device_location} = req.body;
-  
+  let { ip_address, device_name, device_location } = req.body;
+
   try {
     const [result] = await db.query(
       'INSERT INTO devices (ip_address, device_name, device_location) VALUES (?, ?, ?)',
@@ -657,7 +643,7 @@ router.post('/devices/update', async (req, res) => {
   let { id, ip_address, device_name, device_location } = req.body;
 
   try {
-    await db.query('UPDATE devices SET ip_address = ?, device_name = ?, device_location = ?  WHERE device_id = ?', [ip_address, device_name, device_location,  id]);
+    await db.query('UPDATE devices SET ip_address = ?, device_name = ?, device_location = ?  WHERE device_id = ?', [ip_address, device_name, device_location, id]);
     res.json({ message: "Device updated successfully", success: true });
   } catch (err) {
     console.error("Error updating device:", err);
