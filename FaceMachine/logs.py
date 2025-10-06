@@ -62,4 +62,7 @@ def logs_main():
             schedule.run_pending()
             time.sleep(1)
 
-logs_main()        
+
+# process_logs()
+# process_exemptions()
+logs_main()

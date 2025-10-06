@@ -650,6 +650,7 @@ router.post('/devices/update', async (req, res) => {
     res.status(500).json({ message: "Failed to update device" });
   }
 });
+
 router.post('/devices/delete', async (req, res) => {
   let { id } = req.body;
   try {
