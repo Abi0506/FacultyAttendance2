@@ -155,4 +155,4 @@ def process_logs(date1):
 
 
 if __name__ == "__main__":
-    process_logs()
+    process_logs("")

@@ -224,7 +224,7 @@ function DepartmentSummary() {
         'name',
         'staff_id',
         'designation',
-        'summary',
+        'late_mins',
         'absent_days',
         'total_late_mins',
         'total_absent_days',
