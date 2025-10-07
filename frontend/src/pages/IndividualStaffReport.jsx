@@ -4,7 +4,7 @@ import PdfTemplate from '../components/PdfTemplate';
 import { useAuth } from '../auth/authProvider';
 import PageWrapper from '../components/PageWrapper';
 
-function IndividualAttendanceTable() {
+function IndividualStaffReport() {
   const { user } = useAuth();
   const [formData, setFormData] = useState({ startDate: '', endDate: '', employeeId: '' });
   const [submitted, setSubmitted] = useState(false);
@@ -13,10 +13,7 @@ function IndividualAttendanceTable() {
   const [columnsToShow, setColumnsToShow] = useState([]);
   const [error, setError] = useState('');
   const [totalLateMins, setTotalLateMins] = useState(0);
-  const [totalAbsentDays, setTotalAbsentDays] = useState(0);
-  const [absentDays, setAbsentDays] = useState(0);
   const [lateMins, setLateMins] = useState(0);
-  const [markedDays, setMarkedDays] = useState(0);
   const [fromDate, setFromDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -35,8 +32,7 @@ function IndividualAttendanceTable() {
         end_date: formData.endDate,
         id: formData.employeeId,
       });
-      console.log(res.data);
-
+      // eslint-disable-next-line
       const { from, end, late_mins, total_absent_days, absent_days, total_late_mins, marked_days, data, timing } = res.data;
 
       const employee = data[0] || {};
@@ -53,10 +49,7 @@ function IndividualAttendanceTable() {
       setFromDate(from || formData.startDate);
       setEndDate(end || formData.endDate);
       setLateMins(late_mins || 0);
-      setAbsentDays(absent_days || 0);
       setTotalLateMins(total_late_mins || 0);
-      setTotalAbsentDays(total_absent_days || 0);
-      setMarkedDays(marked_days || 0);
       setColumnsToShow(visibleCols);
       setRecords(timing || []);
       setSubmitted(true);
@@ -220,4 +213,4 @@ function IndividualAttendanceTable() {
   );
 }
 
-export default IndividualAttendanceTable;
+export default IndividualStaffReport;

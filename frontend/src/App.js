@@ -87,13 +87,12 @@ function AppContent() {
         };
 
         fetchData();
-        window.addEventListener('exemptionStatusChanged', fetchData); // ✅ pass function reference
+        window.addEventListener('exemptionStatusChanged', fetchData);  
 
         return () => {
-            window.removeEventListener('exemptionStatusChanged', fetchData); // cleanup
+            window.removeEventListener('exemptionStatusChanged', fetchData); //  
         };
 
-        // The interval has been removed for efficiency
     }, [isAuthenticated, designation]);
 
 
@@ -141,6 +140,8 @@ function AppContent() {
                                             <li><Link className="dropdown-item" to="/summary">Department</Link></li>
                                             <li><hr className="dropdown-divider" /></li>
                                             <li><Link className="dropdown-item" to="/individual">Individual</Link></li>
+                                            <li> <hr className='dropdown-divider' /></li>
+                                            <li><Link className="dropdown-item" to="/staffIndividualReport">Your record</Link></li>
                                         </ul>
                                     </li>
                                     <li className="nav-item position-relative">
@@ -236,7 +237,7 @@ function AppContent() {
                     {/* HR Routes */}
                     <Route path="/view" element={<RequireHR><AttendanceViewer /></RequireHR>} />
                     <Route path="/summary" element={<RequireHR><DepartmentSummary /></RequireHR>} />
-                    <Route path="/individual" element={<RequireHR><IndividualAttendanceTable /></RequireHR>} />
+                    <Route path="/individual/:staffId?" element={<RequireHR><IndividualAttendanceTable /></RequireHR>} />
                     <Route path="/exemptions" element={<RequireHR><HRExcemptions /></RequireHR>} />
                     <Route path="/users" element={<RequireHR><UserManager /></RequireHR>} />
                     <Route path="/categories" element={<RequireHR><CategoryManager /></RequireHR>} />

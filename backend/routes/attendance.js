@@ -269,6 +269,7 @@ router.post('/individual_data', async (req, res) => {
   }
 
   const { start_date, end_date, id } = req.body;
+
   const [start, end] = await start_end_time();
   try {
     const [rows] = await db.query(`
@@ -357,11 +358,12 @@ router.post('/individual_data', async (req, res) => {
     total_late_mins = total_late_mins[0]?.total_late_mins || 0;
     filtered_late_mins = filtered_late_mins[0]?.filtered_late_mins || 0;
     const [absent_marked1] = absent_marked(total_late_mins);
-    console.log(late_mins_1[0].late_mins, total_absent_days[0].absent, absent_days[0].absent,)
+    if (late_mins_1[0].late_mins === null) {
+      late_mins_1[0].late_mins = '0';
+    };
 
 
-
-    res.json({
+    resultData = {
       from: start,
       end: end,
       late_mins: late_mins_1[0].late_mins,
@@ -372,7 +374,9 @@ router.post('/individual_data', async (req, res) => {
       filtered_late_mins: filtered_late_mins,
       timing: result,
       data: staffInfo
-    });
+    };
+    console.log("Result Data:", resultData);
+    res.json(resultData);
   } catch (error) {
     console.error('Error in /individual_data:', error);
     res.status(500).json({ error: 'Internal server error.' });
@@ -519,6 +523,29 @@ router.post("/search/getuser", async (req, res) => {
     res.status(500).json({ message: "Failed to fetch staff" });
   }
 });
+
+router.get('/search/query', async (req, res) => {
+  const { q } = req.query;
+
+  if (!q || q.trim() === '') {
+    return res.json([]);
+  }
+
+  try {
+    const [rows] = await db.query(
+      `SELECT staff_id , name, dept, designation, category
+       FROM staff
+       WHERE staff_id LIKE ? OR name LIKE ?
+       LIMIT 5`,
+      [`%${q}%`, `%${q}%`]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("Error fetching staff for search:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 
 router.get("/categories", async (req, res) => {
   try {
