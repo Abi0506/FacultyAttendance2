@@ -19,7 +19,7 @@ function runPythonFunction(funcName, args = []) {
 }
 
 // POST /instant_logs
-router.post("/instant_logs", async (req, res) => {
+router.post("/instant", async (req, res) => {
   const { date, type } = req.body;
     console.log(date,type);
   if (!date || !type) {
