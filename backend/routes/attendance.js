@@ -263,6 +263,7 @@ router.post('/dept_summary', async (req, res) => {
 });
 
 
+
 router.post('/department', async (req, res) => {
 
   try {

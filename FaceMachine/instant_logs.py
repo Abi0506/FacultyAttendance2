@@ -10,14 +10,14 @@ def get_instant_report(date):
         return f"Error while processing attendance for {date}: {str(e)}"
 
 
-def get_instant_list(date: str):
+def get_instant_list(date):
  
     try:
         result = get_attendance_list(date)
         return f"Attendance list generated for {date}: {result}"
     except Exception as e:
         return f"Error while generating list for {date}: {str(e)}"
-
+get_instant_list("2025-10-06")
 
 if __name__ == "__main__":
     import sys
