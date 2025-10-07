@@ -15,7 +15,7 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
-const pythonProcess = startPythonScript();
+// const pythonProcess = startPythonScript();
 
 app.use(cors(corsOptions));
 app.use(express.json());
@@ -44,11 +44,11 @@ passport.deserializeUser((user, done) => {
   done(null, user);
 });
 
-process.on('SIGINT', () => {
-  console.log('Shutting down Node.js server...');
-  pythonProcess.kill(); // Terminate Python process
-  process.exit();
-});
+// process.on('SIGINT', () => {
+//   console.log('Shutting down Node.js server...');
+//   pythonProcess.kill(); // Terminate Python process
+//   process.exit();
+// });
 
 
 const loginRouter = require("./routes/login");

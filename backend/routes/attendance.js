@@ -31,6 +31,72 @@ function absent_marked(summary) {
   return [leaves, Number(summary)];
 }
 
+router.post('/flag_time', async (req, res) => {
+  try {
+    const { staff_id, date, time } = req.body;
+
+    if (!staff_id || !date || !time) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Check if the flag already exists
+    const [existing] = await db.query(
+      `SELECT id FROM attendance_flags WHERE staff_id = ? AND date = ? AND time = ?`,
+      [staff_id, date, time]
+    );
+
+    if (existing.length > 0) {
+      // Flag exists → revoke it
+      await db.query(
+        `DELETE FROM attendance_flags WHERE staff_id = ? AND date = ? AND time = ?`,
+        [staff_id, date, time]
+      );
+      return res.json({ message: 'Flag revoked', revoked: true });
+    }
+
+    // Otherwise → insert new flag
+    await db.query(
+      `INSERT INTO attendance_flags (staff_id, date, time) VALUES (?, ?, ?)`,
+      [staff_id, date, time]
+    );
+
+    res.json({ message: 'Flagged successfully', revoked: false });
+  } catch (err) {
+    console.error('Error toggling flag:', err);
+    res.status(500).json({ error: 'Failed to toggle flag' });
+  }
+});
+
+
+// Fetch all flagged times for a specific date
+router.post('/get_flags', async (req, res) => {
+  try {
+    const { date } = req.body;
+    if (!date) {
+      return res.status(400).json({ error: 'Date is required' });
+    }
+
+    const [rows] = await db.query(
+      `SELECT staff_id, \`time\` FROM attendance_flags WHERE \`date\` = ?`,
+      [date]
+    );
+
+    // Return as { staff_id_timeValue: true }
+    const flaggedMap = {};
+    rows.forEach(row => {
+      const timeStr = row.time.toString().slice(0, 8); // 'HH:MM:SS'
+      flaggedMap[`${row.staff_id}_${timeStr}`] = true;
+    });
+
+    res.json(flaggedMap);
+
+  } catch (err) {
+    console.error('Error fetching flagged times:', err);
+    res.status(500).json({ error: 'Failed to fetch flagged times' });
+  }
+});
+
+
 
 router.post('/attendance_viewer', async (req, res) => {
   const { date } = req.body;
