@@ -87,7 +87,7 @@ function AppContent() {
         };
 
         fetchData();
-        window.addEventListener('exemptionStatusChanged', fetchData);  
+        window.addEventListener('exemptionStatusChanged', fetchData);
 
         return () => {
             window.removeEventListener('exemptionStatusChanged', fetchData); //  
@@ -105,7 +105,7 @@ function AppContent() {
 
                         <div className="d-flex align-items-center justify-content-between w-100 px-4">
                             <a className="navbar-brand d-flex align-items-center fw-bold" href="/" title="Dashboard">
-                                <img src="psgitarlogo.jpg" alt="Logo" className="psgitarlogo me-3" />
+                                <img src="/psgitarlogo.jpg" alt="Logo" className="psgitarlogo me-3" />
                                 <span className="header-title float-end">Faculty Biometric Attendance</span>
                             </a>
                             <button
