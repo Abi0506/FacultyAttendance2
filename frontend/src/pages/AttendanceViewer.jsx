@@ -2,9 +2,50 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from '../axios';
 import PageWrapper from '../components/PageWrapper';
 import PdfTemplate from '../components/PdfTemplate';
-import Table from '../components/Table';
 import { useAlert } from '../components/AlertProvider';
 import { useLocation } from 'react-router-dom';
+
+// Table Component
+function Table({ columns, data, sortConfig, onSort, rowsPerPage, flaggedCells, onFlagClick, isFlagMode }) {
+  return (
+    <table className="table table-striped">
+      <thead>
+        <tr>
+          {columns.map(col => (
+            <th key={col} onClick={() => onSort(col)} style={{ cursor: 'pointer' }}>
+              {col} {sortConfig.key === col ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {data.slice(0, rowsPerPage).map(row => (
+          <tr key={row.staff_id}>
+            {columns.map(col => {
+              const isTimeColumn = col.toLowerCase().includes("in") || col.toLowerCase().includes("out");
+              const timeValue = row[col];
+              const flaggedKey = `${row.staff_id}_${timeValue}`;
+              const isFlagged = flaggedCells[flaggedKey];
+
+              return (
+                <td
+                  key={col}
+                  onClick={() => isFlagMode && isTimeColumn && timeValue && onFlagClick(row.staff_id, timeValue)}
+                  style={{
+                    cursor: isFlagMode && isTimeColumn ? "pointer" : "default",
+                    backgroundColor: isFlagged ? "#d1f7d1" : "transparent"
+                  }}
+                >
+                  {timeValue || "-"}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
 function AttendanceViewer() {
   const [selectedDate, setSelectedDate] = useState("");
@@ -15,36 +56,43 @@ function AttendanceViewer() {
   const [searchTerm, setSearchTerm] = useState("");
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [sortConfig, setSortConfig] = useState({ key: 'IN1', direction: 'asc' });
+  const [flaggedCells, setFlaggedCells] = useState({});
+  const [isFlagMode, setIsFlagMode] = useState(false);
 
   const { showAlert } = useAlert();
   const location = useLocation();
 
-  // Message as alert
+  // ----- UTILITIES -----
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const message = params.get('message');
     if (message) {
       showAlert(message, 'success');
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, '', newUrl);
+      window.history.replaceState({}, '', window.location.pathname);
     }
   }, [location.search, showAlert]);
 
-  const getLogs = useCallback(async (date) => {
-    if (!date) return;
+  // Initialize date
+  useEffect(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    setSelectedDate(`${yyyy}-${mm}-${dd}`);
+  }, []);
 
+  // ----- ATTENDANCE LOG METHODS -----
+  const fetchAttendanceLogs = useCallback(async (date) => {
+    if (!date) return;
     setLoading(true);
     setError(null);
     try {
       const response = await axios.post('/attendance/attendance_viewer', { date });
       const fetchedLogs = response.data || [];
       setLogs(fetchedLogs);
-
-      const allColumns = fetchedLogs[0] ? Object.keys(fetchedLogs[0]) : [];
-      setColumnsToShow(allColumns);
-
-    } catch (error) {
-      console.error('Error fetching logs:', error);
+      setColumnsToShow(fetchedLogs[0] ? Object.keys(fetchedLogs[0]) : []);
+    } catch (err) {
+      console.error(err);
       setError("Failed to load attendance data");
       setLogs([]);
       setColumnsToShow([]);
@@ -53,31 +101,75 @@ function AttendanceViewer() {
     }
   }, []);
 
-  // Convert date format
-  useEffect(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-based
-    const dd = String(today.getDate()).padStart(2, '0');
-
-    setSelectedDate(`${yyyy}-${mm}-${dd}`);
+  // ----- FLAG METHODS -----
+  const fetchFlags = useCallback(async (date) => {
+    if (!date) return;
+    try {
+      const response = await axios.post('/attendance/get_flags', { date });
+      setFlaggedCells(response.data || {});
+    } catch (err) {
+      console.error("Failed to fetch flagged times", err);
+    }
   }, []);
 
+ const handleFlagTime = async (staff_id, timeValue) => {
+  if (!isFlagMode) return;
+  try {
+    const response = await axios.post('/attendance/flag_time', {
+      staff_id,
+      date: selectedDate,
+      time: timeValue
+    });
 
-  useEffect(() => {
-    getLogs(selectedDate);
-  }, [selectedDate, getLogs]);
-
-  // Sorting
-  const handleSort = (column) => {
-    setSortConfig((prev) => {
-      if (prev.key === column) {
-        return { key: column, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+    const key = `${staff_id}_${timeValue}`;
+    setFlaggedCells(prev => {
+      const newFlags = { ...prev };
+      if (response.data.revoked) {
+        delete newFlags[key];  // Remove highlight if revoked
+        showAlert(`Flag revoked for ${staff_id}`, 'info');
+      } else {
+        newFlags[key] = true; // Add highlight if flagged
+        showAlert(`Time flagged for ${staff_id}`, 'success');
       }
-      return { key: column, direction: 'asc' };
+      return newFlags;
+    });
+
+  } catch (err) {
+    console.error(err);
+    showAlert("Failed to toggle flag", 'danger');
+  }
+};
+
+  const toggleFlagMode = () => setIsFlagMode(prev => !prev);
+
+  // ----- PDF EXPORT -----
+  const handleSaveAsPDF = () => {
+    const newDate = selectedDate.split('-').reverse().join('-');
+    PdfTemplate({
+      title: `Faculty Attendance Record - ${newDate}`,
+      tables: [{
+        columns: [...columnsToShow],
+        data: logs.map(log => [...columnsToShow.map(col => log[col] || '-')])
+      }],
+      fileName: `logs[${newDate}].pdf`
     });
   };
 
+  // Fetch logs and flags on date change
+  useEffect(() => {
+    fetchAttendanceLogs(selectedDate);
+    fetchFlags(selectedDate);
+  }, [selectedDate, fetchAttendanceLogs, fetchFlags]);
+
+  // Sorting
+  const handleSort = (column) => {
+    setSortConfig(prev => prev.key === column
+      ? { key: column, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+      : { key: column, direction: 'asc' }
+    );
+  };
+
+  // Filter & sort logs
   const filteredLogs = logs.filter(log =>
     log.staff_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -87,17 +179,10 @@ function AttendanceViewer() {
     let sortableLogs = [...filteredLogs];
     if (sortConfig.key) {
       sortableLogs.sort((a, b) => {
-        let valA = a[sortConfig.key];
-        let valB = b[sortConfig.key];
-
-        // Move non-empty above empty
-        if (!valA && valB) return 1;
-        if (valA && !valB) return -1;
-        if (!valA && !valB) return 0;
-
+        let valA = a[sortConfig.key] ?? "";
+        let valB = b[sortConfig.key] ?? "";
         if (typeof valA === 'string') valA = valA.toLowerCase();
         if (typeof valB === 'string') valB = valB.toLowerCase();
-
         if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
         if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
@@ -106,61 +191,26 @@ function AttendanceViewer() {
     return sortableLogs;
   }, [filteredLogs, sortConfig]);
 
-  const handleSaveAsPDF = () => {
-    // Convert selectedDate to newDate format DD-MM-YYYY
-    let newDate = selectedDate.split('-').reverse().join('-');
-    PdfTemplate({
-      title: 'Faculty Attendance Record - ' + newDate,
-      tables: [{
-        columns: [...columnsToShow],
-        data: sortedLogs.map((log) => [
-          ...columnsToShow.map(col => log[col] || '-')
-        ])
-      }],
-      fileName: `logs[${newDate}].pdf`
-    });
-  };
-
   return (
     <PageWrapper>
+      {/* Header */}
       <div className="d-flex align-items-center justify-content-center position-relative mb-4">
-        <button
-          className="refresh-btn"
-          onClick={async () => {
-            if (!selectedDate) return;
-            try {
-              setLoading(true);
-              await getLogs(selectedDate);
-              showAlert('Data refreshed successfully', 'success');
-            } catch (err) {
-              showAlert('Data fetch failed', 'danger');
-            } finally {
-              setLoading(false);
-            }
-          }}
-          title="Reload logs"
-        >
-          <i className="bi bi-arrow-clockwise fs-4"></i>
-          <span className="refresh-text">Refresh</span>
+        <button className="refresh-btn" onClick={() => fetchAttendanceLogs(selectedDate)}>
+          <i className="bi bi-arrow-clockwise fs-4"></i> Refresh
         </button>
 
-        {/* Title centered */}
         <h2 className="fw-bold text-c-primary text-center m-0 flex-grow-1">Live Logs</h2>
 
-        {/* Save as PDF button on the right */}
-        <button
-          className="btn btn-c-primary btn-pdf"
-          onClick={handleSaveAsPDF}
-        >
+        <button className="btn btn-c-primary btn-pdf" onClick={handleSaveAsPDF}>
           Download PDF
         </button>
       </div>
 
-
       <hr className="hr w-75 m-auto my-4" />
 
-      <div className="d-flex flex-wrap align-items-center justify-content-between p-3 mb-4">
-        {/* Date Picker */}
+      {/* Controls */}
+      <div className="d-flex flex-wrap align-items-center justify-content-between p-3 mb-2">
+        {/* Date */}
         <div className="form-group me-3 d-flex align-items-center">
           <label htmlFor="date" className="form-label me-2 fw-semibold">Date:</label>
           <input
@@ -172,47 +222,54 @@ function AttendanceViewer() {
           />
         </div>
 
-        {/* Rows per Page */}
+        {/* Rows */}
         <div className="d-flex align-items-center me-3">
           <label htmlFor="rowsPerPage" className="me-2 fw-semibold">Rows:</label>
           <select
             id="rowsPerPage"
             className="form-select form-select-sm"
             value={rowsPerPage}
-            onChange={(e) => {
-              setRowsPerPage(parseInt(e.target.value));
-            }}
+            onChange={(e) => setRowsPerPage(parseInt(e.target.value))}
           >
-            {[10, 25, 50, 100, 200].map(num => (
-              <option key={num} value={num}>{num}</option>
-            ))}
+            {[10, 25, 50, 100, 200].map(num => <option key={num} value={num}>{num}</option>)}
           </select>
         </div>
 
-        {/* Search */}
+        {/* Staff search */}
         <div className="flex-grow-1 d-flex justify-content-end">
           <input
             type="text"
             className="form-control form-control-sm w-100"
             placeholder="Search by Staff ID or Name..."
             value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-            }}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+      </div>
+
+      {/* Flag Mode Button */}
+      <div className="mb-4 text-start">
+        <button
+          className={`btn ${isFlagMode ? 'btn-danger' : 'btn-warning'}`}
+          onClick={toggleFlagMode}
+        >
+          {isFlagMode ? 'Exit Flag Mode' : 'Enter Flag Mode'}
+        </button>
       </div>
 
       {loading && <div className="text-center my-4">Loading...</div>}
       {error && <div className="alert alert-danger">{error}</div>}
 
+      {/* Table */}
       <Table
         columns={columnsToShow}
         data={sortedLogs}
         sortConfig={sortConfig}
         onSort={handleSort}
-        selectedDate={selectedDate}
         rowsPerPage={rowsPerPage}
+        flaggedCells={flaggedCells}
+        onFlagClick={handleFlagTime}
+        isFlagMode={isFlagMode}
       />
     </PageWrapper>
   );

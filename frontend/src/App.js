@@ -10,6 +10,7 @@ import {
 } from 'react-router-dom';
 
 // --- Page Imports ---
+import InstantLogs from './pages/instantLogs';
 import AttendanceViewer from './pages/AttendanceViewer';
 import DepartmentSummary from './pages/DepartmentSummary';
 import IndividualAttendanceTable from './pages/IndividualAttendanceTable';
@@ -142,6 +143,8 @@ function AppContent() {
                                             <li><Link className="dropdown-item" to="/individual">Individual</Link></li>
                                             <li> <hr className='dropdown-divider' /></li>
                                             <li><Link className="dropdown-item" to="/staffIndividualReport">Your record</Link></li>
+                                              <li> <hr className='dropdown-divider' /></li> 
+                                                <li><Link className="dropdown-item" to="/instant">Instant</Link></li> {/* new link */}
                                         </ul>
                                     </li>
                                     <li className="nav-item position-relative">
@@ -243,6 +246,8 @@ function AppContent() {
                     <Route path="/categories" element={<RequireHR><CategoryManager /></RequireHR>} />
                     <Route path="/devicemanager" element={<RequireHR><DevicesManager /></RequireHR>} />
                     <Route path="/leave" element={<RequireHR><HRLeaveManager /></RequireHR>} />
+                    <Route path="/instant" element={<RequireHR><InstantLogs /></RequireHR>} />
+
 
                     {/* Staff Routes */}
                     <Route path="/staffIndividualReport" element={<RequireStaff><IndividualStaffReport /></RequireStaff>} />
