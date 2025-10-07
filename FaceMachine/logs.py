@@ -65,12 +65,12 @@ def connect_to_device(reason , DEVICE_IP ):
 
 def logs_main():
   
-        # get_attendance_list()
+        get_attendance_list("")
         # process_logs("2025-09-30")
         # process_exemptions()
-        # schedule.every(10).minutes.do(get_attendance_list,"")
-        # schedule.every().day.at("08:41:55").do(process_logs,"")
-        # schedule.every().day.at("23:30:00").do(process_exemptions)
+        schedule.every(10).minutes.do(get_attendance_list,"")
+        schedule.every().day.at("22:30:00").do(process_logs,"")
+        schedule.every().day.at("23:00:00").do(process_exemptions)
 
         while True:
             schedule.run_pending()

@@ -2,13 +2,13 @@ const express = require("express");
 const router = express.Router();
 const { exec } = require("child_process");
 
-const scriptPath = process.env.PYTHON_SCRIPT_PATH1;
-// const pythonPath = 'c:\\FacultyAttendance2\\FaceMachine\\venv\\Scripts\\python.exe';
+const scriptPath = process.env.PYTHON_SCRIPT_PATH2;
+const pythonPath = 'c:\\FacultyAttendance2\\FaceMachine\\venv\\Scripts\\python.exe';
 
 // Function to run Python
 function runPythonFunction(funcName, args = []) {
   return new Promise((resolve, reject) => {
-    const cmd = `"python" "${scriptPath}" ${funcName} ${args.join(" ")}`;
+    const cmd = `${pythonPath} "${scriptPath}" ${funcName} ${args.join(" ")}`;
     exec(cmd, (error, stdout, stderr) => {
       console.log("Python stdout:", stdout);
       console.log("Python stderr:", stderr);
@@ -19,7 +19,8 @@ function runPythonFunction(funcName, args = []) {
 }
 
 // POST /instant_logs
-router.post("/instant_logs", async (req, res) => {
+router.post("/instant_logs/", async (req, res) => {
+  console.log("date");
   const { date, type } = req.body;
     console.log(date,type);
   if (!date || !type) {
