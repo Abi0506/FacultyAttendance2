@@ -18,9 +18,8 @@ function InstantLogs() {
         setResult('');
 
         try {
-            // const response = await axios.post('/attendance/department');
-            const res = await axios.post('/instant_attendance/instant_logs/', {
-                date: selectedDate, 
+            const res = await axios.post('/instant_attendance/instant', {
+                date: selectedDate,
                 type: option === 'logs' ? 'list': 'report'  // adjust type to Python backend
             });
             
