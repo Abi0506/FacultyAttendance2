@@ -141,9 +141,6 @@ function AppContent() {
                                             <li><Link className="dropdown-item" to="/summary">Department</Link></li>
                                             <li><hr className="dropdown-divider" /></li>
                                             <li><Link className="dropdown-item" to="/individual">Individual</Link></li>
-                                            <li><hr className="dropdown-divider" /></li>
-                                            <li><Link className="dropdown-item" to="/staffIndividualReport">Attendance Report</Link></li>
-                                          
                                         </ul>
                                     </li>
                                     <li className="nav-item position-relative">

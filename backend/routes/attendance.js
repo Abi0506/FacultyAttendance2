@@ -81,7 +81,9 @@ async function getTotalLateMins(staff_id, fromDate, toDate) {
 }
 
 router.get('/department_categories', async (req, res) => {
+
   try {
+
     const [rows] = await db.query(`
             SELECT DISTINCT c.category_description, s.dept
             FROM staff s
@@ -232,11 +234,13 @@ router.post('/dept_summary', async (req, res) => {
 });
 
 router.post('/department', async (req, res) => {
-  console.log("Department reached...")
+
   try {
+
     const [departments] = await db.query('SELECT dept FROM department ORDER BY dept ASC');
     res.json({ success: true, departments });
   } catch (error) {
+
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -646,7 +650,6 @@ router.post('/devices/update', async (req, res) => {
     res.status(500).json({ message: "Failed to update device" });
   }
 });
-
 router.post('/devices/delete', async (req, res) => {
   let { id } = req.body;
   try {
