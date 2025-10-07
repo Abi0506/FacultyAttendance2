@@ -10,7 +10,7 @@ def get_instant_report(date):
         return f"Error while processing attendance for {date}: {str(e)}"
 
 
-def get_instant_list(date: str):
+def get_instant_list(date):
  
     try:
         result = get_attendance_list(date)
