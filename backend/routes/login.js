@@ -19,27 +19,10 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
 });
-const nodemailer = require('nodemailer');
-const crypto = require('crypto');
-
-
-// Set up gmail access
-// Be sure to use app password and not regular password
-require('dotenv').config();
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
 
 
 router.post('/login', async (req, res) => {
   console.log("Login request received");
-  const { userIdorEmail, password, remember } = req.body;
-  console.log("User ID or Email:", userIdorEmail);
-  const [rows] = await db.query('SELECT staff_id, password,designation FROM staff WHERE staff_id = ? or email = ?', [userIdorEmail, userIdorEmail]);
   const { userIdorEmail, password, remember } = req.body;
   console.log("User ID or Email:", userIdorEmail);
   const [rows] = await db.query('SELECT staff_id, password,designation FROM staff WHERE staff_id = ? or email = ?', [userIdorEmail, userIdorEmail]);
@@ -50,10 +33,7 @@ router.post('/login', async (req, res) => {
   }
   const jwtExpiry = remember ? '7d' : '1h';
   const token = jwt.sign({ staff_id: user.staff_id, designation: user.designation }, SECRET_KEY, { expiresIn: jwtExpiry });
-  const jwtExpiry = remember ? '7d' : '1h';
-  const token = jwt.sign({ staff_id: user.staff_id, designation: user.designation }, SECRET_KEY, { expiresIn: jwtExpiry });
 
-  const cookieOptions = {
   const cookieOptions = {
     httpOnly: true,
     secure: false,
@@ -79,18 +59,18 @@ router.get('/check_session', (req, res) => {
       return res.status(401).json({ message: 'Invalid token' });
     }
 
-    // res.clearCookie('token', {
-    //   httpOnly: true,
-    //   secure: false,
-    //   sameSite: 'none'
-    // });
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax'
+    });
 
     const token = jwt.sign({ staff_id: decoded.staff_id, designation: decoded.designation }, SECRET_KEY, { expiresIn: '7d' });
 
     res.cookie('token', token, {
       httpOnly: true,
       secure: false,
-      sameSite: 'none',
+      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
     res.json({ message: 'Valid token', designation: decoded.designation, staff_id: decoded.staff_id });
@@ -102,13 +82,14 @@ router.post('/logout', (req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
     secure: false,
-    sameSite: 'none'
+    sameSite: 'lax'
   });
   res.json({ message: 'Logged out successfully' });
 });
 
 
 router.post('/reset-password', async (req, res) => {
+  console.log("reset password request reice")
   const { UserOrEmail, frontendOrigin } = req.body;
   if (!UserOrEmail) {
     return res.status(400).json({ success: false, message: 'User ID or Email is required' });

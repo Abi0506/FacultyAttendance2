@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../axios';
 import PageWrapper from '../components/PageWrapper';
+import { useNavigate } from 'react-router-dom';
 import { useAlert } from '../components/AlertProvider';
 
 function UserManager() {
   const { showAlert } = useAlert();
-  const [departments, setDepartments] = useState([]); // Dynamic departments
-  const [designations, setDesignations] = useState([]); // Dynamic designations
+  const [departments, setDepartments] = useState([]);
+  const [designations, setDesignations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loading1, setLoading1] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
@@ -26,6 +27,8 @@ function UserManager() {
   const [staffLoading, setStaffLoading] = useState(false);
   const [showStaffTable, setShowStaffTable] = useState(false);
   const [searchQuery, setSearchQuery] = useState(''); // Search input
+  const navigate = useNavigate();
+
 
   useEffect(() => {
     // Fetch categories
@@ -73,7 +76,6 @@ function UserManager() {
     setStaffLoading(true);
     try {
       const res = await axios.get('/attendance/staff');
-      console.log('Fetched staff response:', res.data);
       if (res.data.success) {
         // Sort staff by staff_id in ascending order
         const sortedStaff = res.data.staff.sort((a, b) =>
@@ -285,7 +287,10 @@ function UserManager() {
                   </thead>
                   <tbody>
                     {filteredStaff.map((member) => (
-                      <tr key={member.staff_id}>
+                      <tr key={member.staff_id}
+                        onClick={() => navigate(`/individual/${member.staff_id}`)}
+                        style={{ cursor: 'pointer' }}
+                      >
                         <td>{member.staff_id}</td>
                         <td>{member.name || '—'}</td>
                         <td>{member.dept || '—'}</td>

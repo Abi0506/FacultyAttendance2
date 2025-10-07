@@ -10,6 +10,7 @@ import {
 } from 'react-router-dom';
 
 // --- Page Imports ---
+import InstantLogs from './pages/instantLogs';
 import AttendanceViewer from './pages/AttendanceViewer';
 import DepartmentSummary from './pages/DepartmentSummary';
 import IndividualAttendanceTable from './pages/IndividualAttendanceTable';
@@ -87,13 +88,12 @@ function AppContent() {
         };
 
         fetchData();
-        window.addEventListener('exemptionStatusChanged', fetchData); // ✅ pass function reference
+        window.addEventListener('exemptionStatusChanged', fetchData);
 
         return () => {
-            window.removeEventListener('exemptionStatusChanged', fetchData); // cleanup
+            window.removeEventListener('exemptionStatusChanged', fetchData); //  
         };
 
-        // The interval has been removed for efficiency
     }, [isAuthenticated, designation]);
 
 
@@ -106,7 +106,7 @@ function AppContent() {
 
                         <div className="d-flex align-items-center justify-content-between w-100 px-4">
                             <a className="navbar-brand d-flex align-items-center fw-bold" href="/" title="Dashboard">
-                                <img src="psgitarlogo.jpg" alt="Logo" className="psgitarlogo me-3" />
+                                <img src="/psgitarlogo.jpg" alt="Logo" className="psgitarlogo me-3" />
                                 <span className="header-title float-end">Faculty Biometric Attendance</span>
                             </a>
                             <button
@@ -141,6 +141,10 @@ function AppContent() {
                                             <li><Link className="dropdown-item" to="/summary">Department</Link></li>
                                             <li><hr className="dropdown-divider" /></li>
                                             <li><Link className="dropdown-item" to="/individual">Individual</Link></li>
+                                            <li> <hr className='dropdown-divider' /></li>
+                                            <li><Link className="dropdown-item" to="/staffIndividualReport">Your record</Link></li>
+                                              <li> <hr className='dropdown-divider' /></li> 
+                                                <li><Link className="dropdown-item" to="/instant">Instant</Link></li> {/* new link */}
                                         </ul>
                                     </li>
                                     <li className="nav-item position-relative">
@@ -236,12 +240,14 @@ function AppContent() {
                     {/* HR Routes */}
                     <Route path="/view" element={<RequireHR><AttendanceViewer /></RequireHR>} />
                     <Route path="/summary" element={<RequireHR><DepartmentSummary /></RequireHR>} />
-                    <Route path="/individual" element={<RequireHR><IndividualAttendanceTable /></RequireHR>} />
+                    <Route path="/individual/:staffId?" element={<RequireHR><IndividualAttendanceTable /></RequireHR>} />
                     <Route path="/exemptions" element={<RequireHR><HRExcemptions /></RequireHR>} />
                     <Route path="/users" element={<RequireHR><UserManager /></RequireHR>} />
                     <Route path="/categories" element={<RequireHR><CategoryManager /></RequireHR>} />
                     <Route path="/devicemanager" element={<RequireHR><DevicesManager /></RequireHR>} />
                     <Route path="/leave" element={<RequireHR><HRLeaveManager /></RequireHR>} />
+                    <Route path="/instant" element={<RequireHR><InstantLogs /></RequireHR>} />
+
 
                     {/* Staff Routes */}
                     <Route path="/staffIndividualReport" element={<RequireStaff><IndividualStaffReport /></RequireStaff>} />
