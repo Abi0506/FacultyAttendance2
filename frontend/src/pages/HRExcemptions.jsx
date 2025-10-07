@@ -276,6 +276,7 @@ function HRExcemptions() {
                         <thead className="table-secondary">
                             <tr>
                                 <th>Staff ID</th>
+                                <th>Name</th>
                                 <th>Type</th>
                                 <th>Date</th>
                                 <th>Session(s)</th>
@@ -293,6 +294,7 @@ function HRExcemptions() {
                                     return (
                                         <tr key={index} className="exemption-row" id={`${exemption.exemptionId}`}>
                                             <td>{exemption.staffId}</td>
+                                            <td>{exemption.exemptionStaffName}</td>
                                             <td>{exemption.exemptionType}</td>
                                             <td>{exemption.exemptionDate}</td>
                                             <td>{exemption.exemptionSession || <span className="text-muted">-------</span>}</td>

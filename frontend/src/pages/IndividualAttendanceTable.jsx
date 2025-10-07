@@ -1,93 +1,140 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../axios';
 import PdfTemplate from '../components/PdfTemplate';
-import { useAuth } from '../auth/authProvider';
+import { useAlert } from '../components/AlertProvider';
 import PageWrapper from '../components/PageWrapper';
+import { useParams } from 'react-router-dom';
 
 function IndividualAttendanceTable() {
-  const { user } = useAuth();
-  const [formData, setFormData] = useState({ startDate: '', endDate: '', employeeId: '' });
-  const [submitted, setSubmitted] = useState(false);
-  const [staffInfo, setStaffInfo] = useState({ name: '', designation: '', department: '' });
+  const { showAlert } = useAlert();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [formData, setFormData] = useState({ startDate: '', endDate: '' });
   const [records, setRecords] = useState([]);
   const [columnsToShow, setColumnsToShow] = useState([]);
   const [error, setError] = useState('');
   const [totalLateMins, setTotalLateMins] = useState(0);
-  const [totalAbsentDays, setTotalAbsentDays] = useState(0);
-  const [absentDays, setAbsentDays] = useState(0);
   const [lateMins, setLateMins] = useState(0);
-  const [markedDays, setMarkedDays] = useState(0);
   const [fromDate, setFromDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const { staffId } = useParams();
 
-  // Date formatting function
-  const formatDate = (dateStr) => {
-    if (!dateStr || typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      return 'Invalid date';
+
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+    if (!query) {
+      setSearchResults([]);
+      return;
     }
-    const [yyyy, mm, dd] = dateStr.split('-');
-    return `${dd}-${mm}-${yyyy}`;
+    try {
+      const res = await axios.get(`/attendance/search/query?q=${query}`);
+      console.log(res.data);
+      setSearchResults(res.data);
+    } catch (err) {
+      console.error(err);
+      setSearchResults([]);
+    }
   };
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleSelectUser = (user) => {
+    setSelectedUser(user);
+    setSearchQuery('');
+    setSearchResults([]);
+    setRecords([]);
+    setColumnsToShow([]);
+    setTotalLateMins(0);
+    setLateMins(0);
+
+    // Set default date range
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const startDate = `2025-07-01`;
+    const lastDay = new Date(yyyy, today.getMonth() + 1, 0).getDate();
+    const endDate = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`;
+    setFormData({ startDate, endDate });
+
+    fetchAttendance(user.staff_id, startDate, endDate);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const fetchAttendance = async (employeeId, start, end) => {
     setError('');
-    setSubmitted(false);
-
     try {
       const res = await axios.post('/attendance/individual_data', {
-        start_date: formData.startDate,
-        end_date: formData.endDate,
-        id: formData.employeeId,
-      });
-      console.log(res.data);
-
-      const { from, end, late_mins, total_absent_days, absent_days, total_late_mins, marked_days, data, timing } = res.data;
-
-      const employee = data[0] || {};
-
-      setStaffInfo({
-        name: employee.name || '',
-        designation: employee.designation || '',
-        department: employee.dept || '',
+        start_date: start,
+        end_date: end,
+        id: employeeId,
       });
 
+      const { from, end: endRes, late_mins, total_late_mins, timing } = res.data;
+
+      setFromDate(from || start);
+      setEndDate(endRes || end);
+      setLateMins(late_mins || 0);
+      setTotalLateMins(total_late_mins || 0);
+
+      if (!timing || timing.length === 0) {
+        showAlert('No logs found', 'danger');
+        setColumnsToShow([]);
+        setRecords([]);
+        return;
+      }
       const allColumns = ['IN1', 'OUT1', 'IN2', 'OUT2', 'IN3', 'OUT3'];
       const visibleCols = allColumns.filter((col) => timing.some((row) => row[col]));
-
-      setFromDate(from || '');
-      setEndDate(end || '');
-      setLateMins(late_mins || 0);
-      setAbsentDays(absent_days || 0);
-      setTotalLateMins(total_late_mins || 0);
-      setTotalAbsentDays(total_absent_days || 0);
-      setMarkedDays(marked_days || 0);
       setColumnsToShow(visibleCols);
       setRecords(timing || []);
-      setSubmitted(true);
     } catch (err) {
+      console.error(err);
       setError(err.response?.data?.error || 'Failed to fetch data.');
-      setSubmitted(false);
-      setRecords([]);
     }
   };
 
+  const handleDateChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleDateSubmit = (e) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    fetchAttendance(selectedUser.staff_id, formData.startDate, formData.endDate);
+  };
+  useEffect(() => {
+    if (staffId) {
+      // Fetch the user by ID
+      const fetchUser = async () => {
+        try {
+          const res = await axios.post('/attendance/search/getuser', { staffId });
+          const user = res.data.staff;
+          handleSelectUser(user); // Reuse your existing function
+        } catch (err) {
+          console.error(err);
+        }
+      };
+      fetchUser();
+    }
+  }, [staffId]);
+
+
+  useEffect(() => {
+    if (selectedUser && formData.startDate && formData.endDate) {
+      fetchAttendance(selectedUser.staff_id, formData.startDate, formData.endDate);
+    }
+  }, [formData.startDate, formData.endDate, selectedUser]);
+
   const handleSaveAsPDF = () => {
+    if (!selectedUser) return;
     const details = [
-      { label: 'Name', value: staffInfo.name || '' },
-      { label: 'Designation', value: staffInfo.designation || '' },
-      { label: 'Department', value: staffInfo.department || '' },
-      { label: `Date Range (Filtered)`, value: `${formatDate(formData.startDate)} to ${formatDate(formData.endDate)}` },
-      { label: `Late Minutes (Filtered)`, value: lateMins },
-      { label: `Absent Days (Filtered)`, value: absentDays },
-      { label: `Date Range (Since Previous Reset)`, value: `${formatDate(fromDate)} to ${formatDate(endDate)}` },
-      { label: 'Total Late Minutes (Since Previous Reset)', value: totalLateMins },
-      { label: 'Total Absent Days (Since Previous Reset)', value: totalAbsentDays },
-      { label: 'Total Marked Days (Since Previous Reset)', value: markedDays + totalAbsentDays },
+      { label: 'Name', value: selectedUser.name },
+      { label: 'ID', value: selectedUser.staff_id },
+      { label: 'Department', value: selectedUser.dept },
+      { label: 'Category', value: selectedUser.category },
+      { label: 'Designation', value: selectedUser.designation },
+      { label: 'Email', value: selectedUser.email },
+      { label: 'Date Range', value: `${fromDate} to ${endDate}` },
+      { label: `Late Minutes (${fromDate} to ${endDate})`, value: lateMins },
+      { label: 'Total Late Minutes', value: totalLateMins },
     ];
     const tableColumn = ['S.No', 'Date', ...columnsToShow, 'Late Mins', 'Working Hours'];
     const tableRows = records.map((rec, idx) => [
@@ -98,123 +145,102 @@ function IndividualAttendanceTable() {
       rec.working_hours,
     ]);
     PdfTemplate({
-      title: 'Individual Attendance Report',
+      title: 'Attendance Report for ' + selectedUser.name,
       tables: [{ columns: tableColumn, data: tableRows }],
       details,
-      fileName: `attendance_${staffInfo.name || 'employee'}.pdf`,
+      fileName: `attendance_${selectedUser.name || 'employee'}.pdf`,
     });
   };
 
-  useEffect(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const startDate = `${yyyy}-${mm}-01`;
-    const lastDay = new Date(yyyy, today.getMonth() + 1, 0).getDate();
-    const endDate = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`;
-    const empId = user.staffId || '';
-    setFormData((prev) => ({
-      ...prev,
-      startDate,
-      endDate,
-      employeeId: empId,
-    }));
-  }, [user]);
-
-  useEffect(() => {
-    if (formData.startDate && formData.endDate && formData.employeeId) {
-      handleSubmit({ preventDefault: () => {} });
-    }
-    // eslint-disable-next-line
-  }, [formData.startDate, formData.endDate, formData.employeeId]);
-
   return (
-    <PageWrapper title={`Attendance Report for ${staffInfo.name}`}>
-      <form className="mb-4">
-        <div className="row mb-3">
-          <div className="col">
-            <label className="form-label">Start Date</label>
-            <input
-              type="date"
-              className="form-control"
-              name="startDate"
-              value={formData.startDate}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div className="col">
-            <label className="form-label">End Date</label>
-            <input
-              type="date"
-              className="form-control"
-              name="endDate"
-              value={formData.endDate}
-              onChange={handleChange}
-              required
-            />
-          </div>
-        </div>
-      </form>
+    <PageWrapper>
+      <div className="d-flex align-items-center justify-content-center position-relative mb-4">
+        <h2 className="fw-bold text-c-primary mb-4">Individual User</h2>
+        <button
+          className="btn btn-c-primary btn-pdf"
+          onClick={handleSaveAsPDF}
+        >
+          Download PDF
+        </button>
+      </div>
+      <hr className="hr w-75 m-auto my-4" />
 
-      {error && <div className="alert alert-danger">{error}</div>}
 
-      {submitted && (
+      <div className="mb-3 position-relative">
+        <input
+          type="text"
+          className="form-control"
+          placeholder="Search by User ID or Name"
+          value={searchQuery}
+          onChange={(e) => handleSearch(e.target.value)}
+        />
+        {searchResults.length > 0 && (
+          <div className="list-group position-absolute w-100 shadow-sm" style={{ zIndex: 10 }}>
+            {searchResults.map((user) => (
+              <button
+                key={user.staff_id}
+                type="button"
+                className="list-group-item list-group-item-action"
+                onClick={() => handleSelectUser(user)}
+              >
+                {user.name} ({user.staff_id})
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {selectedUser && (
         <>
-          <p><strong>Designation:</strong> {staffInfo.designation}</p>
-          <p><strong>Department:</strong> {staffInfo.department}</p>
-          <h5 className="mt-4 mb-3">Details for {formatDate(formData.startDate)} to {formatDate(formData.endDate)}:</h5>
-          <p>
-            <strong>Late Minutes:</strong> {lateMins}
-            <span style={{ display: 'inline-block', width: '2em' }}></span>
-            <strong>Absent Days:</strong> {absentDays}
-          </p>
-          <h5 className="mt-4 mb-3">Details since Previous Reset ({formatDate(fromDate)} to {formatDate(endDate)}):</h5>
-          <p>
-            <strong>Total Late Minutes:</strong> {totalLateMins}
-            <span style={{ display: 'inline-block', width: '2em' }}></span>
-            <strong>Total Absent Days:</strong> {totalAbsentDays}
-            <span style={{ display: 'inline-block', width: '2em' }}></span>
-            <strong>Total Marked Days:</strong> {markedDays + totalAbsentDays}
-          </p>
-          <button className="btn btn-outline-secondary mb-3 mt-3" onClick={handleSaveAsPDF}>
-            Save as PDF
-          </button>
-          <h4 className="mt-4 mb-3">Attendance Details for {formatDate(formData.startDate)} to {formatDate(formData.endDate)}:</h4>
-          <table className="table table-c mt-3">
-            <thead className="table-secondary">
-              <tr>
-                <th>S.No</th>
-                <th>Date</th>
-                {columnsToShow.map((col, i) => (
-                  <th key={i}>{col}</th>
-                ))}
-                <th>Late Mins</th>
-                <th>Working Hours</th>
-              </tr>
-            </thead>
-            <tbody>
-              {records.length === 0 ? (
+          <div className="border rounded p-4 bg-white mb-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+            <div><strong>Name:</strong> {selectedUser.name}</div>
+            <div><strong>ID:</strong> {selectedUser.staff_id}</div>
+            <div><strong>Department:</strong> {selectedUser.dept}</div>
+            <div><strong>Category:</strong> {selectedUser.category}</div>
+            <div><strong>Designation:</strong> {selectedUser.designation}</div>
+            <div><strong>Email:</strong> {selectedUser.email || "No Email"}</div>
+            <div><strong>Late Minutes (filtered):</strong> {lateMins}</div>
+            <div><strong>Total Late Minutes (since reset):</strong> {totalLateMins}</div>
+          </div>
+
+
+          <form className="mb-4 d-flex gap-3 align-items-end" onSubmit={handleDateSubmit}>
+            <div>
+              <label className="form-label">Start Date</label>
+              <input type="date" className="form-control" name="startDate" value={formData.startDate} onChange={handleDateChange} required />
+            </div>
+            <div>
+              <label className="form-label">End Date</label>
+              <input type="date" className="form-control" name="endDate" value={formData.endDate} onChange={handleDateChange} required />
+            </div>
+          </form>
+
+          {error && <div className="alert alert-danger">{error}</div>}
+
+          {records.length > 0 && (
+            <table className="table table-c mt-3">
+              <thead className="table-secondary">
                 <tr>
-                  <td colSpan={columnsToShow.length + 4} className="text-center">
-                    No data available
-                  </td>
+                  <th>S.No</th>
+                  <th>Date</th>
+                  {columnsToShow.map((col, i) => <th key={i}>{col}</th>)}
+                  <th>Late Mins</th>
+                  <th>Working Hours</th>
                 </tr>
-              ) : (
-                records.map((rec, index) => (
-                  <tr key={index}>
-                    <td>{index + 1}</td>
+              </thead>
+              <tbody>
+                {records.map((rec, idx) => (
+                  <tr key={idx}>
+                    <td>{idx + 1}</td>
                     <td>{rec.date}</td>
-                    {columnsToShow.map((col, i) => (
-                      <td key={i}>{rec[col] || '-'}</td>
-                    ))}
+                    {columnsToShow.map((col, i) => <td key={i}>{rec[col] || '-'}</td>)}
                     <td>{rec.late_mins}</td>
                     <td>{rec.working_hours}</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          )}
         </>
       )}
     </PageWrapper>
