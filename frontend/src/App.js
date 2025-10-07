@@ -54,7 +54,7 @@ function RequireStaff({ children }) {
 }
 
 
-// --- Main Application Content ---
+
 function AppContent() {
     const { isAuthenticated, logout, designation } = useAuth();
     const [pendingExemptions, setPendingExemptions] = useState(0);
