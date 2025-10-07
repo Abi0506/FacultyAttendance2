@@ -17,7 +17,7 @@ def db():
 
 
 
-def check_log_info(log):
+def check_log_info(log,date1):
     if not log.user_id or not log.timestamp:
         print(f"Log missing user_id or timestamp: {log}")
         return False
@@ -30,9 +30,14 @@ def check_log_info(log):
 
     date_value = dt.date()
     time_value = dt.time()
-
-    if date_value < datetime.datetime.now().date():
-        return False
+    
+    if date1:
+        if date_value != date1:
+            
+            return False
+    else:
+        if date_value < datetime.datetime.now().date():
+            return False
 
     mydb = db()
     cursor = mydb.cursor()
