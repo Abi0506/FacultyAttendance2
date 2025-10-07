@@ -16,6 +16,8 @@ function DepartmentSummary() {
     const [categoryMappings, setCategoryMappings] = useState({});
     const [totalMarkedDaysCol, setTotalMarkedDaysCol] = useState('Total Marked Days');
     const [recordsPerPage, setRecordsPerPage] = useState(10);
+    const [loading, setLoading] = useState(false);
+    // const [error, setError] = useState("");
 
     // Auto-fill startDate as 1st of current month, endDate as today
     function getDefaultStartDate() {
@@ -87,6 +89,7 @@ function DepartmentSummary() {
     };
 
     const fetchDeptSummary = useCallback(async () => {
+        setLoading(true);
         if (!mainCategory || (mainCategory === 'Department Wise' && selectedDept === '')) {
             setSummaryData({});
             setFilteredData({});
@@ -111,6 +114,7 @@ function DepartmentSummary() {
             setFilteredData({});
             setDate([]);
         }
+        setLoading(false);
     }, [mainCategory, selectedDept, startDate, endDate]);
 
     useEffect(() => {
@@ -226,18 +230,6 @@ function DepartmentSummary() {
         'total_absent_days',
         'total_marked_days',
     ], []);
-
-    // Map for display names (for PDF and Table header rendering)
-    const columnDisplayNames = {
-        name: 'Name',
-        staff_id: 'Staff ID',
-        designation: 'Designation',
-        summary: 'Filtered Late Minutes',
-        absent_days: 'Filtered Absent Days',
-        total_late_mins: 'Total Late Minutes',
-        total_absent_days: 'Total Absent Days',
-        total_marked_days: totalMarkedDaysCol,
-    };
 
     // Sorting logic for Table
     const handleSort = (col) => {
@@ -407,15 +399,13 @@ function DepartmentSummary() {
                 </div>
             </div>
 
+            {loading && <div className="text-center my-4">Loading...</div>}
+
             {mainCategory && (mainCategory === "ALL" || selectedDept !== "") && Object.keys(filteredData).length > 0 ? (
                 <>
-                    {mainCategory === "ALL"
-                        ? Object.entries(filteredData).map(([categoryName, departments]) =>
-                            renderCategory(categoryName, departments)
-                        )
-                        : Object.entries(filteredData).map(([deptName, employees]) =>
-                            renderTable(deptName, employees)
-                        )}
+                    {Object.entries(filteredData).map(([categoryName, departments]) =>
+                        renderCategory(categoryName, departments)
+                    )}
                 </>
             ) : mainCategory === "" ? (
                 <div className="alert alert-info mt-3">Please select a category to view the summary.</div>

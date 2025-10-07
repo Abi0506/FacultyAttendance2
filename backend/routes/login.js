@@ -37,7 +37,7 @@ router.post('/login', async (req, res) => {
   const cookieOptions = {
     httpOnly: true,
     secure: false,
-    sameSite: 'none'
+    sameSite: 'lax'
   };
   if (remember) {
     cookieOptions.maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -59,18 +59,18 @@ router.get('/check_session', (req, res) => {
       return res.status(401).json({ message: 'Invalid token' });
     }
 
-    // res.clearCookie('token', {
-    //   httpOnly: true,
-    //   secure: false,
-    //   sameSite: 'none'
-    // });
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax'
+    });
 
     const token = jwt.sign({ staff_id: decoded.staff_id, designation: decoded.designation }, SECRET_KEY, { expiresIn: '7d' });
 
     res.cookie('token', token, {
       httpOnly: true,
       secure: false,
-      sameSite: 'none',
+      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
     res.json({ message: 'Valid token', designation: decoded.designation, staff_id: decoded.staff_id });
@@ -82,7 +82,7 @@ router.post('/logout', (req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
     secure: false,
-    sameSite: 'none'
+    sameSite: 'lax'
   });
   res.json({ message: 'Logged out successfully' });
 });

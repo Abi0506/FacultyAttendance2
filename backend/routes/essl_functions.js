@@ -7,7 +7,7 @@ require('dotenv').config();
 const scriptPath = process.env.PYTHON_SCRIPT_PATH;
 
 function runPythonScript(args) {
-  const pythonPath = 'c:\\FacultyAttendance2\\FaceMachine\\venv\\Scripts\\python.exe'; // Update to your venv path
+  const pythonPath = process.env.PYTHON_PATH_VENV; // Update to your venv path
   return new Promise((resolve, reject) => {
     exec(`"${pythonPath}" "${scriptPath}" ${args.join(' ')}`, (error, stdout, stderr) => {
       console.log('Python stdout:', stdout);
@@ -124,7 +124,7 @@ router.get('/get_user/:id', async (req, res) => {
 router.post('/delete_user', async (req, res) => {
   const { id } = req.body;
 
- 
+
 
   try {
     const pythonResult = await runPythonScript(['delete_user', id]);
