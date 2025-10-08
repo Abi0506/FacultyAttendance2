@@ -22,9 +22,7 @@ const transporter = nodemailer.createTransport({
 
 
 router.post('/login', async (req, res) => {
-  console.log("Login request received");
   const { userIdorEmail, password, remember } = req.body;
-  console.log("User ID or Email:", userIdorEmail);
   const [rows] = await db.query('SELECT staff_id, password,designation FROM staff WHERE staff_id = ? or email = ?', [userIdorEmail, userIdorEmail]);
   const user = rows[0];
 
@@ -89,14 +87,13 @@ router.post('/logout', (req, res) => {
 
 
 router.post('/reset-password', async (req, res) => {
-  console.log("reset password request reice")
   const { UserOrEmail, frontendOrigin } = req.body;
   if (!UserOrEmail) {
     return res.status(400).json({ success: false, message: 'User ID or Email is required' });
   }
   try {
     const [rows] = await db.query(
-      'SELECT staff_id, email FROM staff WHERE staff_id = ? OR email = ?',
+      'SELECT staff_id, email,name FROM staff WHERE staff_id = ? OR email = ?',
       [UserOrEmail, UserOrEmail]
     );
     if (rows.length === 0) {
@@ -122,12 +119,50 @@ router.post('/reset-password', async (req, res) => {
     const resetLink = `${origin}/reset-password?token=${resetToken}&id=${user.staff_id}`;
 
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `Faculty Biometric Attendance`,
       to: user.email,
-      subject: 'Password Reset Request',
-      html: `<p>You requested a password reset. Click the link below to reset your password. This link is valid for 15 minutes.</p>
-             <a href="${resetLink}">${resetLink}</a>`
+      subject: 'Password Reset Request – Faculty Biometric Attendance',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; padding: 24px; background-color: #fafafa;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="color: #004aad;">Faculty Attendance System</h2>
+          </div>
+    
+          <p>Dear <strong>${user.name}</strong>,</p>
+    
+          <p>We received a request to reset your password for your Faculty Attendance System account.</p>
+          <p>
+            To proceed, please click the button below. This link will remain valid for <strong>15 minutes</strong>.
+          </p>
+    
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetLink}" 
+               style="background-color: #004aad; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+               Reset Password
+            </a>
+          </div>
+    
+          <p>If the button above doesn’t work, you can copy and paste the link below into your browser:</p>
+          <p style="word-break: break-all; color: #004aad;">
+            <a href="${resetLink}">${resetLink}</a>
+          </p>
+    
+          <p>If you did not request this password reset, please ignore this email. Your account will remain secure.</p>
+    
+          <br>
+          <p>Kind regards,</p>
+          <p>
+             Faculty Biometric Attendance<br>
+          </p>
+    
+          <hr style="margin-top: 30px;">
+          <p style="font-size: 12px; color: #777; text-align: center;">
+            This is an automated message, please do not reply to this email.
+          </p>
+        </div>
+      `
     };
+
     await transporter.sendMail(mailOptions);
 
     return res.json({ success: true, message: 'Password reset link sent to your email' });

@@ -22,7 +22,6 @@ function runPythonScript(args) {
 
 router.post('/edit_user', async (req, res) => {
   const { id, name, dept, email, designation, category } = req.body;
-  console.log(req.body);
   try {
     const [name1] = await db.query(`SELECT name FROM staff WHERE staff_id = ?`, [id]);
     if (name1 !== name[0].name) {

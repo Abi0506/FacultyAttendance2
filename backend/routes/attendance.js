@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const authenticateToken = require('./authMiddleware');
 
 
 
@@ -441,7 +442,6 @@ router.post('/individual_data', async (req, res) => {
       timing: result,
       data: staffInfo
     };
-    console.log("Result Data:", resultData);
     res.json(resultData);
   } catch (error) {
     console.error('Error in /individual_data:', error);
@@ -700,7 +700,7 @@ router.post("/categories/delete", async (req, res) => {
   }
 });
 
-router.get('/staff', async (req, res) => {
+router.get('/staff', authenticateToken, async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT s.staff_id, s.name, s.dept, s.designation, s.email, s.category, c.category_description

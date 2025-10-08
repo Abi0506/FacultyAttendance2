@@ -29,7 +29,6 @@ function IndividualAttendanceTable() {
     }
     try {
       const res = await axios.get(`/attendance/search/query?q=${query}`);
-      console.log(res.data);
       setSearchResults(res.data);
     } catch (err) {
       console.error(err);
