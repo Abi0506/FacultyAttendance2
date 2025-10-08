@@ -1,9 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const authenticateToken = require('./authMiddleware');
-
-
 
 async function start_end_time() {
   const today = new Date();
@@ -700,7 +697,7 @@ router.post("/categories/delete", async (req, res) => {
   }
 });
 
-router.get('/staff', authenticateToken, async (req, res) => {
+router.get('/staff', async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT s.staff_id, s.name, s.dept, s.designation, s.email, s.category, c.category_description
