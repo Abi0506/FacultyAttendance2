@@ -115,7 +115,7 @@ function AttendanceViewer() {
         columns: [...columnsToShow],
         data: logs.map(log => [...columnsToShow.map(col => log[col] || '-')])
       }],
-      fileName: `logs[${newDate}].pdf`
+      fileName: `Logs[${newDate}].pdf`
     });
   };
 

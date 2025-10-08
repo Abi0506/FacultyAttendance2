@@ -131,10 +131,10 @@ function IndividualAttendanceTable() {
       { label: 'Department', value: selectedUser.dept },
       { label: 'Category', value: selectedUser.category },
       { label: 'Designation', value: selectedUser.designation },
-      { label: 'Email', value: selectedUser.email },
+      { label: 'Email', value: selectedUser.email || 'No Email' },
       { label: 'Date Range', value: `${fromDate} to ${endDate}` },
-      { label: `Late Minutes (${fromDate} to ${endDate})`, value: lateMins },
-      { label: 'Total Late Minutes', value: totalLateMins },
+      { label: `Late Minutes (Filtered)`, value: lateMins },
+      { label: 'Late Minutes(Total)', value: totalLateMins },
     ];
     const tableColumn = ['S.No', 'Date', ...columnsToShow, 'Late Mins', 'Working Hours'];
     const tableRows = records.map((rec, idx) => [
@@ -148,7 +148,7 @@ function IndividualAttendanceTable() {
       title: 'Attendance Report for ' + selectedUser.name,
       tables: [{ columns: tableColumn, data: tableRows }],
       details,
-      fileName: `attendance_${selectedUser.name || 'employee'}.pdf`,
+      fileName: `Attendance_${selectedUser.name || 'employee'}.pdf`,
     });
   };
 
