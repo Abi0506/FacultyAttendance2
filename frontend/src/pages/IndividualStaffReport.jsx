@@ -81,15 +81,23 @@ function IndividualStaffReport() {
       title: 'Attendance Report for ' + (staffInfo.name),
       tables: [{ columns: tableColumn, data: tableRows }],
       details,
-      fileName: `attendance_${staffInfo.name || 'employee'}.pdf`,
+      fileName: `Attendance_${staffInfo.name || 'employee'}.pdf`,
     });
   };
 
   useEffect(() => {
     const today = new Date();
     const yyyy = today.getFullYear();
+    const janFirst = new Date(yyyy, 0, 1);
+    const julFirst = new Date(yyyy, 6, 1);
+    let startDateObj;
+    if (today >= julFirst) {
+      startDateObj = julFirst; // After July 1 -> start date is July 1
+    } else if (today >= janFirst) {
+      startDateObj = janFirst; // Between Jan 1 and Jun 30 -> start date is Jan 1
+    }
+    const startDate = `${startDateObj.getFullYear()}-${String(startDateObj.getMonth() + 1).padStart(2, '0')}-${String(startDateObj.getDate()).padStart(2, '0')}`;
     const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const startDate = `${yyyy}-${mm}-01`;
     const lastDay = new Date(yyyy, today.getMonth() + 1, 0).getDate();
     const endDate = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`;
     const empId = user.staffId || '';

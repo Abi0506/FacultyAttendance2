@@ -12,8 +12,8 @@ function Table({
     onFlagClick,
     isFlagMode,
     onRowClick,
-    currentPage: externalPage,     // 👈 new prop alias
-    onPageChange: externalSetPage, // 👈 new prop alias
+    currentPage: externalPage,
+    onPageChange: externalSetPage,
 }) {
     // Use external pagination if provided, otherwise internal state
     const [internalPage, setInternalPage] = useState(1);
@@ -59,16 +59,19 @@ function Table({
                         {columns.map((col, i) => (
                             <th
                                 key={i}
-                                onClick={() => onSort(col)}
+                                onClick={() => onSort && onSort(col)}
                                 style={{ cursor: "pointer", userSelect: "none" }}
                                 className="sortable-header"
                             >
                                 {capitalize(col)}{" "}
-                                {sortConfig.key === col
-                                    ? sortConfig.direction === "asc"
-                                        ? "▲"
-                                        : "▼"
-                                    : "⇅"}
+                                {onSort
+                                    ? (sortConfig?.key === col
+                                        ? sortConfig.direction === "asc"
+                                            ? "▲"
+                                            : "▼"
+                                        : "⇅")
+                                    : ""}
+
                             </th>
                         ))}
                     </tr>
@@ -188,8 +191,8 @@ Table.propTypes = {
     onFlagClick: PropTypes.func,
     isFlagMode: PropTypes.bool,
     onRowClick: PropTypes.func,
-    currentPage: PropTypes.number,    
-    onPageChange: PropTypes.func,     
+    currentPage: PropTypes.number,
+    onPageChange: PropTypes.func,
 };
 
 export default Table;

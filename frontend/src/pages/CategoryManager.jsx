@@ -136,7 +136,7 @@ function CategoryManagerPage() {
         PdfTemplate({
             title,
             tables: [{ columns, data }],
-            fileName: 'categories.pdf'
+            fileName: 'Categories.pdf'
         });
     };
 

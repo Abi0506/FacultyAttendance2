@@ -276,6 +276,41 @@ router.post('/department', async (req, res) => {
   }
 });
 
+router.post('/add_department', async (req, res) => {
+  const { dept } = req.body;
+  if (!dept || !dept.trim()) {
+    return res.status(400).json({ success: false, message: 'Department name cannot be empty' });
+  }
+  try {
+    const [existing] = await db.query('SELECT dept FROM department WHERE dept = ?', [dept.trim()]);
+    if (existing.length > 0) {
+      return res.status(400).json({ success: false, message: 'Department already exists' });
+    }
+    await db.query('INSERT INTO department (dept) VALUES (?)', [dept.trim()]);
+    res.json({ success: true, message: 'Department added successfully' });
+  } catch (error) {
+
+    res.status(500).json({ success: false, message: error.message });
+  }
+
+});
+router.post('/add_designation', async (req, res) => {
+  const { designation } = req.body;
+  if (!designation || !designation.trim()) {
+    return res.status(400).json({ success: false, message: 'Designation name cannot be empty' });
+  }
+  try {
+    const [existing] = await db.query('SELECT designation FROM designation WHERE designation = ?', [designation.trim()]);
+    if (existing.length > 0) {
+      return res.status(400).json({ success: false, message: 'Designation already exists' });
+    }
+    await db.query('INSERT INTO designation (designation) VALUES (?)', [designation.trim()]);
+    res.json({ success: true, message: 'Designation added successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.post('/designation', async (req, res) => {
 
   try {
@@ -680,12 +715,12 @@ router.get('/staff', async (req, res) => {
 });
 
 router.post('/devices/add', async (req, res) => {
-  let { ip_address, device_name, device_location } = req.body;
+  let { ip_address, device_name, device_location, maintenance } = req.body;
 
   try {
     const [result] = await db.query(
-      'INSERT INTO devices (ip_address, device_name, device_location) VALUES (?, ?, ?)',
-      [ip_address, device_name, device_location]
+      'INSERT INTO devices (ip_address, device_name, device_location, maintenance) VALUES (?, ?, ?, ?)',
+      [ip_address, device_name, device_location, maintenance || 0]
     );
 
     const [rows] = await db.query('SELECT * FROM devices WHERE device_id = ?', [result.insertId]);

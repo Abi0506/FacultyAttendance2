@@ -50,7 +50,7 @@ function UserManager() {
         (member.name && member.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (member.dept && member.dept.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (member.designation && member.designation.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (member.email && member.email.toLowerCase().includes(searchQuery.toLowerCase())) 
+        (member.email && member.email.toLowerCase().includes(searchQuery.toLowerCase()))
 
     );
     if (staffSortConfig.key) {
@@ -196,7 +196,6 @@ function UserManager() {
     }
     try {
       const res = await axios.get(`/attendance/get_user/${editSearchId}`);
-      console.log('Fetched user response:', res.data);
       if (res.data.success) {
         const user = res.data.user;
         const newEditUser = {
@@ -208,7 +207,6 @@ function UserManager() {
           category: user.category ? user.category.toString() : '',
         };
         setEditUser(newEditUser);
-        console.log('Set editUser state:', newEditUser);
       } else {
         showAlert(res.data.message || 'User not found', 'danger');
         setEditUser(null);
@@ -484,16 +482,6 @@ function UserManager() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="col-md-6">
-                <label className="form-label">Email</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={editUser.email ?? ''}
-                  onChange={(e) => setEditUser({ ...editUser, email: e.target.value || null })}
-                  placeholder="Email (optional)"
-                />
               </div>
               <div className="col-md-6">
                 <label className="form-label">Category</label>
