@@ -115,7 +115,6 @@ function DeviceManager() {
         showAlert('Invalid IP address format', 'error');
         return;
       }
-      console.log(addForm.maintenance)
       const res = await axios.post('/attendance/devices/add', { ...addForm });
       if (res.data.success && res.data.device) {
         setDevices([...devices, res.data.device]);

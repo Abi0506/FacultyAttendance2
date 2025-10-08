@@ -21,7 +21,6 @@ function runPythonFunction(funcName, args = []) {
 // POST /instant_logs
 router.post("/instant", async (req, res) => {
   const { date, type } = req.body;
-    console.log(date,type);
   if (!date || !type) {
     return res.status(400).json({ status: "error", message: "date and type are required" });
   }
