@@ -17,7 +17,7 @@ def get_instant_list(date):
         return f"Attendance list generated for {date}: {result}"
     except Exception as e:
         return f"Error while generating list for {date}: {str(e)}"
-
+get_instant_list("2025-10-06")
 
 if __name__ == "__main__":
     import sys

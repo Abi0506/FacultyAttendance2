@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../axios';
 import PageWrapper from '../components/PageWrapper';
+import Table from '../components/Table';
 import { useNavigate } from 'react-router-dom';
 import { useAlert } from '../components/AlertProvider';
 
@@ -27,6 +28,51 @@ function UserManager() {
   const [staffLoading, setStaffLoading] = useState(false);
   const [showStaffTable, setShowStaffTable] = useState(false);
   const [searchQuery, setSearchQuery] = useState(''); // Search input
+  // Table sorting state for staff table
+  const [staffSortConfig, setStaffSortConfig] = useState({ key: 'staff_id', direction: 'asc' });
+  // Columns for the staff table
+  const staffColumns = [
+    'staff_id',
+    'name',
+    'dept',
+    'designation',
+    'email',
+    'category',
+    'category_description',
+  ];
+
+  // Sorting logic for staff table
+  const sortedFilteredStaff = React.useMemo(() => {
+    let filtered = staff.filter(
+      (member) =>
+        !searchQuery ||
+        (member.staff_id && member.staff_id.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (member.name && member.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (member.dept && member.dept.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (member.designation && member.designation.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (member.email && member.email.toLowerCase().includes(searchQuery.toLowerCase()))
+
+    );
+    if (staffSortConfig.key) {
+      filtered = [...filtered].sort((a, b) => {
+        const aVal = a[staffSortConfig.key] ?? '';
+        const bVal = b[staffSortConfig.key] ?? '';
+        if (aVal < bVal) return staffSortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return staffSortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return filtered;
+  }, [staff, searchQuery, staffSortConfig]);
+
+  const handleStaffSort = (col) => {
+    setStaffSortConfig((prev) => {
+      if (prev.key === col) {
+        return { key: col, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key: col, direction: 'asc' };
+    });
+  };
   const navigate = useNavigate();
 
 
@@ -150,7 +196,6 @@ function UserManager() {
     }
     try {
       const res = await axios.get(`/attendance/get_user/${editSearchId}`);
-      console.log('Fetched user response:', res.data);
       if (res.data.success) {
         const user = res.data.user;
         const newEditUser = {
@@ -162,7 +207,6 @@ function UserManager() {
           category: user.category ? user.category.toString() : '',
         };
         setEditUser(newEditUser);
-        console.log('Set editUser state:', newEditUser);
       } else {
         showAlert(res.data.message || 'User not found', 'danger');
         setEditUser(null);
@@ -228,14 +272,7 @@ function UserManager() {
     }
   };
 
-  // Filter staff by staff_id or name
-  const filteredStaff = staff.filter(
-    (member) =>
-      !searchQuery ||
-      (member.staff_id &&
-        member.staff_id.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (member.name && member.name.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+
 
   return (
     <PageWrapper title="User Manager">
@@ -267,41 +304,21 @@ function UserManager() {
                   <span className="visually-hidden">Loading...</span>
                 </div>
               </div>
-            ) : filteredStaff.length === 0 ? (
+            ) : sortedFilteredStaff.length === 0 ? (
               <p className="text-muted text-center py-3">
                 {searchQuery ? 'No staff found matching the search.' : 'No staff found.'}
               </p>
             ) : (
               <div className="table-responsive rounded-3">
-                <table className="table table-hover">
-                  <thead className="table-light">
-                    <tr>
-                      <th>Staff ID</th>
-                      <th>Name</th>
-                      <th>Dept</th>
-                      <th>Designation</th>
-                      <th>Email</th>
-                      <th>Category</th>
-                      <th>Category Description</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredStaff.map((member) => (
-                      <tr key={member.staff_id}
-                        onClick={() => navigate(`/individual/${member.staff_id}`)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <td>{member.staff_id}</td>
-                        <td>{member.name || '—'}</td>
-                        <td>{member.dept || '—'}</td>
-                        <td>{member.designation || '—'}</td>
-                        <td>{member.email || '—'}</td>
-                        <td>{member.category || '—'}</td>
-                        <td>{member.category_description || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <Table
+                  columns={staffColumns}
+                  data={sortedFilteredStaff}
+                  sortConfig={staffSortConfig}
+                  onSort={handleStaffSort}
+                  rowsPerPage={10}
+                  selectedDate={null}
+                  onRowClick={(row) => navigate(`/individual/${row.staff_id}`)}
+                />
               </div>
             )}
           </>
@@ -465,16 +482,6 @@ function UserManager() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="col-md-6">
-                <label className="form-label">Email</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={editUser.email ?? ''}
-                  onChange={(e) => setEditUser({ ...editUser, email: e.target.value || null })}
-                  placeholder="Email (optional)"
-                />
               </div>
               <div className="col-md-6">
                 <label className="form-label">Category</label>

@@ -23,9 +23,19 @@ function DepartmentSummary() {
     function getDefaultStartDate() {
         const today = new Date();
         const year = today.getFullYear();
-        const month = (today.getMonth() + 1).toString().padStart(2, '0');
-        return `${year}-${month}-01`;
+        const janFirst = new Date(year, 0, 1); // January 1
+        const julFirst = new Date(year, 6, 1); // July 1
+
+        let startDateObj;
+        if (today >= julFirst) {
+            startDateObj = julFirst;
+        } else {
+            startDateObj = janFirst;
+        }
+        const startDate = `${startDateObj.getFullYear()}-${String(startDateObj.getMonth() + 1).padStart(2, '0')}-${String(startDateObj.getDate()).padStart(2, '0')}`;
+        return startDate;
     }
+
     function getDefaultEndDate() {
         return new Date().toISOString().split('T')[0];
     }
@@ -188,7 +198,7 @@ function DepartmentSummary() {
             PdfTemplate({
                 title,
                 tables,
-                fileName: `dept_summary_ALL_${date[0]}_to_${date[1]}.pdf`
+                fileName: `Dept_Summary_ALL_${date[0]}_to_${date[1]}.pdf`
             });
         } else {
             let data = [];
@@ -214,7 +224,7 @@ function DepartmentSummary() {
             PdfTemplate({
                 title,
                 tables: [{ columns: tableHeaders, data, title: deptTitle }],
-                fileName: `dept_summary_${mainCategory}_${selectedDept || 'ALL'}_${date[0]}_to_${date[1]}.pdf`
+                fileName: `Dept_Summary_${mainCategory}_${selectedDept || 'ALL'}_${date[0]}_to_${date[1]}.pdf`
             });
         }
     };
@@ -224,7 +234,7 @@ function DepartmentSummary() {
         'name',
         'staff_id',
         'designation',
-        'summary',
+        'late_mins',
         'absent_days',
         'total_late_mins',
         'total_absent_days',

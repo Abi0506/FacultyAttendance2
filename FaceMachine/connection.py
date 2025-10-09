@@ -6,7 +6,7 @@ def db():
         mydb = mysql.connector.connect(
                 host="localhost",
                 user="root",
-                password="redwolf_8324",
+                password="root",
                 database="faculty_data_logs",
                 use_pure=True   
             )
@@ -19,7 +19,7 @@ def db():
 
 def check_log_info(log,date1):
     if not log.user_id or not log.timestamp:
-        print(f"Log missing user_id or timestamp: {log}")
+        # print(f"Log missing user_id or timestamp: {log}")
         return False
 
     # Fix: handle both str and datetime.datetime
@@ -32,7 +32,8 @@ def check_log_info(log,date1):
     time_value = dt.time()
     
     if date1:
-        if date_value != date1:
+        
+        if str(date_value) != str(date1):
             
             return False
     else:

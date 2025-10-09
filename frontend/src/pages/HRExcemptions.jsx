@@ -222,7 +222,7 @@ function HRExcemptions() {
         PdfTemplate({
             title,
             tables: [{ columns, data }],
-            fileName: 'exemptions.pdf',
+            fileName: `Exemptions (${startDate} - ${endDate}).pdf`,
             fromDate: startDate,
             toDate: endDate
         });

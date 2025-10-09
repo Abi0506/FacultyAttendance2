@@ -130,3 +130,7 @@ def process_exemptions():
         if conn and conn.is_connected():
             cursor.close()
             conn.close()
+
+
+if __name__ == "__main__":
+    process_exemptions("")            
