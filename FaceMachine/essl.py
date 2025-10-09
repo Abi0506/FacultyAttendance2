@@ -1,6 +1,7 @@
 import mysql.connector
 from datetime import datetime, timedelta
 import math
+import math
 from connection import db as db_connect
 from holiday import get_holidays
 
@@ -31,6 +32,7 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
         )
         flagged_times_raw = cursor.fetchall()
         flagged_times = {str(t[0]) for t in flagged_times_raw}
+        flagged_times = {str(t[0]) for t in flagged_times_raw}
         print(f"Flagged times for {staff_id}:", flagged_times)
 
         cursor.execute("SELECT * FROM `leave` WHERE staff_id = %s AND %s BETWEEN start_date AND end_date",
@@ -56,10 +58,14 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
         category_data = next((cat for cat in categories if cat[0] == category_id), None)
         if not category_data:
             print(f"No category data found for staff {staff_id}")
+            print(f"No category data found for staff {staff_id}")
             continue
 
         late_mins = 0
         attendance = 'P'
+        is_fixed_hours = category_data[7] == 'fixed'
+        half_day_morning = False
+        half_day_afternoon = False
         is_fixed_hours = category_data[7] == 'fixed'
         half_day_morning = False
         half_day_afternoon = False
@@ -81,7 +87,24 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
         n = len(time_objs)
 
         if is_fixed_hours:
+                continue
+
+        if not time_logs:
+            attendance = 'A'
+            print(f"Staff ID: {staff_id}, Date: {date}, Late Minutes: {round(late_mins, 2)}, Attendance: {attendance}")
+            cursor.execute(
+                "INSERT INTO report (staff_id, date, late_mins, attendance) VALUES (%s, %s, %s, %s)",
+                (staff_id, date, late_mins, attendance)
+            )
+            continue
+
+        time_objs = [datetime.strptime(f"{date} {t}", "%Y-%m-%d %H:%M:%S") for t in time_logs]
+        n = len(time_objs)
+
+        if is_fixed_hours:
             in_time = category_data[2]
+            break_in = category_data[3]
+            break_out = category_data[4]
             break_in = category_data[3]
             break_out = category_data[4]
             out_time = category_data[5]
@@ -165,6 +188,7 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
                     entry_time = time_objs[i + 1]
                     break_mins += (entry_time - exit_time).total_seconds() / 60
                     print(f"Break mins: {break_mins:.2f}")
+                    print(f"Break mins: {break_mins:.2f}")
                 except IndexError:
                     continue
                 if not half_day_afternoon and break_mins > allowed_break:
@@ -192,7 +216,9 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
             print(f"Inserted report for {staff_id}: Date: {date}, Late Minutes: {late_mins}, Attendance: {attendance}")
         except mysql.connector.Error as err:
             print(f"Error inserting report for {staff_id}: {err}")
+            print(f"Error inserting report for {staff_id}: {err}")
 
+def process_logs(date1=None):
 def process_logs(date1=None):
     conn = db_connect()
     if not conn:
