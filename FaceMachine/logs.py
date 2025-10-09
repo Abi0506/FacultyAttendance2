@@ -31,5 +31,5 @@ def logs_main():
             schedule.run_pending()
             time.sleep(1)
         
-
-logs_main()        
+if __name__ == "__main__":
+    logs_main()        

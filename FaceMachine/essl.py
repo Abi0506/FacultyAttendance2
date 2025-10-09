@@ -237,5 +237,5 @@ def process_logs(date1=None):
     finally:
         cursor.close()
         conn.close()
-
-process_logs()
+if __name__ == "__main__":
+    process_logs("2025-10-08")
