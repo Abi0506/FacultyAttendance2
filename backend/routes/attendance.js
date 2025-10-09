@@ -280,7 +280,7 @@ router.post('/dept_summary', async (req, res) => {
 
     const start_Date = formatDate(start_date);
     const end_Date = formatDate(end_date);
-    const total_marked_days_col = 'Total Marked Days';
+    const total_marked_days_col = 'Total Deducted Days';
 
     res.json({ date: [start_Date, end_Date], data: result, total_marked_days_col });
   } catch (error) {

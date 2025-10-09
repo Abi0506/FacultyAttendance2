@@ -43,7 +43,6 @@ function AttendanceViewer() {
     setSelectedDate(`${yyyy}-${mm}-${dd}`);
   }, []);
 
-  // ----- ATTENDANCE LOG METHODS -----
   const fetchAttendanceLogs = useCallback(async (date) => {
     if (!date) return;
     setLoading(true);
@@ -106,26 +105,23 @@ function AttendanceViewer() {
     window.dispatchEvent(new Event('flagModeChanged'));
   }
 
-  // ----- PDF EXPORT -----
   const handleSaveAsPDF = () => {
     const newDate = selectedDate.split('-').reverse().join('-');
     PdfTemplate({
       title: `Faculty Attendance Record - ${newDate}`,
       tables: [{
         columns: [...columnsToShow],
-        data: logs.map(log => [...columnsToShow.map(col => log[col] || '-')])
+        data: sortedLogs.map(log => [...columnsToShow.map(col => log[col] || '-')])
       }],
       fileName: `Logs[${newDate}].pdf`
     });
   };
 
-  // Fetch logs and flags on date change
   useEffect(() => {
     fetchAttendanceLogs(selectedDate);
     fetchFlags(selectedDate);
   }, [selectedDate, fetchAttendanceLogs, fetchFlags]);
 
-  // Sorting
   const handleSort = (column) => {
     setSortConfig(prev => prev.key === column
       ? { key: column, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
@@ -133,7 +129,6 @@ function AttendanceViewer() {
     );
   };
 
-  // Filter & sort logs
   const filteredLogs = logs.filter(log =>
     log.staff_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -251,8 +246,8 @@ function AttendanceViewer() {
         flaggedCells={flaggedCells}
         onFlagClick={handleFlagTime}
         isFlagMode={isFlagMode}
-        currentPage={currentPage}         
-        onPageChange={setCurrentPage} 
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
       />
     </PageWrapper>
   );

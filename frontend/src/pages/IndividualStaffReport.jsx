@@ -13,6 +13,7 @@ function IndividualStaffReport() {
   const [columnsToShow, setColumnsToShow] = useState([]);
   const [error, setError] = useState('');
   const [totalLateMins, setTotalLateMins] = useState(0);
+  const [totalAbsentDays, setTotalAbsentDays] = useState(0);
   const [lateMins, setLateMins] = useState(0);
   const [fromDate, setFromDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -39,7 +40,7 @@ function IndividualStaffReport() {
         end,
         late_mins,
         total_late_mins,
-        data,
+        data, total_absent_days,
         timing
       } = res.data;
 
@@ -59,6 +60,7 @@ function IndividualStaffReport() {
       setEndDate(end || formData.endDate);
       setLateMins(late_mins || 0);
       setTotalLateMins(total_late_mins || 0);
+      setTotalAbsentDays(total_absent_days || 0);
       setColumnsToShow(visibleCols);
       setRecords(recordsData);
       setSubmitted(true);
@@ -200,6 +202,9 @@ function IndividualStaffReport() {
               </div>
               <div className="col-md-6">
                 <span className="fw-semibold">Total Late Minutes (Since Prev. Reset): </span>{totalLateMins}
+              </div>
+              <div className="col-md-6">
+                <span className="fw-semibold">Total days to be Deducted:</span>{totalAbsentDays}
               </div>
             </div>
           </div>

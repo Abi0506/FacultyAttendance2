@@ -205,8 +205,9 @@ function DepartmentSummary() {
             let deptTitle = '';
             Object.entries(filteredData).forEach(([deptName, employees]) => {
                 deptTitle = `${deptName} Department`;
-                if (Array.isArray(employees)) {
-                    let sortedEmployees = getSortedArrayForPDF(employees);
+                const allEmployees = Object.values(employees).flat();
+                if (Array.isArray(allEmployees)) {
+                    let sortedEmployees = getSortedArrayForPDF(allEmployees);
                     sortedEmployees.forEach(emp => {
                         data.push([
                             emp.name || 'N/A',
