@@ -13,9 +13,10 @@ const formatDate = (dateStr) => {
 const capitalize = (str) => {
     return str
         .split('_')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()) // capitalize first letter
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(' ');
 };
+
 const PdfTemplate = ({
     title = '',
     tables = [],
@@ -29,6 +30,10 @@ const PdfTemplate = ({
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
+    const fixedTopMargin = 10; // Consistent top margin for all pages (including continuations)
+    const titleHeight = 8; // Approximate height added by a title
+    const minTableSpace = 20; // Minimum space for at least table header + one row
+    const footerReserve = 25; // Space for footer
 
     // Helper function for footer
     const drawFooter = () => {
@@ -56,7 +61,7 @@ const PdfTemplate = ({
     const titleWidth = doc.getTextWidth(title);
     doc.text(title, (pageWidth - titleWidth) / 2, bannerHeight + 15);
 
-    let startY = bannerHeight + 20;
+    let startY = bannerHeight + 25;
 
     // Record date text
     doc.setFontSize(10);
@@ -87,52 +92,51 @@ const PdfTemplate = ({
             body: groupedData,
             theme: 'plain',
             styles: { fontSize: 9, cellPadding: 1.3, overflow: 'linebreak', fontStyle: 'bold' },
-            margin: { left: 14, right: 14 },
+            margin: { left: 14, right: 14, top: fixedTopMargin, bottom: footerReserve },
             tableWidth: 'auto',
             didDrawPage: () => {
                 drawFooter();
             },
         });
 
-        startY = doc.lastAutoTable.finalY + 6; // tighter spacing after table
+        startY = doc.lastAutoTable.finalY + 6;
     }
 
     // Draw tables
     if (Array.isArray(tables) && tables.length > 0) {
         tables.forEach((table) => {
-            const minTableSpace = 40; // Minimum space needed for a table title + at least one row
-            const footerReserve = 26; // Space for footer and line
-            if (startY > pageHeight - minTableSpace - footerReserve) {
+            let effectiveTitleHeight = table.title ? titleHeight : 0;
+            if (startY + effectiveTitleHeight + footerReserve + minTableSpace > pageHeight) {
                 doc.addPage();
-                startY = 20; // Top margin for new page
+                startY = fixedTopMargin; // Start from fixed top on new page
             }
+
+            // Draw title if present
             if (table.title) {
-                doc.setFontSize(10);
+                doc.setFontSize(11);
                 doc.setFont('helvetica', 'bold');
                 doc.text(String(table.title), 14, startY);
-                startY += 8;
+                startY += titleHeight;
             }
 
-            // If after title, not enough space for table, add a new page
-            if (startY > pageHeight - minTableSpace - footerReserve) {
-                doc.addPage();
-                startY = 20;
-            }
-
-            const margin = { top: startY, bottom: 20, left: 14, right: 14 };
+            // Now draw the table (there should be enough space for min)
             autoTable(doc, {
                 startY,
+                showHead: 'firstPage',
                 head: [table.columns.map(col => capitalize(col))],
                 body: table.data,
                 theme: "plain",
-                styles: { fontSize: 9, cellPadding: 2, overflow: 'linebreak' },
+                styles: { fontSize: 8.5, cellPadding: 2, overflow: 'linebreak' },
                 headStyles: { fillColor: [63, 63, 149], textColor: [255, 255, 255] },
-                margin,
+                margin: { top: fixedTopMargin, bottom: footerReserve, left: 14, right: 14 }, // FIXED top margin
+                pageBreak: 'auto',
+                rowPageBreak: 'avoid',
                 didDrawPage: () => {
                     drawFooter();
                 }
             });
-            startY = doc.lastAutoTable.finalY + 10;
+
+            startY = doc.lastAutoTable.finalY + 6;
         });
     } else {
         drawFooter(); // Footer even if no tables

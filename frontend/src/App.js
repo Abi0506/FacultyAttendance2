@@ -139,7 +139,7 @@ function AppContent() {
                                         <ul className="dropdown-menu show-on-hover" aria-labelledby="attendanceDropdown">
                                             <li><Link className="dropdown-item" to="/view">Live</Link></li>
                                             <li><hr className="dropdown-divider" /></li>
-                                            <li><Link className="dropdown-item" to="/summary">Department</Link></li>
+                                            <li><Link className="dropdown-item" to="/summary">Cumulative</Link></li>
                                             <li><hr className="dropdown-divider" /></li>
                                             <li><Link className="dropdown-item" to="/individual">Individual</Link></li>
                                             <li> <hr className='dropdown-divider' /></li>

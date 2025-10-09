@@ -94,6 +94,35 @@ router.post('/get_flags', async (req, res) => {
   }
 });
 
+// Fetch all flagged times for a staff member in a date range
+router.post('/get_flags_for_staff', async (req, res) => {
+  try {
+    const { staff_id, start_date, end_date } = req.body;
+    if (!staff_id || !start_date || !end_date) {
+      return res.status(400).json({ error: 'staff_id, start_date and end_date are required' });
+    }
+
+    const [rows] = await db.query(
+      `SELECT \`date\`, \`time\` FROM attendance_flags 
+       WHERE staff_id = ? AND \`date\` BETWEEN ? AND ?`,
+      [staff_id, start_date, end_date]
+    );
+
+    // Return as { staff_id_date_time: true }
+    const flaggedMap = {};
+    rows.forEach(row => {
+      const timeStr = row.time.toString().slice(0, 8); // 'HH:MM:SS'
+      flaggedMap[`${staff_id}_${row.date}_${timeStr}`] = true;
+    });
+
+    res.json(flaggedMap);
+
+  } catch (err) {
+    console.error('Error fetching flagged times for staff:', err);
+    res.status(500).json({ error: 'Failed to fetch flagged times' });
+  }
+});
+
 
 
 router.post('/attendance_viewer', async (req, res) => {
@@ -251,7 +280,7 @@ router.post('/dept_summary', async (req, res) => {
 
     const start_Date = formatDate(start_date);
     const end_Date = formatDate(end_date);
-    const total_marked_days_col = 'Total Marked Days';
+    const total_marked_days_col = 'Total Deducted Days';
 
     res.json({ date: [start_Date, end_Date], data: result, total_marked_days_col });
   } catch (error) {
