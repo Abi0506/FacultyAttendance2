@@ -238,5 +238,4 @@ def process_logs(date1=None):
         cursor.close()
         conn.close()
 
-if __name__ == "__main__":
-    process_logs()
+process_logs()

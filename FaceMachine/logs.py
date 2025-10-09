@@ -1,7 +1,4 @@
-from connection import check_log_info
-from connection import db
-from exemption import process_exemptions
-from essl import process_logs
+
 from get_attendance_list import get_attendance_list
 
 
