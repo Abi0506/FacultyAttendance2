@@ -251,7 +251,7 @@ function AttendanceViewer() {
         flaggedCells={flaggedCells}
         onFlagClick={handleFlagTime}
         isFlagMode={isFlagMode}
-        currentPage={currentPage}           // 👈 add this
+        currentPage={currentPage}         
         onPageChange={setCurrentPage} 
       />
     </PageWrapper>

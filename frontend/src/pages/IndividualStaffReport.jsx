@@ -16,13 +16,14 @@ function IndividualStaffReport() {
   const [lateMins, setLateMins] = useState(0);
   const [fromDate, setFromDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [flaggedCells, setFlaggedCells] = useState({});
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     setError('');
     setSubmitted(false);
 
@@ -32,10 +33,18 @@ function IndividualStaffReport() {
         end_date: formData.endDate,
         id: formData.employeeId,
       });
-      // eslint-disable-next-line
-      const { from, end, late_mins, total_absent_days, absent_days, total_late_mins, marked_days, data, timing } = res.data;
+
+      const {
+        from,
+        end,
+        late_mins,
+        total_late_mins,
+        data,
+        timing
+      } = res.data;
 
       const employee = data[0] || {};
+      const recordsData = timing || [];
 
       setStaffInfo({
         name: employee.name || '',
@@ -44,19 +53,44 @@ function IndividualStaffReport() {
       });
 
       const allColumns = ['IN1', 'OUT1', 'IN2', 'OUT2', 'IN3', 'OUT3'];
-      const visibleCols = allColumns.filter((col) => timing.some((row) => row[col]));
+      const visibleCols = allColumns.filter((col) => recordsData.some((row) => row[col]));
 
       setFromDate(from || formData.startDate);
       setEndDate(end || formData.endDate);
       setLateMins(late_mins || 0);
       setTotalLateMins(total_late_mins || 0);
       setColumnsToShow(visibleCols);
-      setRecords(timing || []);
+      setRecords(recordsData);
       setSubmitted(true);
+
+      fetchFlagsForStaff(recordsData);
+
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to fetch data.');
       setSubmitted(false);
       setRecords([]);
+    }
+  };
+
+  const fetchFlagsForStaff = async (recordsData) => {
+    if (!formData.employeeId || !formData.startDate || !formData.endDate) return;
+    try {
+      const response = await axios.post('/attendance/get_flags_for_staff', {
+        staff_id: formData.employeeId,
+        start_date: formData.startDate,
+        end_date: formData.endDate,
+      });
+
+      // Map flagged times to use {staffId_date_time: true}
+      const flags = {};
+      const data = response.data || {};
+      for (const key in data) {
+        flags[key] = true;
+      }
+      console.log('Fetched flags:', flags);
+      setFlaggedCells(flags);
+    } catch (err) {
+      console.error('Failed to fetch flagged times', err);
     }
   };
 
@@ -69,7 +103,8 @@ function IndividualStaffReport() {
       { label: `Late Minutes (${fromDate} to ${endDate})`, value: lateMins },
       { label: 'Total Late Minutes (Since Previous Reset)', value: totalLateMins },
     ];
-    const tableColumn = ['S.No', 'Date', ...columnsToShow, 'Late Mins', 'Working Hours'];
+
+    const tableColumns = ['S.No', 'Date', ...columnsToShow, 'Late Mins', 'Working Hours'];
     const tableRows = records.map((rec, idx) => [
       idx + 1,
       rec.date,
@@ -77,9 +112,10 @@ function IndividualStaffReport() {
       rec.late_mins,
       rec.working_hours,
     ]);
+
     PdfTemplate({
-      title: 'Attendance Report for ' + (staffInfo.name),
-      tables: [{ columns: tableColumn, data: tableRows }],
+      title: 'Attendance Report for ' + staffInfo.name,
+      tables: [{ columns: tableColumns, data: tableRows }],
       details,
       fileName: `Attendance_${staffInfo.name || 'employee'}.pdf`,
     });
@@ -90,16 +126,13 @@ function IndividualStaffReport() {
     const yyyy = today.getFullYear();
     const janFirst = new Date(yyyy, 0, 1);
     const julFirst = new Date(yyyy, 6, 1);
-    let startDateObj;
-    if (today >= julFirst) {
-      startDateObj = julFirst; // After July 1 -> start date is July 1
-    } else if (today >= janFirst) {
-      startDateObj = janFirst; // Between Jan 1 and Jun 30 -> start date is Jan 1
-    }
+    const startDateObj = today >= julFirst ? julFirst : janFirst;
+
     const startDate = `${startDateObj.getFullYear()}-${String(startDateObj.getMonth() + 1).padStart(2, '0')}-${String(startDateObj.getDate()).padStart(2, '0')}`;
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const lastDay = new Date(yyyy, today.getMonth() + 1, 0).getDate();
     const endDate = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`;
+
     const empId = user.staffId || '';
     setFormData((prev) => ({
       ...prev,
@@ -117,18 +150,17 @@ function IndividualStaffReport() {
   }, [formData.startDate, formData.endDate, formData.employeeId]);
 
   return (
-    <PageWrapper >
+    <PageWrapper>
       <div className="d-flex align-items-center justify-content-center position-relative mb-4">
-        <h2 className="fw-bold text-c-primary text-center m-0 flex-grow-1">Attendance Report for {staffInfo.name}</h2>
-        <button
-          className="btn btn-c-primary btn-pdf"
-          onClick={handleSaveAsPDF}
-        >
+        <h2 className="fw-bold text-c-primary text-center m-0 flex-grow-1">
+          Attendance Report for {staffInfo.name}
+        </h2>
+        <button className="btn btn-c-primary btn-pdf" onClick={handleSaveAsPDF}>
           Download PDF
         </button>
       </div>
-      <hr className="hr w-75 m-auto my-4" />
 
+      <hr className="hr w-75 m-auto my-4" />
 
       <form className="mb-4">
         <div className="row mb-3">
@@ -163,14 +195,6 @@ function IndividualStaffReport() {
         <>
           <div className="mb-4">
             <div className="border rounded p-3 bg-white d-flex flex-wrap gap-4 align-items-center justify-content-start">
-              {/* <div className="col-md-4">
-                <div className="fw-semibold">Designation:</div>
-                <div className="fs-6">{staffInfo.designation}</div>
-              </div>
-              <div className="col-md-4">
-                <div className="fw-semibold">Department:</div>
-                <div className="fs-6">{staffInfo.department}</div>
-              </div> */}
               <div className="col-md-6">
                 <span className="fw-semibold">Late Minutes (Filtered): </span> {lateMins}
               </div>
@@ -186,9 +210,7 @@ function IndividualStaffReport() {
               <tr>
                 <th>S.No</th>
                 <th>Date</th>
-                {columnsToShow.map((col, i) => (
-                  <th key={i}>{col}</th>
-                ))}
+                {columnsToShow.map((col, i) => <th key={i}>{col}</th>)}
                 <th>Late Mins</th>
                 <th>Working Hours</th>
               </tr>
@@ -205,9 +227,19 @@ function IndividualStaffReport() {
                   <tr key={index}>
                     <td>{index + 1}</td>
                     <td>{rec.date}</td>
-                    {columnsToShow.map((col, i) => (
-                      <td key={i}>{rec[col] || '-'}</td>
-                    ))}
+                    {columnsToShow.map((col, i) => {
+                      const timeValue = rec[col];
+                      const dateParts = rec.date.split('-');
+                      const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+                      const key = `${formData.employeeId}_${formattedDate}_${timeValue}`;
+                      const isFlagged = flaggedCells[key];
+                      return (
+                        <td key={i} className={isFlagged ? 'table-warning' : ''}>
+                          {rec[col] || '-'}
+                        </td>
+                      );
+                    })}
+
                     <td>{rec.late_mins}</td>
                     <td>{rec.working_hours}</td>
                   </tr>
