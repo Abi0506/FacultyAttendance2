@@ -20,6 +20,7 @@ import LoginPage from './pages/LoginPage';
 import HRExcemptions from './pages/HRExcemptions';
 import UserManager from './pages/UserManager';
 import CategoryManager from './pages/CategoryManager';
+import DeptDesigManager from './pages/DeptDesigManager';
 import DevicesManager from './pages/DevicesManager';
 import HRLeaveManager from './pages/HRLeaveManager';
 import ResetPasswordPage from './pages/ResetPassword';
@@ -54,7 +55,7 @@ function RequireStaff({ children }) {
 }
 
 
-// --- Main Application Content ---
+
 function AppContent() {
     const { isAuthenticated, logout, designation } = useAuth();
     const [pendingExemptions, setPendingExemptions] = useState(0);
@@ -142,9 +143,7 @@ function AppContent() {
                                             <li><hr className="dropdown-divider" /></li>
                                             <li><Link className="dropdown-item" to="/individual">Individual</Link></li>
                                             <li> <hr className='dropdown-divider' /></li>
-                                            <li><Link className="dropdown-item" to="/staffIndividualReport">Your record</Link></li>
-                                              <li> <hr className='dropdown-divider' /></li> 
-                                                <li><Link className="dropdown-item" to="/instant">Instant</Link></li> {/* new link */}
+                                            <li><Link className="dropdown-item" to="/staffIndividualReport">My record</Link></li>
                                         </ul>
                                     </li>
                                     <li className="nav-item position-relative">
@@ -180,10 +179,28 @@ function AppContent() {
                                             <li><Link className="dropdown-item" to="/users">User</Link></li>
                                             <li><hr className="dropdown-divider" /></li>
                                             <li><Link className="dropdown-item" to="/categories">Category</Link></li>
+                                            <li><hr className="dropdown-divider" /></li>
+                                            <li><Link className="dropdown-item" to="/deptdesig">Dept & Designation</Link></li>
                                         </ul>
                                     </li>
-                                    <li className="nav-item">
-                                        <Link className="nav-link" to="/devicemanager">Device Manager</Link>
+                                    <li className="nav-item dropdown"
+                                        onMouseEnter={e => e.currentTarget.classList.add("show")}
+                                        onMouseLeave={e => e.currentTarget.classList.remove("show")}>
+                                        <button
+                                            type="button"
+                                            className="nav-link dropdown-toggle btn btn-link"
+                                            id="devicesDropdown"
+                                            data-bs-toggle="dropdown"
+                                            aria-expanded="false"
+                                            style={{ textDecoration: "none" }}
+                                        >
+                                            Devices
+                                        </button>
+                                        <ul className="dropdown-menu show-on-hover" aria-labelledby="devicesDropdown">
+                                            <li><Link className="dropdown-item" to="/instant">Attendance Sync & Process</Link></li>
+                                            <li><hr className="dropdown-divider" /></li>
+                                            <li><Link className="dropdown-item" to="/devicemanager">Device Manager</Link></li>
+                                        </ul>
                                     </li>
                                 </ul>
                             )}
@@ -244,6 +261,7 @@ function AppContent() {
                     <Route path="/exemptions" element={<RequireHR><HRExcemptions /></RequireHR>} />
                     <Route path="/users" element={<RequireHR><UserManager /></RequireHR>} />
                     <Route path="/categories" element={<RequireHR><CategoryManager /></RequireHR>} />
+                    <Route path="/deptdesig" element={<RequireHR><DeptDesigManager /></RequireHR>} />
                     <Route path="/devicemanager" element={<RequireHR><DevicesManager /></RequireHR>} />
                     <Route path="/leave" element={<RequireHR><HRLeaveManager /></RequireHR>} />
                     <Route path="/instant" element={<RequireHR><InstantLogs /></RequireHR>} />

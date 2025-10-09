@@ -20,9 +20,12 @@ function InstantLogs() {
         try {
             const res = await axios.post('/instant_attendance/instant', {
                 date: selectedDate,
-                type: option === 'logs' ? 'list': 'report'  // adjust type to Python backend
+                type: option === 'logs' ? 'list' : 'report'
             });
-            
+            if (res.status !== "success") {
+                throw new Error(res.message || 'Operation failed');
+            }
+
             showAlert('Operation completed successfully', 'success');
         } catch (err) {
             console.error(err);
@@ -66,7 +69,7 @@ function InstantLogs() {
                     </div>
                 </form>
 
-             
+
             </div>
         </PageWrapper>
     );

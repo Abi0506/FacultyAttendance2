@@ -4,48 +4,8 @@ import PageWrapper from '../components/PageWrapper';
 import PdfTemplate from '../components/PdfTemplate';
 import { useAlert } from '../components/AlertProvider';
 import { useLocation } from 'react-router-dom';
+import Table from '../components/Table';
 
-// Table Component
-function Table({ columns, data, sortConfig, onSort, rowsPerPage, flaggedCells, onFlagClick, isFlagMode }) {
-  return (
-    <table className="table table-striped">
-      <thead>
-        <tr>
-          {columns.map(col => (
-            <th key={col} onClick={() => onSort(col)} style={{ cursor: 'pointer' }}>
-              {col} {sortConfig.key === col ? (sortConfig.direction === 'asc' ? '▲' : '▼') : ''}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {data.slice(0, rowsPerPage).map(row => (
-          <tr key={row.staff_id}>
-            {columns.map(col => {
-              const isTimeColumn = col.toLowerCase().includes("in") || col.toLowerCase().includes("out");
-              const timeValue = row[col];
-              const flaggedKey = `${row.staff_id}_${timeValue}`;
-              const isFlagged = flaggedCells[flaggedKey];
-
-              return (
-                <td
-                  key={col}
-                  onClick={() => isFlagMode && isTimeColumn && timeValue && onFlagClick(row.staff_id, timeValue)}
-                  style={{
-                    cursor: isFlagMode && isTimeColumn ? "pointer" : "default",
-                    backgroundColor: isFlagged ? "#d1f7d1" : "transparent"
-                  }}
-                >
-                  {timeValue || "-"}
-                </td>
-              );
-            })}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
 
 function AttendanceViewer() {
   const [selectedDate, setSelectedDate] = useState("");
@@ -58,6 +18,8 @@ function AttendanceViewer() {
   const [sortConfig, setSortConfig] = useState({ key: 'IN1', direction: 'asc' });
   const [flaggedCells, setFlaggedCells] = useState({});
   const [isFlagMode, setIsFlagMode] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { showAlert } = useAlert();
   const location = useLocation();
@@ -101,7 +63,6 @@ function AttendanceViewer() {
     }
   }, []);
 
-  // ----- FLAG METHODS -----
   const fetchFlags = useCallback(async (date) => {
     if (!date) return;
     try {
@@ -112,35 +73,38 @@ function AttendanceViewer() {
     }
   }, []);
 
- const handleFlagTime = async (staff_id, timeValue) => {
-  if (!isFlagMode) return;
-  try {
-    const response = await axios.post('/attendance/flag_time', {
-      staff_id,
-      date: selectedDate,
-      time: timeValue
-    });
+  const handleFlagTime = async (staff_id, timeValue) => {
+    if (!isFlagMode) return;
+    try {
+      const response = await axios.post('/attendance/flag_time', {
+        staff_id,
+        date: selectedDate,
+        time: timeValue
+      });
 
-    const key = `${staff_id}_${timeValue}`;
-    setFlaggedCells(prev => {
-      const newFlags = { ...prev };
-      if (response.data.revoked) {
-        delete newFlags[key];  // Remove highlight if revoked
-        showAlert(`Flag revoked for ${staff_id}`, 'info');
-      } else {
-        newFlags[key] = true; // Add highlight if flagged
-        showAlert(`Time flagged for ${staff_id}`, 'success');
-      }
-      return newFlags;
-    });
+      const key = `${staff_id}_${timeValue}`;
+      setFlaggedCells(prev => {
+        const newFlags = { ...prev };
+        if (response.data.revoked) {
+          delete newFlags[key];  // Remove highlight if revoked
+          showAlert(`Flag revoked for ${staff_id}`, 'info');
+        } else {
+          newFlags[key] = true; // Add highlight if flagged
+          showAlert(`Time flagged for ${staff_id}`, 'success');
+        }
+        return newFlags;
+      });
 
-  } catch (err) {
-    console.error(err);
-    showAlert("Failed to toggle flag", 'danger');
+    } catch (err) {
+      console.error(err);
+      showAlert("Failed to toggle flag", 'danger');
+    }
+  };
+
+  const toggleFlagMode = () => {
+    setIsFlagMode(prev => !prev);
+    window.dispatchEvent(new Event('flagModeChanged'));
   }
-};
-
-  const toggleFlagMode = () => setIsFlagMode(prev => !prev);
 
   // ----- PDF EXPORT -----
   const handleSaveAsPDF = () => {
@@ -151,7 +115,7 @@ function AttendanceViewer() {
         columns: [...columnsToShow],
         data: logs.map(log => [...columnsToShow.map(col => log[col] || '-')])
       }],
-      fileName: `logs[${newDate}].pdf`
+      fileName: `Logs[${newDate}].pdf`
     });
   };
 
@@ -195,8 +159,24 @@ function AttendanceViewer() {
     <PageWrapper>
       {/* Header */}
       <div className="d-flex align-items-center justify-content-center position-relative mb-4">
-        <button className="refresh-btn" onClick={() => fetchAttendanceLogs(selectedDate)}>
-          <i className="bi bi-arrow-clockwise fs-4"></i> Refresh
+        <button
+          className="refresh-btn"
+          onClick={async () => {
+            if (!selectedDate) return;
+            try {
+              setLoading(true);
+              await fetchAttendanceLogs(selectedDate);
+              showAlert('Data refreshed successfully', 'success');
+            } catch (err) {
+              showAlert('Data fetch failed', 'danger');
+            } finally {
+              setLoading(false);
+            }
+          }}
+          title="Reload logs"
+        >
+          <i className="bi bi-arrow-clockwise fs-4"></i>
+          <span className="refresh-text">Refresh</span>
         </button>
 
         <h2 className="fw-bold text-c-primary text-center m-0 flex-grow-1">Live Logs</h2>
@@ -253,7 +233,7 @@ function AttendanceViewer() {
           className={`btn ${isFlagMode ? 'btn-danger' : 'btn-warning'}`}
           onClick={toggleFlagMode}
         >
-          {isFlagMode ? 'Exit Flag Mode' : 'Enter Flag Mode'}
+          {isFlagMode ? 'Exit' : 'Flag Records'}
         </button>
       </div>
 
@@ -262,6 +242,7 @@ function AttendanceViewer() {
 
       {/* Table */}
       <Table
+        key="attendance-table"
         columns={columnsToShow}
         data={sortedLogs}
         sortConfig={sortConfig}
@@ -270,6 +251,8 @@ function AttendanceViewer() {
         flaggedCells={flaggedCells}
         onFlagClick={handleFlagTime}
         isFlagMode={isFlagMode}
+        currentPage={currentPage}           // 👈 add this
+        onPageChange={setCurrentPage} 
       />
     </PageWrapper>
   );
