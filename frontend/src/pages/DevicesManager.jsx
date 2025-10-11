@@ -19,7 +19,7 @@ function DeviceManager() {
     const fetchDevices = async () => {
       setLoading(true);
       try {
-        const res = await axios.get("/attendance/devices");
+        const res = await axios.get("/devices/all");
         if (res.data.success) {
           setDevices(res.data.devices);
           setLoading(false);
@@ -51,7 +51,7 @@ function DeviceManager() {
   const handleDeleteClick = async (deviceId) => {
     if (!window.confirm("Are you sure you want to delete this device?")) return;
     try {
-      const res = await axios.post('/attendance/devices/delete', { id: deviceId });
+      const res = await axios.post('/devices/delete', { id: deviceId });
       if (res.data.success) {
         setDevices(devices.filter(d => d.device_id !== deviceId));
         showAlert('Device deleted successfully', 'success');
@@ -69,7 +69,7 @@ function DeviceManager() {
 
     if (!window.confirm(confirmMessage)) return;
     try {
-      const res = await axios.post('/attendance/devices/toggle_maintenance', { id: deviceId });
+      const res = await axios.post('/devices/toggle_maintenance', { id: deviceId });
       if (res.data.success) {
         setDevices(devices.map(d => d.device_id === deviceId ? { ...d, maintenance: d.maintenance ? 0 : 1 } : d));
         showAlert(res.data.message, 'success');
@@ -88,7 +88,7 @@ function DeviceManager() {
   const handleSave = async () => {
     try {
       const payload = { ...editForm, id: editForm.device_id };
-      const res = await axios.post('/attendance/devices/update', payload);
+      const res = await axios.post('/devices/update', payload);
       if (res.data.success) {
         setDevices(devices.map(d => d.device_id === editForm.device_id ? { ...editForm } : d));
         showAlert('Device updated successfully', 'success');
@@ -115,7 +115,7 @@ function DeviceManager() {
         showAlert('Invalid IP address format', 'error');
         return;
       }
-      const res = await axios.post('/attendance/devices/add', { ...addForm });
+      const res = await axios.post('/devices/add', { ...addForm });
       if (res.data.success && res.data.device) {
         setDevices([...devices, res.data.device]);
         setAddForm({ device_name: '', ip_address: '', device_location: '', maintenance: 0 });
@@ -129,8 +129,8 @@ function DeviceManager() {
       console.error("Error adding device:", error);
     }
   };
+  
   // For bootstrap tooltips
-
   useEffect(() => {
     // Dispose old tooltips first
     const oldTooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
