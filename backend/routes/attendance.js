@@ -96,8 +96,10 @@ router.post('/get_flags', async (req, res) => {
 
 // Fetch all flagged times for a staff member in a date range
 router.post('/get_flags_for_staff', async (req, res) => {
+  
   try {
     const { staff_id, start_date, end_date } = req.body;
+    // console.log( staff_id, start_date, end_date);
     if (!staff_id || !start_date || !end_date) {
       return res.status(400).json({ error: 'staff_id, start_date and end_date are required' });
     }

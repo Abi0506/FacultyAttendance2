@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import axios from '../axios';
 import PageWrapper from '../components/PageWrapper';
 import { useAlert } from '../components/AlertProvider';
@@ -22,7 +22,8 @@ function InstantLogs() {
                 date: selectedDate,
                 type: option === 'logs' ? 'list' : 'report'
             });
-            if (res.status !== "success") {
+            console.log("Response:",res);
+            if (res.data.status !== "success") {
                 throw new Error(res.message || 'Operation failed');
             }
 
