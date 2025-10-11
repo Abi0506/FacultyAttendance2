@@ -6,7 +6,7 @@ def db():
         mydb = mysql.connector.connect(
                 host="localhost",
                 user="root",
-                password="root",
+                password="$bio#2025",
                 database="faculty_data_logs",
                 use_pure=True   
             )
