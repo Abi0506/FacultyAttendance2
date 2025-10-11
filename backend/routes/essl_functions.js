@@ -20,32 +20,7 @@ function runPythonScript(args) {
 
 
 
-router.post('/edit_user', async (req, res) => {
-  const { id, name, dept, email, designation, category } = req.body;
-  try {
-    const [name1] = await db.query(`SELECT name FROM staff WHERE staff_id = ?`, [id]);
-    if (name1 !== name[0].name) {
-      const pythonResult = await runPythonScript(['set_user_credentials', id, name]);
-      if (pythonResult.includes('Error')) {
-        throw new Error(pythonResult);
-      }
-    }
-  } catch (err) {
-    return res.status(500).json({ success: false, error: "Error updating user credentials" });
-  }
 
-  try {
-
-    await db.query(
-      `UPDATE staff SET name = ?, dept = ?, designation = ?,email=?, category = ? WHERE staff_id = ?`,
-      [name, dept, designation, email, category, id]
-    );
-    res.json({ success: true, message: "User updated successfully" });
-  } catch (err) {
-    console.error("Error updating user:", err);
-    res.status(500).json({ success: false, message: "Failed to update user" });
-  }
-});
 
 router.post('/add_user', async (req, res) => {
   let { id, name, dept, category, designation, email, staff_type, intime, outtime, breakmins, breakin, breakout } = req.body;
@@ -69,7 +44,7 @@ router.post('/add_user', async (req, res) => {
   }
 
   if (category === -1) {
-    console.log("Custom Category processing");
+    
     try {
       const [insertResult] = await db.query(
         `INSERT INTO category (category_description, in_time, out_time, break_in, break_out, break_time_mins) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -98,6 +73,7 @@ router.post('/add_user', async (req, res) => {
 
 router.post('/edit_user', async (req, res) => {
   const { id, name, dept, designation, email, category } = req.body;
+
   try {
     await db.query(
       `UPDATE staff SET name = ?, dept = ?, designation = ?, email = ?, category = ? WHERE staff_id = ?`,
@@ -136,7 +112,9 @@ router.post('/delete_user', async (req, res) => {
     if (pythonResult.includes('Error')) {
       throw new Error(pythonResult);
     }
-    await db.query(`DELETE FROM staff WHERE staff_id = ?`, [id]);
+     await db.query(`SET FOREIGN_KEY_CHECKS = 0;
+                    DELETE FROM staff WHERE staff_id = ?;
+                    SET FOREIGN_KEY_CHECKS = 1;`, [id]);
     res.status(200).json({ message: `User ${id} deleted successfully` });
   } catch (err) {
     res.status(500).json({ error: err.message });

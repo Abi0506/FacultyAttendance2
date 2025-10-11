@@ -16,29 +16,65 @@ def connect_to_device(reason , DEVICE_IP ):
         return False
 
 
+# def get_uid():
+#     connection = db()
+#     cursor = connection.cursor()
+#     cursor.execute("SELECT ip_address FROM devices where maintenance = %s",(0,))
+#     rows = cursor.fetchall()
+#     print(rows)
+  
+#     for (ip,) in rows:
+       
+      
+#         conn = connect_to_device("setting user credentials",ip)
+#         uid = conn.get_users()
+#         for i in uid:
+#             print(i)
+
+# def del_user():
+#     connection = db()
+#     cursor = connection.cursor()
+#     cursor.execute("SELECT ip_address FROM devices where maintenance = %s",(0,))
+#     rows = cursor.fetchall()
+#     print(rows)
+  
+#     for (ip,) in rows:
+       
+      
+#         conn = connect_to_device("setting user credentials",ip)
+#         uid = conn.delete_user(uid = 11367)
+#         conn.disconnect()
+         
+
+
 
 def set_user_credentials(user_id, name):
     connection = db()
     cursor = connection.cursor()
     cursor.execute("SELECT ip_address FROM devices where maintenance = %s",(0,))
     rows = cursor.fetchall()
-
-  
+    print(rows)
+    conn = connect_to_device("setting user credentials",ip)
+    if not conn:
+        return "Error: Device not connected"
+    existing_uids = {user.uid for user in conn.get_users()}
+    uid = random.randint(1000, 32767)
+    while uid in existing_uids:
+        uid = random.randint(1000, 32767)
     for (ip,) in rows:
        
         try:
             conn = connect_to_device("setting user credentials",ip)
+
             if not conn:
                 return "Error: Device not connected"
-
+          
             if not user_id or not name:
                 return "Error: Missing ID or name in a device"
-            try:
-                uid = random.randint(100000000, 999999999)
-            except ValueError:
-                return "Error: Invalid ID format"
+        
+            print(uid , user_id , name )
+            password = str(user_id)
             
-            password = name
             conn.set_user(
                 uid=uid,                   
                 user_id=str(user_id),       
@@ -46,8 +82,7 @@ def set_user_credentials(user_id, name):
                 privilege=0,
                 password=password
             )
-            return f"User {user_id} added successfully"
-
+           
         except Exception as e:
             return f"Error: Set credentials failed"
 
@@ -107,3 +142,4 @@ if __name__ == "__main__":
         else:
             user_id = sys.argv[2]
             print(delete_user(user_id))
+    

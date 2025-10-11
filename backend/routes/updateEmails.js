@@ -11,7 +11,7 @@ console.log("DB_USER:", process.env.DB_USER);
 const pool = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "root",
+  password: "$bio#2025",
   database: 'faculty_data_logs',
   dateStrings: true,
   waitForConnections: true,
