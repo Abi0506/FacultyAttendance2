@@ -83,7 +83,7 @@ router.post('/get_flags', async (req, res) => {
     const flaggedMap = {};
     rows.forEach(row => {
       const timeStr = row.time.toString().slice(0, 8); // 'HH:MM:SS'
-      flaggedMap[`${row.staff_id}_${timeStr}`] = true;
+      flaggedMap[`${row.staff_id}_${date}_${timeStr}`] = true;
     });
 
     res.json(flaggedMap);
@@ -125,6 +125,96 @@ router.post('/get_flags_for_staff', async (req, res) => {
   }
 });
 
+router.get('/probable_flagged_records', async (req, res) => {
+  const { from, to } = req.query;
+
+  if (!from || !to) {
+    return res.status(400).json({ error: "Missing from/to query params" });
+  }
+
+  try {
+    const [rows] = await db.query(
+      `SELECT 
+          logs.staff_id,
+          logs.date,
+          logs.time,
+          staff.name,
+          COUNT(*) OVER (PARTITION BY logs.staff_id, logs.date) AS total_records,
+          COUNT(*) OVER (
+              PARTITION BY logs.staff_id, logs.date
+          ) - COUNT(flagged.time) OVER (
+              PARTITION BY logs.staff_id, logs.date
+          ) AS Count
+       FROM logs
+       JOIN staff ON staff.staff_id = logs.staff_id
+       LEFT JOIN attendance_flags AS flagged
+         ON flagged.staff_id = logs.staff_id
+        AND flagged.date = logs.date
+        AND flagged.time = logs.time
+       WHERE logs.date BETWEEN ? AND ?
+       ORDER BY logs.date, logs.time;`,
+      [from, to]
+    );
+
+    // Group and flatten
+    const categorized = {};
+    for (const { staff_id, name, date, time, Count } of rows) {
+      if (!categorized[staff_id]) categorized[staff_id] = {};
+      if (!categorized[staff_id][date]) categorized[staff_id][date] = { name, times: [], Count };
+      categorized[staff_id][date].times.push(time);
+    }
+
+    const result = [];
+    for (const [staff_id, dates] of Object.entries(categorized)) {
+      for (const [date, { name, times, Count }] of Object.entries(dates)) {
+        result.push({
+          staff_id,
+          name,
+          date,
+          IN1: times[0] || null,
+          OUT1: times[1] || null,
+          IN2: times[2] || null,
+          OUT2: times[3] || null,
+          IN3: times[4] || null,
+          OUT3: times[5] || null,
+          Count
+        });
+      }
+    }
+
+    res.json({ success: true, records: result });
+  } catch (err) {
+    console.error("Error fetching attendance:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+// Updated backend route for /get_flags to support date range
+router.post('/get_flags1', async (req, res) => {
+  try {
+    const { from, to } = req.body;
+    if (!from || !to) {
+      return res.status(400).json({ error: 'from and to are required' });
+    }
+
+    const [rows] = await db.query(
+      `SELECT staff_id, \`date\`, \`time\` FROM attendance_flags WHERE \`date\` BETWEEN ? AND ?`,
+      [from, to]
+    );
+
+    // Return as { staff_id_date_timeValue: true }
+    const flaggedMap = {};
+    rows.forEach(row => {
+      const timeStr = row.time.toString().slice(0, 8); // 'HH:MM:SS'
+      flaggedMap[`${row.staff_id}_${row.date}_${timeStr}`] = true;
+    });
+
+    res.json(flaggedMap);
+
+  } catch (err) {
+    console.error('Error fetching flagged times:', err);
+    res.status(500).json({ error: 'Failed to fetch flagged times' });
+  }
+});
 
 
 router.post('/attendance_viewer', async (req, res) => {
@@ -381,22 +471,22 @@ router.post('/individual_data', async (req, res) => {
     `, [id]);
 
     let [late_mins] = await db.query(`
-      SELECT late_mins, date
+      SELECT late_mins,additional_late_mins, date
       FROM report
       WHERE staff_id = ? AND date BETWEEN ? AND ?
     `, [id, start_date, end_date]);
 
     let [late_mins_1] = await db.query(`
-      SELECT SUM(late_mins) AS late_mins
+      SELECT SUM(late_mins + IFNULL(additional_late_mins, 0)) AS late_mins
       FROM report
       WHERE staff_id = ? AND date BETWEEN ? AND ?
     `, [id, start_date, end_date]);
 
     let [total_late_mins] = await db.query(`
-      SELECT SUM(late_mins) AS total_late_mins
+      SELECT SUM(late_mins + IFNULL(additional_late_mins, 0)) AS total_late_mins
       FROM report
       WHERE staff_id = ? AND date BETWEEN ? AND ?
-    `, [id, start, end]);
+  `, [id, start, end]);
 
     let [absent_days] = await db.query(`
         SELECT
@@ -416,7 +506,7 @@ router.post('/individual_data', async (req, res) => {
 
     // Get filtered late minutes (between start_date and end_date)
     let [filtered_late_mins] = await db.query(`
-      SELECT SUM(late_mins) AS filtered_late_mins
+  SELECT SUM(late_mins + IFNULL(additional_late_mins, 0)) AS filtered_late_mins
       FROM report
       WHERE staff_id = ? AND date BETWEEN ? AND ?
     `, [id, start_date, end_date]);
@@ -447,6 +537,7 @@ router.post('/individual_data', async (req, res) => {
       }
       row.working_hours = totalMinutes > 0 ? minutesToHHMM(totalMinutes) : 'Invalid';
       row.late_mins = late_mins.find(l => l.date === date)?.late_mins || 0;
+      row.additional_late_mins = late_mins.find(l => l.date === date)?.additional_late_mins || 0;
       result.push(row);
     }
 
@@ -587,6 +678,23 @@ router.post('/hr_exemptions/approve', async (req, res) => {
     res.status(500).json({ message: "Failed to approve exemption" });
   }
 });
+
+router.post('/categories/update', async (req, res) => {
+  const { category_no, category_description, type, in_time, break_in, break_out, out_time, working_hrs, break_time_mins } = req.body;
+  try {
+    await db.query(
+      `UPDATE category
+             SET category_description=?,  in_time=?, break_in=?, break_out=?, out_time=?, break_time_mins=?
+             WHERE category_no=?`,
+      [category_description, in_time, break_in, break_out, out_time, break_time_mins, category_no]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Database update failed' });
+  }
+});
+
 
 
 router.post('/hr_exemptions/reject', async (req, res) => {
@@ -831,6 +939,47 @@ router.post('/devices/toggle_maintenance', async (req, res) => {
   }
 });
 
+router.post("/update_additional_late_mins", async (req, res) => {
+  const { staff_id, date, additional_late_mins } = req.body;
+  const [day, month, year] = date.split("-");
+  const mysqlDate = `${year}-${month}-${day}`;
+
+
+  try {
+    console.log("Updating additional late minutes:", { staff_id, mysqlDate, additional_late_mins });
+
+    // Try to update first
+    const [result] = await db.query(
+      `UPDATE report 
+       SET additional_late_mins = ? 
+       WHERE staff_id = ? AND date = ?`,
+      [additional_late_mins, staff_id, mysqlDate]
+    );
+
+    // If no row updated, insert new record
+    if (result.affectedRows === 0) {
+      const [insertResult] = await db.query(
+        `INSERT INTO report (staff_id, date, late_mins, attendance, additional_late_mins) 
+        
+         VALUES (?, ?, ,?,?,?)`,
+        [staff_id, mysqlDate, 0, 'A', additional_late_mins]
+      );
+
+      if (insertResult.affectedRows === 0) {
+        return res
+          .status(500)
+          .json({ success: false, message: "Failed to insert new record for additional late minutes" });
+      }
+
+      return res.json({ success: true, message: "New report record created with additional late minutes" });
+    }
+
+    res.json({ success: true, message: "Additional late minutes updated successfully" });
+  } catch (err) {
+    console.error("Error updating additional late minutes:", err);
+    res.status(500).json({ success: false, message: "Failed to update additional late minutes" });
+  }
+});
 
 
 module.exports = router;

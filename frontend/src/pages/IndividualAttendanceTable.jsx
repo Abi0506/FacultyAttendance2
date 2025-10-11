@@ -18,8 +18,28 @@ function IndividualAttendanceTable() {
   const [lateMins, setLateMins] = useState(0);
   const [fromDate, setFromDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [editingLateMins, setEditingLateMins] = useState({});
   const { staffId } = useParams();
+  const [flaggedCells, setFlaggedCells] = useState({}); // new state for flagged times
 
+  // Fetch flagged times for selected user
+  const fetchFlagsForUser = async (employeeId, start, end) => {
+    if (!employeeId) return;
+    try {
+      const response = await axios.post('/attendance/get_flags_for_staff', {
+        staff_id: employeeId,
+        start_date: start,
+        end_date: end,
+      });
+      // Map flags to {staffId_date_time: true}
+      const flags = {};
+      const data = response.data || {};
+      for (const key in data) flags[key] = true;
+      setFlaggedCells(flags);
+    } catch (err) {
+      console.error('Failed to fetch flagged times', err);
+    }
+  };
 
   const handleSearch = async (query) => {
     setSearchQuery(query);
@@ -36,25 +56,33 @@ function IndividualAttendanceTable() {
     }
   };
 
-  const handleSelectUser = (user) => {
-    setSelectedUser(user);
-    setSearchQuery('');
-    setSearchResults([]);
-    setRecords([]);
-    setColumnsToShow([]);
-    setTotalLateMins(0);
-    setLateMins(0);
+  const handleSelectUser = async (user) => {
+    try {
+      const res = await axios.post('/attendance/search/getuser', { staffId: user.staff_id });
+      const fullUser = res.data.staff;
 
-    // Set default date range
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const startDate = `2025-07-01`;
-    const lastDay = new Date(yyyy, today.getMonth() + 1, 0).getDate();
-    const endDate = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`;
-    setFormData({ startDate, endDate });
+      setSelectedUser(fullUser);
 
-    fetchAttendance(user.staff_id, startDate, endDate);
+      // Reset states
+      setSearchQuery('');
+      setSearchResults([]);
+      setRecords([]);
+      setColumnsToShow([]);
+      setTotalLateMins(0);
+      setLateMins(0);
+      setError('');
+
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const startDate = `2025-07-01`;
+      const lastDay = new Date(yyyy, today.getMonth() + 1, 0).getDate();
+      const endDate = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`;
+      setFormData({ startDate, endDate });
+    } catch (err) {
+      console.error("Failed to fetch full user details:", err);
+      showAlert("Failed to fetch user details", "danger");
+    }
   };
 
   const fetchAttendance = async (employeeId, start, end) => {
@@ -82,6 +110,7 @@ function IndividualAttendanceTable() {
       const allColumns = ['IN1', 'OUT1', 'IN2', 'OUT2', 'IN3', 'OUT3'];
       const visibleCols = allColumns.filter((col) => timing.some((row) => row[col]));
       setColumnsToShow(visibleCols);
+      fetchFlagsForUser(employeeId, start, end);
       setRecords(timing || []);
     } catch (err) {
       console.error(err);
@@ -96,9 +125,35 @@ function IndividualAttendanceTable() {
 
   const handleDateSubmit = (e) => {
     e.preventDefault();
-    if (!selectedUser) return;
+    if (!selectedUser || !formData.startDate || !formData.endDate) return;
     fetchAttendance(selectedUser.staff_id, formData.startDate, formData.endDate);
   };
+
+  const handleUpdateAdditional = async (date, value) => {
+    let parsedValue = parseInt(value, 10);
+    if (isNaN(parsedValue) || parsedValue < 0) {
+      parsedValue = 0;
+    }
+    if (parsedValue > 90) {
+      parsedValue = 90;
+    }
+    try {
+      const res = await axios.post('/attendance/update_additional_late_mins', {
+        staff_id: selectedUser.staff_id,
+        date,
+        additional_late_mins: parsedValue,
+      });
+      showAlert(res.data.message || "Additional late minutes updated", "success");
+      // Refetch to update totals and records
+      if (selectedUser && formData.startDate && formData.endDate) {
+        fetchAttendance(selectedUser.staff_id, formData.startDate, formData.endDate);
+      }
+    } catch (err) {
+      console.error("Failed to update additional late minutes:", err);
+      showAlert(err.response.data.message || "Failed to update additional late minutes", "danger");
+    }
+  };
+
   useEffect(() => {
     if (staffId) {
       // Fetch the user by ID
@@ -115,12 +170,11 @@ function IndividualAttendanceTable() {
     }
   }, [staffId]);
 
-
   useEffect(() => {
     if (selectedUser && formData.startDate && formData.endDate) {
       fetchAttendance(selectedUser.staff_id, formData.startDate, formData.endDate);
     }
-  }, [formData.startDate, formData.endDate, selectedUser]);
+  }, [selectedUser, formData.startDate, formData.endDate]);
 
   const handleSaveAsPDF = () => {
     if (!selectedUser) return;
@@ -135,16 +189,17 @@ function IndividualAttendanceTable() {
       { label: `Late Minutes (Filtered)`, value: lateMins },
       { label: 'Late Minutes(Total)', value: totalLateMins },
     ];
-    const tableColumn = ['S.No', 'Date', ...columnsToShow, 'Late Mins', 'Working Hours'];
-    const tableRows = records.map((rec, idx) => [
-      idx + 1,
+    const tableColumn = ['Date', ...columnsToShow, 'Late Mins', 'Working Hours', 'Additional Late Mins'];
+
+    const tableRows = records.map((rec) => [
       rec.date,
       ...columnsToShow.map((col) => rec[col] || '-'),
       rec.late_mins,
       rec.working_hours,
+      rec.additional_late_mins || 0,
     ]);
     PdfTemplate({
-      title: 'Attendance Report for ' + selectedUser.name,
+      title: 'Biometric Attendance Report for ' + selectedUser.name,
       tables: [{ columns: tableColumn, data: tableRows }],
       details,
       fileName: `Attendance_${selectedUser.name || 'employee'}.pdf`,
@@ -163,7 +218,6 @@ function IndividualAttendanceTable() {
         </button>
       </div>
       <hr className="hr w-75 m-auto my-4" />
-
 
       <div className="mb-3 position-relative">
         <input
@@ -202,7 +256,6 @@ function IndividualAttendanceTable() {
             <div><strong>Total Late Minutes (since reset):</strong> {totalLateMins}</div>
           </div>
 
-
           <form className="mb-4 d-flex gap-3 align-items-end" onSubmit={handleDateSubmit}>
             <div>
               <label className="form-label">Start Date</label>
@@ -220,24 +273,48 @@ function IndividualAttendanceTable() {
             <table className="table table-c mt-3">
               <thead className="table-secondary">
                 <tr>
-                  <th>S.No</th>
                   <th>Date</th>
-                  {columnsToShow.map((col, i) => <th key={i}>{col}</th>)}
+                  {columnsToShow.map((col, i) => (
+                    <th key={i}>{col}</th>
+                  ))}
                   <th>Late Mins</th>
                   <th>Working Hours</th>
+                  <th style={{ width: '80px', textAlign: 'center' }}>Additional Late Mins</th>
                 </tr>
               </thead>
               <tbody>
                 {records.map((rec, idx) => (
                   <tr key={idx}>
-                    <td>{idx + 1}</td>
                     <td>{rec.date}</td>
-                    {columnsToShow.map((col, i) => <td key={i}>{rec[col] || '-'}</td>)}
+                    {columnsToShow.map((col, i) => {
+                      const timeValue = rec[col];
+                      const key = `${selectedUser.staff_id}_${rec.date.split("-").reverse().join("-")}_${timeValue}`;
+                      const isFlagged = flaggedCells[key];
+                      return (
+                        <td key={i} className={isFlagged ? 'table-warning' : ''}>
+                          {timeValue || '-'}
+                        </td>
+                      );
+                    })}
                     <td>{rec.late_mins}</td>
                     <td>{rec.working_hours}</td>
+                    <td>
+                      <input
+                        type="number"
+                        min="0"
+                        max="90"
+                        value={editingLateMins[rec.date] ?? rec.additional_late_mins ?? 0}
+                        onChange={(e) =>
+                          setEditingLateMins((prev) => ({ ...prev, [rec.date]: e.target.value }))
+                        }
+                        onBlur={(e) => handleUpdateAdditional(rec.date, e.target.value)}
+                        className="form-control form-control-sm text-center"
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
+
             </table>
           )}
         </>

@@ -52,6 +52,8 @@ function LoginPage() {
         showAlert('Login successful!', 'success');
         if (result.designation === 'HR') {
           navigate('/view', { replace: true });
+        } else if (result.designation === 'PRINCIPAL') {
+          navigate('/dashboard', { replace: true });
         } else if (result.designation) {
           navigate('/staffIndividualReport', { replace: true });
         } else {

@@ -359,3 +359,13 @@
   /* color: var(--color-7) !important; */
   /* border-width: 2px; */
 }
+
+
+.flag-indicator {
+  width: 20px;
+  height: 20px;
+  background-color: #fff3cd;
+  border: 1px solid #e0a800;
+  border-radius: 4px;
+  margin-right: 8px;
+}

@@ -1,13 +1,12 @@
 9. last 10 minutes of the day
 10. Department summary only up to yesterday  - info
-11. Deparmtment summary - name change
-13. PDF Changes
 14. Test connection option in the Devicemanager page
-15. Staff late minutes only table page
-16. Edit and Delete Deparmtment and desination
+15. Staff late minutes only - table page
 17. Add security to the routes.
-18. Clicking on record redirect to individual
-19. check processing dates adn verify whether it is running
 16. Edit and Delete Deparmtment and desination
 20. Add custom Holidays
-21. No email in individual user
+21. Tranfer data between devices
+22. Responsive UI
+23. Make additional late minutes appear everywhere
+24. Revoke Exemption option
+25. Check delete option 

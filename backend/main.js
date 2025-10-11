@@ -56,12 +56,14 @@ const attendanceRouter = require("./routes/attendance");
 const esslFunctionsRouter = require("./routes/essl_functions");
 const leaveRouter = require("./routes/leave");
 const instant = require("./routes/live_attendance");
+const dashboardRouter = require("./routes/dashboard");
 
 app.use("/api/essl", esslFunctionsRouter);
 app.use("/api/login", loginRouter);
 app.use("/api/attendance", attendanceRouter);
 app.use("/api/leave", leaveRouter);
 app.use("/api/instant_attendance",instant)
+app.use("/api/dashboard",dashboardRouter)
 
 
 app.listen(PORT, '0.0.0.0', () => {

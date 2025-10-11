@@ -19,6 +19,8 @@ function CategoryManagerPage() {
         working_mins: '',
     });
     const [loading, setLoading] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [editForm, setEditForm] = useState({});
 
     useEffect(() => {
         fetchCategories();
@@ -27,11 +29,8 @@ function CategoryManagerPage() {
     const fetchCategories = async () => {
         try {
             const res = await axios.get("/attendance/categories");
-            if (res.data.success) {
-                setCategories(res.data.categories);
-            } else {
-                showAlert('Failed to fetch categories', 'error');
-            }
+            if (res.data.success) setCategories(res.data.categories);
+            else showAlert('Failed to fetch categories', 'error');
         } catch (error) {
             showAlert('Failed to fetch categories', 'error');
             console.error("Error fetching categories:", error);
@@ -43,6 +42,42 @@ function CategoryManagerPage() {
         const [hh, mm] = timeStr.split(':');
         return `${hh}:${mm}`;
     };
+
+    const handleEditClick = (cat) => {
+        if (editingId === cat.category_no) {
+            setEditingId(null);
+            setEditForm({});
+        } else {
+            setEditingId(cat.category_no);
+            setEditForm({ ...cat });
+        }
+    };
+
+    const handleEditChange = (e) => {
+        const { name, value } = e.target;
+        setEditForm(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleSaveEdit = async (cat) => {
+        try {
+            const res = await axios.post("/attendance/categories/update", editForm);
+            if (res.data.success) {
+                showAlert('Category updated successfully', 'success');
+                setEditingId(null);
+                setEditForm({});
+                fetchCategories();
+            } else {
+                showAlert('Failed to update category', 'error');
+            }
+        } catch (error) {
+            console.error("Error updating category:", error);
+            showAlert('Failed to update category', 'error');
+        }
+    };
+
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -91,15 +126,13 @@ function CategoryManagerPage() {
                     working_mins: '',
                 });
                 fetchCategories();
-            }
-        } catch (err) {
-            if (err.response && err.response.data && err.response.data.message) {
-                showAlert(err.response.data.message, 'error');
             } else {
-                showAlert('Failed to add category', 'error');
+                showAlert('Failed to update category', 'error');
             }
+        } catch (error) {
+            showAlert('Failed to update category', 'error');
+            console.error("Error updating category:", error);
         }
-        setLoading(false);
     };
 
     const handleDelete = async (categoryNo) => {
@@ -170,26 +203,151 @@ function CategoryManagerPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {categories.map((cat, index) => (
+                                {categories.map((cat) => (
                                     <tr key={cat.category_no}>
                                         <td>{cat.category_no}</td>
-                                        <td>{cat.category_description}</td>
-                                        <td>{cat.type || 'fixed'}</td>
-                                        <td>{formatTime(cat.in_time)}</td>
-                                        <td>{formatTime(cat.break_in)}</td>
-                                        <td>{formatTime(cat.break_out)}</td>
-                                        <td>{formatTime(cat.out_time)}</td>
-                                        <td>{cat.working_hrs || '—'}</td>
-                                        <td>{cat.break_time_mins}</td>
                                         <td>
-                                            <button
-                                                className="btn btn-outline-danger btn-sm"
-                                                onClick={() => handleDelete(cat.category_no)}
-                                                aria-label="Delete category"
-                                                title="Delete category"
-                                            >
-                                                <i className="bi bi-trash-fill"></i>
-                                            </button>
+                                            {editingId === cat.category_no ? (
+                                                <input
+                                                    type="text"
+                                                    name="category_description"
+                                                    value={editForm.category_description}
+                                                    onChange={handleEditChange}
+                                                    className="form-control"
+                                                />
+                                            ) : (
+                                                cat.category_description
+                                            )}
+                                        </td>
+                                        <td>
+                                            {editingId === cat.category_no ? (
+                                                <select
+                                                    name="type"
+                                                    value={editForm.type}
+                                                    onChange={handleEditChange}
+                                                    className="form-control"
+                                                >
+                                                    <option value="fixed">Fixed</option>
+                                                    <option value="hrs">Hrs</option>
+                                                </select>
+                                            ) : (
+                                                cat.type || 'fixed'
+                                            )}
+                                        </td>
+                                        <td>
+                                            {editingId === cat.category_no ? (
+                                                <input
+                                                    type="time"
+                                                    name="in_time"
+                                                    value={editForm.in_time || ''}
+                                                    onChange={handleEditChange}
+                                                    className="form-control"
+                                                />
+                                            ) : (
+                                                formatTime(cat.in_time)
+                                            )}
+                                        </td>
+                                        <td>
+                                            {editingId === cat.category_no ? (
+                                                <input
+                                                    type="time"
+                                                    name="break_in"
+                                                    value={editForm.break_in || ''}
+                                                    onChange={handleEditChange}
+                                                    className="form-control"
+                                                />
+                                            ) : (
+                                                formatTime(cat.break_in)
+                                            )}
+                                        </td>
+                                        <td>
+                                            {editingId === cat.category_no ? (
+                                                <input
+                                                    type="time"
+                                                    name="break_out"
+                                                    value={editForm.break_out || ''}
+                                                    onChange={handleEditChange}
+                                                    className="form-control"
+                                                />
+                                            ) : (
+                                                formatTime(cat.break_out)
+                                            )}
+                                        </td>
+                                        <td>
+                                            {editingId === cat.category_no ? (
+                                                <input
+                                                    type="time"
+                                                    name="out_time"
+                                                    value={editForm.out_time || ''}
+                                                    onChange={handleEditChange}
+                                                    className="form-control"
+                                                />
+                                            ) : (
+                                                formatTime(cat.out_time)
+                                            )}
+                                        </td>
+                                        <td>
+                                            {editingId === cat.category_no ? (
+                                                <input
+                                                    type="text"
+                                                    name="working_hrs"
+                                                    value={editForm.working_hrs || ''}
+                                                    onChange={handleEditChange}
+                                                    className="form-control"
+                                                />
+                                            ) : (
+                                                cat.working_hrs || '—'
+                                            )}
+                                        </td>
+                                        <td>
+                                            {editingId === cat.category_no ? (
+                                                <input
+                                                    type="number"
+                                                    name="break_time_mins"
+                                                    value={editForm.break_time_mins || ''}
+                                                    onChange={handleEditChange}
+                                                    className="form-control"
+                                                />
+                                            ) : (
+                                                cat.break_time_mins
+                                            )}
+                                        </td>
+                                        <td>
+                                            {editingId === cat.category_no ? (
+                                                <>
+                                                    <button
+                                                        className="btn btn-success btn-sm me-2"
+                                                        onClick={() => handleSaveEdit(cat)}
+                                                        title="Save"
+                                                    >
+                                                        <i className="bi bi-check-lg"></i>
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-secondary btn-sm"
+                                                        onClick={() => handleEditClick(cat)}
+                                                        title="Cancel"
+                                                    >
+                                                        <i className="bi bi-x-lg"></i>
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <button
+                                                        className="btn btn-outline-primary btn-sm me-2"
+                                                        onClick={() => handleEditClick(cat)}
+                                                        title="Edit"
+                                                    >
+                                                        <i className="bi bi-pencil-square"></i>
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-outline-danger btn-sm"
+                                                        onClick={() => handleDelete(cat.category_no)}
+                                                        title="Delete"
+                                                    >
+                                                        <i className="bi bi-trash-fill"></i>
+                                                    </button>
+                                                </>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -204,18 +362,14 @@ function CategoryManagerPage() {
                 <h4 className="mb-3 text-secondary">Add Category</h4>
                 <form onSubmit={handleSubmit} className="row g-3">
                     <div className="col-md-4">
-                        <label className="form-label">Description</label>
-                        <select
-                            className="form-control"
+                        <label className="form-label">Category Name</label>
+                        <input
+                            type="text"
                             name="category_description"
                             value={form.category_description}
                             onChange={handleChange}
-                            required
-                        >
-                            <option value="">Select</option>
-                            <option value="Teaching Staff">Teaching Staff</option>
-                            <option value="Non Teaching Staff">Non Teaching Staff</option>
-                        </select>
+                            className="form-control"
+                        />
                     </div>
                     <div className="col-md-2">
                         <label className="form-label">Type</label>
