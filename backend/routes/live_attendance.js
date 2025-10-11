@@ -3,7 +3,7 @@ const router = express.Router();
 const { exec } = require("child_process");
 
 const scriptPath = process.env.PYTHON_SCRIPT_PATH2;
-const pythonPath = 'c:\\FacultyAttendance2\\FaceMachine\\venv\\Scripts\\python.exe';
+const pythonPath = process.env.PYTHON_PATH_VENV;
 
 // Function to run Python
 function runPythonFunction(funcName, args = []) {
