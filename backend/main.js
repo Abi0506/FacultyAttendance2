@@ -15,7 +15,7 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
-// const pythonProcess = startPythonScript();
+const pythonProcess = startPythonScript();
 
 app.use(cors(corsOptions));
 app.use(express.json());
