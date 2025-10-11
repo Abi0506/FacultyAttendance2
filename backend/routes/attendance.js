@@ -14,7 +14,6 @@ async function start_end_time() {
   return [start, today.toISOString().split('T')[0]];
 }
 
-
 function absent_marked(summary) {
   let leaves = 0;
   let num = Number(summary);
@@ -65,7 +64,6 @@ router.post('/flag_time', async (req, res) => {
   }
 });
 
-
 // Fetch all flagged times for a specific date
 router.post('/get_flags', async (req, res) => {
   try {
@@ -96,7 +94,7 @@ router.post('/get_flags', async (req, res) => {
 
 // Fetch all flagged times for a staff member in a date range
 router.post('/get_flags_for_staff', async (req, res) => {
-  
+
   try {
     const { staff_id, start_date, end_date } = req.body;
     // console.log( staff_id, start_date, end_date);
@@ -188,6 +186,7 @@ router.get('/probable_flagged_records', async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
 // Updated backend route for /get_flags to support date range
 router.post('/get_flags1', async (req, res) => {
   try {
@@ -215,7 +214,6 @@ router.post('/get_flags1', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch flagged times' });
   }
 });
-
 
 router.post('/attendance_viewer', async (req, res) => {
   const { date } = req.body;
@@ -246,7 +244,6 @@ router.post('/attendance_viewer', async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 async function getAbsentDays(staff_id, fromDate, toDate) {
   const [absents] = await db.query(
@@ -290,7 +287,6 @@ router.get('/department_categories', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
 
 router.post('/dept_summary', async (req, res) => {
   let { start_date, end_date, category, dept } = req.body;
@@ -614,6 +610,7 @@ router.post('/applyExemption', async (req, res) => {
     res.status(500).json({ message: "Failed to add exemption", error: err.message });
   }
 });
+
 router.get('/hr_exemptions_all', async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM exemptions  ORDER BY exemptionDate DESC');
@@ -622,6 +619,7 @@ router.get('/hr_exemptions_all', async (req, res) => {
     res.status(500).json({ message: "Failed to fetch exemptions" });
   }
 });
+
 router.get("/staff_exemptions/:staffId", async (req, res) => {
   const { staffId } = req.params;
   try {
@@ -629,6 +627,22 @@ router.get("/staff_exemptions/:staffId", async (req, res) => {
     res.json({ message: "Exemptions fetched successfully", exemptions: rows });
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch exemptions" });
+  }
+});
+
+router.post('/categories/update', async (req, res) => {
+  const { category_no, category_description, type, in_time, break_in, break_out, out_time, working_hrs, break_time_mins } = req.body;
+  try {
+    await db.query(
+      `UPDATE category
+             SET category_description=?,  in_time=?, break_in=?, break_out=?, out_time=?, break_time_mins=?
+             WHERE category_no=?`,
+      [category_description, in_time, break_in, break_out, out_time, break_time_mins, category_no]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Database update failed' });
   }
 });
 
@@ -657,24 +671,6 @@ router.post('/hr_exemptions/approve', async (req, res) => {
     res.status(500).json({ message: "Failed to approve exemption" });
   }
 });
-
-router.post('/categories/update', async (req, res) => {
-  const { category_no, category_description, type, in_time, break_in, break_out, out_time, working_hrs, break_time_mins } = req.body;
-  try {
-    await db.query(
-      `UPDATE category
-             SET category_description=?,  in_time=?, break_in=?, break_out=?, out_time=?, break_time_mins=?
-             WHERE category_no=?`,
-      [category_description, in_time, break_in, break_out, out_time, break_time_mins, category_no]
-    );
-    res.json({ success: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Database update failed' });
-  }
-});
-
-
 
 router.post('/hr_exemptions/reject', async (req, res) => {
   const { exemptionId } = req.body;
@@ -727,7 +723,6 @@ router.get('/search/query', async (req, res) => {
   }
 });
 
-
 router.get("/categories", async (req, res) => {
   try {
     const [rows] = await db.query("select * from category");
@@ -736,16 +731,6 @@ router.get("/categories", async (req, res) => {
     res.status(500).json({ message: "Failed to fetch categories", })
   }
 })
-
-router.get('/devices', async (req, res) => {
-  try {
-    const [rows] = await db.query('SELECT device_id, ip_address, device_name, device_location, maintenance FROM devices');
-    res.json({ message: "Devices fetched successfully", success: true, devices: rows });
-  } catch (err) {
-    console.error("Error fetching devices:", err);
-    res.status(500).json({ message: "Failed to fetch devices" });
-  }
-});
 
 router.post("/add_categories", async (req, res) => {
   const { category_description, in_time, break_in, break_out, out_time, break_time_mins } = req.body;
@@ -829,48 +814,6 @@ router.get('/staff', async (req, res) => {
   }
 });
 
-router.post('/devices/add', async (req, res) => {
-  let { ip_address, device_name, device_location, maintenance } = req.body;
-
-  try {
-    const [result] = await db.query(
-      'INSERT INTO devices (ip_address, device_name, device_location, maintenance) VALUES (?, ?, ?, ?)',
-      [ip_address, device_name, device_location, maintenance || 0]
-    );
-
-    const [rows] = await db.query('SELECT * FROM devices WHERE device_id = ?', [result.insertId]);
-    res.json({ message: "Device added successfully", success: true, device: rows[0] });
-  } catch (err) {
-    console.error("Error adding device:", err);
-    res.status(500).json({ message: "Failed to add device" });
-  }
-});
-
-
-router.post('/devices/update', async (req, res) => {
-  let { id, ip_address, device_name, device_location } = req.body;
-
-  try {
-    await db.query('UPDATE devices SET ip_address = ?, device_name = ?, device_location = ?  WHERE device_id = ?', [ip_address, device_name, device_location, id]);
-    res.json({ message: "Device updated successfully", success: true });
-  } catch (err) {
-    console.error("Error updating device:", err);
-    res.status(500).json({ message: "Failed to update device" });
-  }
-});
-router.post('/devices/delete', async (req, res) => {
-  let { id } = req.body;
-  try {
-    await db.query('DELETE FROM devices WHERE device_id = ?', [id]);
-    res.json({ message: "Device deleted successfully", success: true });
-  } catch (err) {
-    console.error("Error deleting device:", err);
-    res.status(500).json({ message: "Failed to delete device" });
-  }
-});
-
-
-
 router.get('/get_user/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -902,22 +845,6 @@ router.get('/get_user/:id', async (req, res) => {
   }
 });
 
-router.post('/devices/toggle_maintenance', async (req, res) => {
-  const { id } = req.body;
-  try {
-    const [rows] = await db.query('SELECT maintenance FROM devices WHERE device_id = ?', [id]);
-    if (rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Device not found' });
-    }
-    const newMaintenance = rows[0].maintenance ? 0 : 1;
-    await db.query('UPDATE devices SET maintenance = ? WHERE device_id = ?', [newMaintenance, id]);
-    res.json({ success: true, message: `Device maintenance ${newMaintenance ? 'enabled' : 'disabled'}` });
-  } catch (err) {
-    console.error("Error toggling maintenance:", err);
-    res.status(500).json({ success: false, message: "Failed to toggle maintenance" });
-  }
-});
-
 router.post("/update_additional_late_mins", async (req, res) => {
   const { staff_id, date, additional_late_mins } = req.body;
   const [day, month, year] = date.split("-");
@@ -941,7 +868,7 @@ router.post("/update_additional_late_mins", async (req, res) => {
         `INSERT INTO report (staff_id, date, late_mins, attendance, additional_late_mins) 
         
          VALUES (?, ?, ,?,?,?)`,
-        [staff_id, mysqlDate, 0, 'A', additional_late_mins]
+        [staff_id, mysqlDate, 0, 'P', additional_late_mins]
       );
 
       if (insertResult.affectedRows === 0) {
@@ -960,6 +887,4 @@ router.post("/update_additional_late_mins", async (req, res) => {
   }
 });
 
-
 module.exports = router;
-
