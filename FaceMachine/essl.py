@@ -40,13 +40,6 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
             flagged_times = {str(t[0]) for t in flagged_times_raw}
             print(f"Flagged times for {staff_id}: {flagged_times}")
 
-            cursor.execute(
-                "SELECT * FROM `leave` WHERE staff_id = %s AND %s BETWEEN start_date AND end_date",
-                (staff_id, date)
-            )
-            leave_record = cursor.fetchone()
-            print(f"Leave record for {staff_id}: {leave_record}")
-
             time_logs = [log_time for log_staff_id, log_time in logs if log_staff_id == staff_id]
             time_logs.sort()
             time_logs = [t if isinstance(t, str) else str(t) for t in time_logs]
@@ -57,34 +50,8 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
             if len(original_logs) > len(time_logs):
                 print(f"Skipped {len(original_logs) - len(time_logs)} flagged logs for {staff_id}")
 
-            # Check for odd number of logs and remove last log if odd
-            removed_log = None
-            if len(time_logs) % 2 != 0 and time_logs:
-                removed_log = time_logs.pop()
-                print(f"Odd number of logs for {staff_id}, removed last log: {removed_log}")
-                print(f"Updated time_logs for {staff_id}: {time_logs}")
-
-            if leave_record and not time_logs:
-                attendance = 'L'
-                late_mins = 0
-                print(f"Staff ID: {staff_id}, Date: {date}, Late Minutes: {round(late_mins, 2)}, Attendance: {attendance}")
-                cursor.execute(
-                    "SELECT 1 FROM report WHERE staff_id = %s AND date = %s",
-                    (staff_id, date)
-                )
-                exists = cursor.fetchone()
-                if exists:
-                    cursor.execute(
-                        "UPDATE report SET late_mins = %s, attendance = %s WHERE staff_id = %s AND date = %s",
-                        (late_mins, attendance, staff_id, date)
-                    )
-                    print(f"Updated report for {staff_id}: Date: {date}, Late Minutes: {late_mins}, Attendance: {attendance}")
-                else:
-                    cursor.execute(
-                        "INSERT INTO report (staff_id, date, late_mins, attendance) VALUES (%s, %s, %s, %s)",
-                        (staff_id, date, late_mins, attendance)
-                    )
-                    print(f"Inserted report for {staff_id}: Date: {date}, Late Minutes: {late_mins}, Attendance: {attendance}")
+            if not time_logs:
+                print(f"No logs for {staff_id} on {date}, skipping report")
                 continue
 
             category_data = next((cat for cat in categories if cat[0] == category_id), None)
@@ -101,13 +68,8 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
 
             if is_holiday or datetime.strptime(date, "%Y-%m-%d").weekday() == 6:
                 if not time_logs:
+                    print(f"No logs for {staff_id} on holiday or Sunday ({date}), skipping report")
                     continue
-
-            if not time_logs:
-                attendance = 'A'
-                print(f"Staff ID: {staff_id}, Date: {date}, Late Minutes: {round(late_mins, 2)}, Attendance: {attendance}")
-                print(f"No report created for {staff_id} on {date} due to absence")
-                continue
 
             try:
                 time_objs = [datetime.strptime(f"{date} {t}", "%Y-%m-%d %H:%M:%S") for t in time_logs]
@@ -123,124 +85,109 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
                 break_out = category_data[4]
                 out_time = category_data[5]
                 allowed_break = int(category_data[6])
+                in2 = category_data[8]
+                out2 = category_data[9]
+
+                # Validate category time fields
+                time_fields = {'in_time': in_time, 'break_in': break_in, 'break_out': break_out, 
+                              'out_time': out_time, 'in2': in2, 'out2': out2}
+                for field_name, field_value in time_fields.items():
+                    if field_value is None:
+                        print(f"Error: {field_name} is None for staff {staff_id}, skipping processing")
+                        continue
+                    try:
+                        datetime.strptime(f"{date} {field_value}", "%Y-%m-%d %H:%M:%S")
+                    except ValueError as e:
+                        print(f"Error parsing {field_name} for staff {staff_id}: {e}")
+                        continue
 
                 try:
                     start_const = datetime.strptime(f"{date} {in_time}", "%Y-%m-%d %H:%M:%S")
                     break_in_const = datetime.strptime(f"{date} {break_in}", "%Y-%m-%d %H:%M:%S")
                     break_out_const = datetime.strptime(f"{date} {break_out}", "%Y-%m-%d %H:%M:%S")
                     end_const = datetime.strptime(f"{date} {out_time}", "%Y-%m-%d %H:%M:%S")
-                    print(f"Constants for {staff_id}: start={start_const}, break_in={break_in_const}, break_out={break_out_const}, end={end_const}")
+                    in2_const = datetime.strptime(f"{date} {in2}", "%Y-%m-%d %H:%M:%S")
+                    out2_const = datetime.strptime(f"{date} {out2}", "%Y-%m-%d %H:%M:%S")
+                    print(f"Constants for {staff_id}: start={start_const}, break_in={break_in_const}, break_out={break_out_const}, end={end_const}, in2={in2_const}, out2={out2_const}")
                 except ValueError as e:
                     print(f"Error parsing category times for {staff_id}: {e}")
                     continue
 
-                # Handle single log in break window
-                if n == 1:
-                    single_log_time = time_objs[0]
-                    if break_in_const <= single_log_time <= break_out_const and not any(t > break_out_const for t in time_objs):
-                        attendance = 'H'
-                        late_mins = 0
-                        print(f"Single log in break window for {staff_id} ({single_log_time.time()}) and no return after break_out, marking half-day")
-                        cursor.execute(
-                            "SELECT 1 FROM report WHERE staff_id = %s AND date = %s",
-                            (staff_id, date)
-                        )
-                        exists = cursor.fetchone()
-                        if exists:
-                            cursor.execute(
-                                "UPDATE report SET late_mins = %s, attendance = %s WHERE staff_id = %s AND date = %s",
-                                (late_mins, attendance, staff_id, date)
-                            )
-                            print(f"Updated report for {staff_id}: Date: {date}, Late Minutes: {late_mins}, Attendance: {attendance}")
-                        else:
-                            cursor.execute(
-                                "INSERT INTO report (staff_id, date, late_mins, attendance) VALUES (%s, %s, %s, %s)",
-                                (staff_id, date, late_mins, attendance)
-                            )
-                            print(f"Inserted report for {staff_id}: Date: {date}, Late Minutes: {late_mins}, Attendance: {attendance}")
-                        continue
-
                 # Morning check
-                if time_objs and time_objs[0] > start_const:
+                if time_objs[0] > start_const:
                     late_minutes = (time_objs[0] - start_const).total_seconds() / 60
                     if late_minutes > 90:
                         half_day_morning = True
                         attendance = 'H'
-                        late_mins = 0
                         print(f"Morning absence > 90 mins for {staff_id}: {late_minutes}")
                     elif late_minutes > 15:
                         late_mins += late_minutes
                         print(f"Morning late mins for {staff_id}: {late_minutes}")
 
-                # Second-half arrival check
-                if time_objs and not any(t <= break_out_const for t in time_objs):
-                    print(f"No logs before break_out for {staff_id}, treating first log as break_out entry")
-                    if time_objs[0] > break_out_const:
-                        late_minutes = (time_objs[0] - break_out_const).total_seconds() / 60
-                        if late_minutes > 90:
-                            half_day_afternoon = True
-                            attendance = 'H'
-                            late_mins = 0
-                            print(f"Second-half late > 90 mins for {staff_id}: {late_minutes}")
-                        else:
-                            late_mins += late_minutes
-                            print(f"Second-half late mins for {staff_id}: {late_minutes}")
-                    else:
-                        print(f"Second-half on time for {staff_id}")
+                if not any(t > in2_const for t in time_objs):
+                    half_day_morning = True
+                    attendance = 'H'
+                    print(f"No logs after in2 for {staff_id}, marking morning half-day")
 
                 # Break check
                 break_mins = 0
+                invalid_break_mins = 0
                 i = 1
                 while i < n - 1:
                     try:
                         exit_time = time_objs[i]
                         entry_time = time_objs[i + 1]
-                        if break_in_const <= exit_time <= break_out_const and break_in_const <= entry_time <= break_out_const:
-                            break_duration = (entry_time - exit_time).total_seconds() / 60
+                        break_duration = (entry_time - exit_time).total_seconds() / 60
+                        if (exit_time < break_in_const and entry_time <= break_in_const) or (exit_time > break_out_const and entry_time > break_out_const):
+                            invalid_break_mins += break_duration
+                            print(f"Invalid break for {staff_id}: {break_duration:.2f} mins (from {exit_time} to {entry_time}) added to late_mins")
+                        else:
                             break_mins += break_duration
                             print(f"Break {i//2 + 1} for {staff_id}: {break_duration:.2f} mins (from {exit_time} to {entry_time})")
-                            i += 2
-                        else:
-                            print(f"Skipping invalid break pair for {staff_id}: {exit_time} to {entry_time}")
-                            i += 1
+                        i += 2
                     except IndexError:
                         print(f"IndexError in break calculation for {staff_id} at index {i}")
                         break
-                print(f"Total break mins for {staff_id}: {break_mins:.2f}")
+                print(f"Total valid break mins for {staff_id}: {break_mins:.2f}")
+                print(f"Total invalid break mins for {staff_id}: {invalid_break_mins:.2f}")
 
-                # Check for absence after break_out
-                print(f"Checking logs after break_out for {staff_id}: {[t.time() for t in time_objs]}, break_out={break_out_const.time()}")
-                if time_objs and not any(t > break_out_const for t in time_objs):
+                # Afternoon check
+                print(f"Checking logs after out2 for {staff_id}: {[t.time() for t in time_objs]}, out2={out2_const.time()}")
+                if not any(t > out2_const for t in time_objs):
                     half_day_afternoon = True
                     attendance = 'H'
-                    late_mins = 0
-                    print(f"No logs after break_out for {staff_id}, marking half-day")
+                    print(f"No logs after out2 for {staff_id}, marking half-day")
+                else:
+                    print(f"Logs found after out2 for {staff_id}")
 
-                # Early out check (only if not already half-day)
-                if time_objs and time_objs[-1] < end_const and not half_day_afternoon:
+                # Early out check
+                if time_objs[-1] < end_const and not half_day_afternoon:
                     early_minutes = (end_const - time_objs[-1]).total_seconds() / 60
                     print(f"Early out check: last_log={time_objs[-1].time()}, end_const={end_const.time()}, early_minutes={early_minutes}")
                     if early_minutes > 90:
                         half_day_afternoon = True
                         attendance = 'H'
-                        late_mins = 0
                         print(f"Early out > 90 mins for {staff_id}: {early_minutes}")
                     else:
                         late_mins += early_minutes
                         print(f"Early out mins added to late_mins for {staff_id}: {early_minutes}")
 
-                # Excess break check (only if not half-day)
+                # Excess break check
                 if not (half_day_morning or half_day_afternoon) and break_mins > allowed_break:
                     excess_break = break_mins - allowed_break
                     late_mins += excess_break
                     print(f"Excess break mins for {staff_id}: {excess_break:.2f}")
 
-                # Full absence check
-                print(f"Final check before report: half_day_morning={half_day_morning}, half_day_afternoon={half_day_afternoon}, attendance={attendance}, late_mins={late_mins}")
+                # Add invalid break minutes
+                if invalid_break_mins > 0:
+                    late_mins += invalid_break_mins
+                    print(f"Added invalid break mins to late_mins for {staff_id}: {invalid_break_mins:.2f}")
+
+                # Two half-days check
                 if half_day_morning and half_day_afternoon:
                     attendance = 'I'
                     late_mins = 0
-                    print(f"Both sessions half-day for {staff_id}, marking two half-days with 'I'")
+                    print(f"Both sessions half-day for {staff_id}, marking as 'I'")
 
             else:
                 start_const = time_objs[0]
@@ -253,7 +200,6 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
                     if early_minutes > 90:
                         half_day_afternoon = True
                         attendance = 'H'
-                        late_mins = 0
                         print(f"Early out > 90 mins for {staff_id}: {early_minutes}")
                     else:
                         late_mins += early_minutes
@@ -280,11 +226,9 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
                     print(f"Excess break mins for {staff_id}: {excess_break:.2f}")
 
                 if half_day_afternoon and n == 1:
-                    attendance = 'A'
+                    attendance = 'H'
                     late_mins = 0
-                    print(f"Single log with early out for {staff_id}, marking absent")
-                    print(f"No report created for {staff_id} on {date} due to absence")
-                    continue
+                    print(f"Single log with early out for {staff_id}, marking half-day")
 
             if late_mins > 0:
                 fractional_part = late_mins - int(late_mins)
@@ -355,6 +299,4 @@ def process_logs(date1=None):
         conn.close()
 
 if __name__ == "__main__":
-    process_logs("2025-10-08")
-
-
+    process_logs("2025-09-30")
