@@ -82,7 +82,7 @@ function Table({
                         currentData.map((row, rowIndex) => (
                             <tr
                                 key={rowIndex}
-                                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                                onClick={onRowClick ? () => onRowClick(row.staff_id) : undefined}
                                 style={onRowClick ? { cursor: "pointer" } : undefined}
                             >
                                 {columns.map((col, colIndex) => {
@@ -92,7 +92,7 @@ function Table({
                                     const timeValue = row[col];
                                     const flaggedKey =
                                         row.staff_id && timeValue
-                                            ? `${row.staff_id}_${timeValue}`
+                                            ? `${row.staff_id}_${selectedDate}_${timeValue}`
                                             : undefined;
                                     const isFlagged =
                                         flaggedCells && flaggedKey && flaggedCells[flaggedKey];
@@ -105,7 +105,7 @@ function Table({
                                             onClick={(e) => {
                                                 if (isClickable) {
                                                     e.stopPropagation();
-                                                    onFlagClick(row.staff_id, timeValue);
+                                                    onFlagClick(row.staff_id,selectedDate, timeValue);
                                                 }
                                             }}
                                             className={[
@@ -115,7 +115,7 @@ function Table({
                                                 .filter(Boolean)
                                                 .join(" ")}
                                             style={{
-                                                cursor: isClickable ? "pointer" : "default",
+                                                cursor: (!isFlagMode && onRowClick) || (isFlagMode && isClickable) ? "pointer" : "default",
                                             }}
                                         >
                                             {row[col] ?? "-"}

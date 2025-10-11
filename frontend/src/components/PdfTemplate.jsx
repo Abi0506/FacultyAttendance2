@@ -33,7 +33,7 @@ const PdfTemplate = ({
     const fixedTopMargin = 10; // Consistent top margin for all pages (including continuations)
     const titleHeight = 8; // Approximate height added by a title
     const minTableSpace = 20; // Minimum space for at least table header + one row
-    const footerReserve = 25; // Space for footer
+    const footerReserve = 30; // Increased space for footer to accommodate additional text
 
     // Helper function for footer
     const drawFooter = () => {
@@ -48,6 +48,17 @@ const PdfTemplate = ({
             pageWidth - doc.getTextWidth(footerText) - 10,
             pageHeight - 10
         );
+
+        // Add faded disclaimer text on the left, same line
+        const disclaimer = "This is a auto-generated report. No physical signature is required";
+        doc.setTextColor(150); // Faded gray
+        doc.setFontSize(7);
+        doc.text(
+            disclaimer,
+            10,
+            pageHeight - 10
+        );
+        doc.setTextColor(0); // Reset to black
     };
 
     // Draw banner
@@ -91,7 +102,7 @@ const PdfTemplate = ({
             startY,
             body: groupedData,
             theme: 'plain',
-            styles: { fontSize: 9, cellPadding: 1.3, overflow: 'linebreak', fontStyle: 'bold' },
+            styles: { fontSize: 9, cellPadding: 1.3, overflow: 'linebreak', fontStyle: 'plain' },
             margin: { left: 14, right: 14, top: fixedTopMargin, bottom: footerReserve },
             tableWidth: 'auto',
             didDrawPage: () => {

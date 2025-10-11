@@ -158,7 +158,6 @@ function HRExcemptions() {
     const modifyExemption = async (index, action) => {
         const updated = [...exemptions];
         const exemptionId = updated[index].exemptionId;
-        console.log(`Exemption ID: ${exemptionId}, Action: ${action}`);
         if (action === "approve") {
             const exemptionData = updated[index];
             const res = await axios.post("/attendance/hr_exemptions/approve", {

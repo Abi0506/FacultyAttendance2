@@ -3,6 +3,7 @@ import axios from '../axios';
 import PageWrapper from '../components/PageWrapper';
 import PdfTemplate from '../components/PdfTemplate';
 import Table from '../components/Table';
+import { useNavigate } from 'react-router-dom';
 
 function DepartmentSummary() {
     const [mainCategory, setMainCategory] = useState('ALL');
@@ -18,6 +19,7 @@ function DepartmentSummary() {
     const [recordsPerPage, setRecordsPerPage] = useState(10);
     const [loading, setLoading] = useState(false);
     // const [error, setError] = useState("");
+    const navigate = useNavigate();
 
     // Auto-fill startDate as 1st of current month, endDate as today
     function getDefaultStartDate() {
@@ -35,6 +37,12 @@ function DepartmentSummary() {
         const startDate = `${startDateObj.getFullYear()}-${String(startDateObj.getMonth() + 1).padStart(2, '0')}-${String(startDateObj.getDate()).padStart(2, '0')}`;
         return startDate;
     }
+
+    const handleRowClick = (staff_id) => {
+        if (!staff_id) return;
+        navigate(`/individual/${staff_id}`);
+        window.scrollTo(0, 0);
+    };
 
     function getDefaultEndDate() {
         return new Date().toISOString().split('T')[0];
@@ -280,6 +288,7 @@ function DepartmentSummary() {
                     onSort={handleSort}
                     selectedDate={date[0]}
                     rowsPerPage={recordsPerPage}
+                    onRowClick={handleRowClick}
                 />
             </div>
         );
@@ -297,7 +306,7 @@ function DepartmentSummary() {
     return (
         <PageWrapper>
             <div className="d-flex align-items-center justify-content-center position-relative mb-4">
-                <h2 className="fw-bold text-c-primary text-center m-0 flex-grow-1">Department</h2>
+                <h2 className="fw-bold text-c-primary text-center m-0 flex-grow-1">Cumulative Report</h2>
                 <button className="btn btn-c-primary btn-pdf" onClick={handleSaveAsPDF}>
                     Download PDF
                 </button>

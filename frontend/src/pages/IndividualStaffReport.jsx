@@ -89,7 +89,6 @@ function IndividualStaffReport() {
       for (const key in data) {
         flags[key] = true;
       }
-      console.log('Fetched flags:', flags);
       setFlaggedCells(flags);
     } catch (err) {
       console.error('Failed to fetch flagged times', err);
@@ -112,14 +111,15 @@ function IndividualStaffReport() {
       rec.date,
       ...columnsToShow.map((col) => rec[col] || '-'),
       rec.late_mins,
+      rec.additional_late_mins || 0,
       rec.working_hours,
     ]);
 
     PdfTemplate({
-      title: 'Attendance Report for ' + staffInfo.name,
+      title: 'Biometric Attendance Report for ' + staffInfo.name,
       tables: [{ columns: tableColumns, data: tableRows }],
       details,
-      fileName: `Attendance_${staffInfo.name || 'employee'}.pdf`,
+      fileName: `Biometric Attendance_${staffInfo.name || 'employee'}.pdf`,
     });
   };
 
@@ -208,6 +208,29 @@ function IndividualStaffReport() {
               </div>
             </div>
           </div>
+          <div className="d-flex align-items-center justify-content-between mt-4 mb-2">
+            <div className="d-flex align-items-center gap-3">
+              <div className="d-flex align-items-center">
+                <div
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    backgroundColor: '#fff3cd',
+                    border: '1px solid #e0a800',
+                    borderRadius: '4px',
+                    marginRight: '8px',
+                  }}
+                ></div>
+                <span className="text-muted small">Flagged Record</span>
+              </div>
+            </div>
+
+            <div>
+              <span className="text-danger small fst-italic">
+                If any record seems incorrect or missing, please report to HR.
+              </span>
+            </div>
+          </div>
 
           <h4 className="mt-4 mb-3">Attendance Details for {fromDate} to {endDate}:</h4>
           <table className="table table-c mt-3">
@@ -217,6 +240,7 @@ function IndividualStaffReport() {
                 <th>Date</th>
                 {columnsToShow.map((col, i) => <th key={i}>{col}</th>)}
                 <th>Late Mins</th>
+                <th>Additional Late Mins</th>
                 <th>Working Hours</th>
               </tr>
             </thead>
@@ -246,6 +270,7 @@ function IndividualStaffReport() {
                     })}
 
                     <td>{rec.late_mins}</td>
+                    <td>{rec.additional_late_mins}</td>
                     <td>{rec.working_hours}</td>
                   </tr>
                 ))

@@ -3,7 +3,8 @@ import axios from '../axios';
 import PageWrapper from '../components/PageWrapper';
 import PdfTemplate from '../components/PdfTemplate';
 import { useAlert } from '../components/AlertProvider';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+
 import Table from '../components/Table';
 
 
@@ -23,8 +24,8 @@ function AttendanceViewer() {
 
   const { showAlert } = useAlert();
   const location = useLocation();
+  const navigate = useNavigate();
 
-  // ----- UTILITIES -----
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const message = params.get('message');
@@ -33,6 +34,14 @@ function AttendanceViewer() {
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [location.search, showAlert]);
+
+  // Handle row click to navigate to individual report
+  const handleRowClick = (staff_id) => {
+    if (isFlagMode) return; // Disable navigation in flag mode
+    if (!staff_id) return;
+    navigate(`/individual/${staff_id}`);
+    window.scrollTo(0, 0);
+  };
 
   // Initialize date
   useEffect(() => {
@@ -72,7 +81,7 @@ function AttendanceViewer() {
     }
   }, []);
 
-  const handleFlagTime = async (staff_id, timeValue) => {
+  const handleFlagTime = async (staff_id,selectedDate, timeValue) => {
     if (!isFlagMode) return;
     try {
       const response = await axios.post('/attendance/flag_time', {
@@ -81,14 +90,14 @@ function AttendanceViewer() {
         time: timeValue
       });
 
-      const key = `${staff_id}_${timeValue}`;
+      const key = `${staff_id}_${selectedDate}_${timeValue}`;
       setFlaggedCells(prev => {
         const newFlags = { ...prev };
         if (response.data.revoked) {
-          delete newFlags[key];  // Remove highlight if revoked
+          delete newFlags[key];
           showAlert(`Flag revoked for ${staff_id}`, 'info');
         } else {
-          newFlags[key] = true; // Add highlight if flagged
+          newFlags[key] = true;
           showAlert(`Time flagged for ${staff_id}`, 'success');
         }
         return newFlags;
@@ -234,7 +243,14 @@ function AttendanceViewer() {
 
       {loading && <div className="text-center my-4">Loading...</div>}
       {error && <div className="alert alert-danger">{error}</div>}
-
+      <div className="d-flex align-items-center justify-content-between mt-4 mb-2">
+        <div className="d-flex align-items-center gap-3">
+          <div className="d-flex align-items-center">
+            <div className='flag-indicator'></div>
+            <span className="text-muted small">Flagged Records</span>
+          </div>
+        </div>
+      </div>
       {/* Table */}
       <Table
         key="attendance-table"
@@ -248,6 +264,8 @@ function AttendanceViewer() {
         isFlagMode={isFlagMode}
         currentPage={currentPage}
         onPageChange={setCurrentPage}
+        onRowClick={handleRowClick}
+        selectedDate={selectedDate}
       />
     </PageWrapper>
   );

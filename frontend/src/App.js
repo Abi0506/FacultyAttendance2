@@ -24,6 +24,8 @@ import DeptDesigManager from './pages/DeptDesigManager';
 import DevicesManager from './pages/DevicesManager';
 import HRLeaveManager from './pages/HRLeaveManager';
 import ResetPasswordPage from './pages/ResetPassword';
+import DashboardPage from './pages/Dashboard';
+import FlaggedRecords from './pages/FlaggedRecords';
 // import LeaveManager from './pages/LeaveManager';
 
 // --- Auth & Context Imports ---
@@ -38,7 +40,20 @@ function RequireHR({ children }) {
     if (!isAuthenticated) {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
-    if (designation !== "HR") {
+    if (designation !== "HR" && designation !== "PRINCIPAL") {
+        return <Navigate to="/staffIndividualReport" replace />;
+    }
+    return children;
+}
+
+function RequirePRINCIPAL({ children }) {
+    const { isAuthenticated, designation } = useAuth();
+    const location = useLocation();
+
+    if (!isAuthenticated) {
+        return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+    if (designation !== "PRINCIPAL") {
         return <Navigate to="/staffIndividualReport" replace />;
     }
     return children;
@@ -106,7 +121,7 @@ function AppContent() {
                     <div className="container-fluid flex-column p-0">
 
                         <div className="d-flex align-items-center justify-content-between w-100 px-4">
-                            <a className="navbar-brand d-flex align-items-center fw-bold" href="/" title="Dashboard">
+                            <a className="navbar-brand d-flex align-items-center fw-bold" to="/" title="Dashboard">
                                 <img src="/psgitarlogo.jpg" alt="Logo" className="psgitarlogo me-3" />
                                 <span className="header-title float-end">Faculty Biometric Attendance</span>
                             </a>
@@ -139,6 +154,8 @@ function AppContent() {
                                         <ul className="dropdown-menu show-on-hover" aria-labelledby="attendanceDropdown">
                                             <li><Link className="dropdown-item" to="/view">Live</Link></li>
                                             <li><hr className="dropdown-divider" /></li>
+                                            <li><Link className="dropdown-item" to="/flags">Possible Flags</Link></li>
+                                            <li> <hr className='dropdown-divider' /></li>
                                             <li><Link className="dropdown-item" to="/summary">Cumulative</Link></li>
                                             <li><hr className="dropdown-divider" /></li>
                                             <li><Link className="dropdown-item" to="/individual">Individual</Link></li>
@@ -205,7 +222,15 @@ function AppContent() {
                                 </ul>
                             )}
 
-                            {isAuthenticated && designation !== "HR" && (
+                            {isAuthenticated && designation === "PRINCIPAL" && (
+                                <ul className="navbar-nav me-auto mb-2 mb-lg-0 gap-3">
+                                    <li className="nav-item">
+                                        <Link className="nav-link" to="/dashboard">Dashboard</Link>
+                                    </li>
+
+                                </ul>
+                            )}
+                            {isAuthenticated && designation !== "HR" && designation !== "PRINCIPAL" && (
                                 <ul className="navbar-nav me-auto mb-2 mb-lg-0 gap-3">
                                     <li className="nav-item">
                                         <Link className="nav-link" to="/staffIndividualReport">Attendance Report</Link>
@@ -249,7 +274,9 @@ function AppContent() {
                         isAuthenticated
                             ? (designation === "HR"
                                 ? <Navigate to="/view" replace />
-                                : <Navigate to="/staffIndividualReport" replace />)
+                                : designation === "PRINCIPAL"
+                                    ? <Navigate to="/dashboard" replace />
+                                    : <Navigate to="/staffIndividualReport" replace />)
                             : <LoginPage />
                     } />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -265,7 +292,10 @@ function AppContent() {
                     <Route path="/devicemanager" element={<RequireHR><DevicesManager /></RequireHR>} />
                     <Route path="/leave" element={<RequireHR><HRLeaveManager /></RequireHR>} />
                     <Route path="/instant" element={<RequireHR><InstantLogs /></RequireHR>} />
+                    <Route path="/flags" element={<RequireHR>< FlaggedRecords /></RequireHR>} />
 
+                    {/* Principal Routes */}
+                    <Route path="/dashboard" element={<RequirePRINCIPAL><DashboardPage /></RequirePRINCIPAL>} />
 
                     {/* Staff Routes */}
                     <Route path="/staffIndividualReport" element={<RequireStaff><IndividualStaffReport /></RequireStaff>} />
@@ -274,14 +304,13 @@ function AppContent() {
                     <Route
                         path="/"
                         element={
-                            (() => {
-                                const search = window.location.search;
-                                return isAuthenticated
-                                    ? (designation === "HR"
-                                        ? <Navigate to={`/view${search}`} replace />
-                                        : <Navigate to={`/staffIndividualReport${search}`} replace />)
-                                    : <Navigate to={`/login${search}`} replace />;
-                            })()
+                            isAuthenticated
+                                ? designation === "HR"
+                                    ? <Navigate to="/view" replace />
+                                    : designation === "PRINCIPAL"
+                                        ? <Navigate to="/dashboard" replace />
+                                        : <Navigate to="/staffIndividualReport" replace />
+                                : <Navigate to="/login" replace />
                         }
                     />
 

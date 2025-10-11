@@ -49,6 +49,16 @@ router.post('/edit_user', async (req, res) => {
 
 router.post('/add_user', async (req, res) => {
   let { id, name, dept, category, designation, email, staff_type, intime, outtime, breakmins, breakin, breakout } = req.body;
+  // Check if the user already exists
+  try {
+    const [existingUser] = await db.query(`SELECT staff_id FROM staff WHERE staff_id = ?`, [id]);
+    if (existingUser.length > 0) {
+      return res.status(400).json({ success: false, message: 'User ID already exists' });
+    }
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Database error' });
+  }
+
   try {
     const pythonResult = await runPythonScript(['set_user_credentials', id, name]);
     if (pythonResult.includes('Error')) {
@@ -58,7 +68,6 @@ router.post('/add_user', async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 
-  console.log("Category: ", category);
   if (category === -1) {
     console.log("Custom Category processing");
     try {
@@ -89,8 +98,6 @@ router.post('/add_user', async (req, res) => {
 
 router.post('/edit_user', async (req, res) => {
   const { id, name, dept, designation, email, category } = req.body;
-  console.log(req.body);
-
   try {
     await db.query(
       `UPDATE staff SET name = ?, dept = ?, designation = ?, email = ?, category = ? WHERE staff_id = ?`,
@@ -122,7 +129,6 @@ router.get('/get_user/:id', async (req, res) => {
 
 router.post('/delete_user', async (req, res) => {
   const { id } = req.body;
-
 
 
   try {

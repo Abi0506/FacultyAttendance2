@@ -371,9 +371,7 @@ function UserManager() {
                 <option value="">Choose Category</option>
                 {categories.map((cat, idx) => (
                   <option key={idx} value={cat.category_no}>
-                    {cat.category_no} - {cat.category_description} - {formatTime(cat.in_time)} -{' '}
-                    {formatTime(cat.break_in)} - {formatTime(cat.break_out)} -{' '}
-                    {formatTime(cat.out_time)} - {cat.break_time_mins}
+                    {cat.category_no} - {cat.category_description}
                   </option>
                 ))}
               </select>
@@ -459,7 +457,6 @@ function UserManager() {
               <div className="col-md-6">
                 <label className="form-label">Designation</label>
                 <select className="form-select" value={editUser.designation ?? ''} onChange={(e) => setEditUser({ ...editUser, designation: e.target.value })} required>
-                  <option value="">Choose Designation</option>
                   {designations.map((des, idx) => (
                     <option key={idx} value={des.designation}>
                       {des.designation}
@@ -475,7 +472,6 @@ function UserManager() {
                   onChange={(e) => setEditUser({ ...editUser, dept: e.target.value })}
                   required
                 >
-                  <option value="">Choose Department</option>
                   {departments.map((dept, idx) => (
                     <option key={idx} value={dept.dept}>
                       {dept.dept}
@@ -486,12 +482,9 @@ function UserManager() {
               <div className="col-md-6">
                 <label className="form-label">Category</label>
                 <select className="form-select" value={editUser.category ?? ''} onChange={(e) => setEditUser({ ...editUser, category: e.target.value })} required>
-                  <option value="">Choose Category</option>
                   {categories.map((cat, idx) => (
                     <option key={idx} value={cat.category_no}>
-                      {cat.category_no} - {cat.category_description} - {formatTime(cat.in_time)} -{' '}
-                      {formatTime(cat.break_in)} - {formatTime(cat.break_out)} -{' '}
-                      {formatTime(cat.out_time)} - {cat.break_time_mins}
+                      {cat.category_no} - {cat.category_description}
                     </option>
                   ))}
                 </select>
