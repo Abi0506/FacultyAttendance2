@@ -105,9 +105,8 @@ function IndividualStaffReport() {
       { label: 'Total Late Minutes (Since Previous Reset)', value: totalLateMins },
     ];
 
-    const tableColumns = ['S.No', 'Date', ...columnsToShow, 'Late Mins', 'Working Hours'];
+    const tableColumns = ['Date', ...columnsToShow, 'Late Mins', "Additional Late Mins",'Working Hours'];
     const tableRows = records.map((rec, idx) => [
-      idx + 1,
       rec.date,
       ...columnsToShow.map((col) => rec[col] || '-'),
       rec.late_mins,
