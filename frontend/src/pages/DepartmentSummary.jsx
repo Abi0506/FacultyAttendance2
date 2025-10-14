@@ -8,17 +8,15 @@ import { useNavigate } from 'react-router-dom';
 function DepartmentSummary() {
     const [mainCategory, setMainCategory] = useState('ALL');
     const [selectedDept, setSelectedDept] = useState('');
-    const [selectedSubCategory, setSelectedSubCategory] = useState(''); // e.g., "Teaching Staff"
+    const [selectedSubCategory, setSelectedSubCategory] = useState('');
     const [summaryData, setSummaryData] = useState({});
     const [filteredData, setFilteredData] = useState({});
     const [date, setDate] = useState([]);
     const [sortConfig, setSortConfig] = useState({ key: 'staff_id', direction: 'asc' });
     const [departments, setDepartments] = useState([]);
     const [categoryMappings, setCategoryMappings] = useState({});
-    const [totalMarkedDaysCol, setTotalMarkedDaysCol] = useState('Total Marked Days');
     const [recordsPerPage, setRecordsPerPage] = useState(10);
     const [loading, setLoading] = useState(false);
-    // const [error, setError] = useState("");
     const navigate = useNavigate();
 
     // Auto-fill startDate as 1st of current month, endDate as today
@@ -28,14 +26,8 @@ function DepartmentSummary() {
         const janFirst = new Date(year, 0, 1); // January 1
         const julFirst = new Date(year, 6, 1); // July 1
 
-        let startDateObj;
-        if (today >= julFirst) {
-            startDateObj = julFirst;
-        } else {
-            startDateObj = janFirst;
-        }
-        const startDate = `${startDateObj.getFullYear()}-${String(startDateObj.getMonth() + 1).padStart(2, '0')}-${String(startDateObj.getDate()).padStart(2, '0')}`;
-        return startDate;
+        let startDateObj = today >= julFirst ? julFirst : janFirst;
+        return `${startDateObj.getFullYear()}-${String(startDateObj.getMonth() + 1).padStart(2, '0')}-${String(startDateObj.getDate()).padStart(2, '0')}`;
     }
 
     const handleRowClick = (staff_id) => {
@@ -125,7 +117,6 @@ function DepartmentSummary() {
             });
             setSummaryData(response.data.data || {});
             setDate(response.data.date || []);
-            setTotalMarkedDaysCol(response.data.total_marked_days_col || 'Total Marked Days');
         } catch (error) {
             console.error('Error fetching summary:', error);
             setSummaryData({});
@@ -174,11 +165,9 @@ function DepartmentSummary() {
             'Name',
             'Staff ID',
             'Designation',
-            `Filtered Late Minutes`,
-            `Filtered Absent Days`,
+            'Filtered Late Minutes',
             'Total Late Minutes',
-            'Total Absent Days',
-            totalMarkedDaysCol
+            'Deducted Days'
         ];
 
         if (mainCategory === 'ALL') {
@@ -193,10 +182,8 @@ function DepartmentSummary() {
                             emp.staff_id || 'N/A',
                             emp.designation || 'N/A',
                             emp.summary || 0,
-                            emp.absent_days || 0,
                             emp.total_late_mins || 0,
-                            emp.total_absent_days || 0,
-                            emp.total_marked_days || 0
+                            emp.deducted_days || 0
                         ]),
                         title: `${category} - ${deptName} Department`
                     };
@@ -222,10 +209,8 @@ function DepartmentSummary() {
                             emp.staff_id || 'N/A',
                             emp.designation || 'N/A',
                             emp.summary || 0,
-                            emp.absent_days || 0,
                             emp.total_late_mins || 0,
-                            emp.total_absent_days || 0,
-                            emp.total_marked_days || 0
+                            emp.deducted_days || 0
                         ]);
                     });
                 }
@@ -243,11 +228,9 @@ function DepartmentSummary() {
         'name',
         'staff_id',
         'designation',
-        'late_mins',
-        'absent_days',
+        'summary', // Represents late_mins
         'total_late_mins',
-        'total_absent_days',
-        'total_marked_days',
+        'deducted_days'
     ], []);
 
     // Sorting logic for Table

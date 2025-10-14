@@ -27,13 +27,13 @@ def process_exemptions():
 
     cursor = conn.cursor()
     current_date = datetime.now().date()
-    print(f"--- Processing exemptions for dates before {current_date - timedelta(days=1)} ---")
+   
 
     try:
         # Fetch all unprocessed approved exemptions where exemptionDate <= yesterday
         cursor.execute(
-            "SELECT * FROM exemptions WHERE exemptionStatus = 'approved' AND processed = 0 AND exemptionDate <= %s",
-            (current_date - timedelta(days=1),)
+            "SELECT * FROM exemptions WHERE exemptionStatus = 'approved' AND processed = 0",
+          
         )
         exemptions_to_process = cursor.fetchall()
         print(f"Exemptions to process: {exemptions_to_process}")
