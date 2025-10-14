@@ -1,5 +1,6 @@
 const xlsx = require("xlsx");
 const db = require('../db');
+const hashPassword = require("../routes/passWord")
 
 async function importXLS(fileName) {
     try {
@@ -68,6 +69,109 @@ async function importXLS(fileName) {
         process.exit(1);
     }
 }
+async function importStaffEmails(fileName) {
+    try {
+        const workbook = xlsx.readFile(fileName);
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const data = xlsx.utils.sheet_to_json(sheet);
 
-importXLS("out.xls");
-importXLS("in.xls");
+        let updatedCount = 0;
+        let insertedCount = 0;
+        let skippedCount = 0;
+
+        for (const row of data) {
+            const staff_id = row["Employee-ID"];
+            const name = row["Employee-Name"];
+            const dept = row["Department"];
+            const email = row["Email"];
+
+            if (!staff_id || !name || !dept) {
+                skippedCount++;
+                continue;
+            }
+
+            // Check if staff exists
+            const [existing] = await db.query(
+                `SELECT staff_id FROM staff WHERE staff_id = ?`,
+                [staff_id]
+            );
+
+            if (existing.length > 0) {
+                // Staff exists → update email (if provided)
+                if (email) {
+                    await db.query(
+                        `UPDATE staff SET email = ? WHERE staff_id = ?`,
+                        [email, staff_id]
+                    );
+                    updatedCount++;
+                } else {
+                    skippedCount++;
+                }
+            } else {
+                // New staff → hash staff_id for password
+                const hashedPassword = await hashPassword(staff_id.toString());
+
+                await db.query(
+                    `INSERT INTO staff (staff_id, name, dept, category, password, designation, email)
+                     VALUES (?, ?, ?, 1, ?, NULL, ?)`,
+                    [staff_id, name, dept, hashedPassword, email || null]
+                );
+                insertedCount++;
+            }
+        }
+
+        console.log("✅ Staff import/update completed!");
+        console.log(`➡️ Updated existing staff emails: ${updatedCount}`);
+        console.log(`➡️ Inserted new staff records: ${insertedCount}`);
+        console.log(`➡️ Skipped (missing fields or empty email): ${skippedCount}`);
+
+        process.exit(0);
+    } catch (err) {
+        console.error("❌ Failed to import XLS:", err);
+        process.exit(1);
+    }
+}
+
+async function fillMissingEmails() {
+    try {
+        // Step 1: Find all staff with missing or empty email
+        const [rows] = await db.query(
+            `SELECT staff_id FROM staff WHERE email IS NULL OR TRIM(email) = ''`
+        );
+
+        if (rows.length === 0) {
+            console.log("✅ No staff with missing emails found.");
+            process.exit(0);
+        }
+
+        // Step 2: Update all matching records
+        const [result] = await db.query(
+            `UPDATE staff 
+             SET email = 'hr@psgitech.ac.in' 
+             WHERE email IS NULL OR TRIM(email) = ''`
+        );
+
+        console.log("✅ Email update completed!");
+        console.log(`➡️ Records updated: ${result.affectedRows}`);
+        console.log(
+            "➡️ Updated staff IDs:",
+            rows.map(r => r.staff_id).join(", ")
+        );
+
+        process.exit(0);
+    } catch (err) {
+        console.error("❌ Failed to update missing emails:", err);
+        process.exit(1);
+    }
+}
+
+// Example usage:
+fillMissingEmails();
+
+
+// importStaffEmails("details.xlsx");
+
+
+
+// importXLS("out.xls");
+// importXLS("in.xls");
