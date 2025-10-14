@@ -165,11 +165,72 @@ async function fillMissingEmails() {
     }
 }
 
+
+async function importCanteenStaff(fileName) {
+    try {
+        const workbook = xlsx.readFile(fileName);
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const data = xlsx.utils.sheet_to_json(sheet);
+
+        let insertedCount = 0;
+        let skippedCount = 0;
+
+        for (const row of data) {
+            const staff_id = row["Employee Id"];
+            const name = row["Employee Name with initial"];
+            const designation = row["Designation"];
+
+            // Skip invalid rows
+            if (!staff_id || !name) {
+                skippedCount++;
+                continue;
+            }
+
+            // Check if staff already exists (avoid duplicates)
+            const [existing] = await db.query(
+                `SELECT staff_id FROM staff WHERE staff_id = ?`,
+                [staff_id]
+            );
+
+            if (existing.length > 0) {
+                skippedCount++;
+                continue;
+            }
+
+            // Hash staff_id for password
+            const hashedPassword = await hashPassword(staff_id.toString());
+
+            // Insert into staff table
+            await db.query(
+                `INSERT INTO staff (staff_id, name, dept, category, password, designation, email)
+                 VALUES (?, ?, 'CANTEEN', 1, ?, ?, 'hr@psgitech.ac.in')`,
+                [staff_id, name, hashedPassword, designation || null]
+            );
+
+            insertedCount++;
+        }
+
+        console.log("✅ CANTEEN staff import completed!");
+        console.log(`➡️ Inserted new records: ${insertedCount}`);
+        console.log(`➡️ Skipped (missing or duplicate staff): ${skippedCount}`);
+
+        process.exit(0);
+    } catch (err) {
+        console.error("❌ Failed to import CANTEEN staff:", err);
+        process.exit(1);
+    }
+}
+
 // Example usage:
-fillMissingEmails();
+importCanteenStaff("canteen.xlsx");
 
 
+// Example usage:
 // importStaffEmails("details.xlsx");
+
+// fillMissingEmails();
+
+
 
 
 
