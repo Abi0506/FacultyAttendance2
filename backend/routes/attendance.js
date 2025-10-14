@@ -20,7 +20,7 @@ function absent_marked(summary) {
   if (num >= 360) {
     num -= 360;
     leaves += 0.5;
-    while (num > 240) {
+    while (num >= 240) { 
       num -= 240;
       leaves += 0.5;
     }
@@ -313,7 +313,7 @@ router.post('/dept_summary', async (req, res) => {
     if (category === 'ALL') {
       [rows] = await db.query(`
         SELECT s.staff_id, s.name, s.dept, s.designation, s.email,
-               SUM(r.late_mins) AS summary,
+               SUM(r.late_mins + IFNULL(r.additional_late_mins, 0)) AS summary,
                c.category_description AS category
         FROM report r
         JOIN staff s ON s.staff_id = r.staff_id
@@ -327,7 +327,7 @@ router.post('/dept_summary', async (req, res) => {
     } else {
       [rows] = await db.query(`
         SELECT s.staff_id, s.name, s.dept, s.designation, s.email,
-               SUM(r.late_mins) AS summary,
+               SUM(r.late_mins + IFNULL(r.additional_late_mins, 0)) AS summary,
                c.category_description AS category
         FROM report r
         JOIN staff s ON s.staff_id = r.staff_id
@@ -341,21 +341,20 @@ router.post('/dept_summary', async (req, res) => {
 
     for (const row of rows) {
       const { dept, summary, category, staff_id, ...rest } = row;
-      const [leaves, num1] = absent_marked(summary || 0);
-      const absent_days = await getAbsentDays(staff_id, start_date, end_date);
-      const total_late_mins = await getTotalLateMins(staff_id, resetDate, today.toISOString().split('T')[0]);
-      const [leaves_reset] = absent_marked(total_late_mins);
-      const total_absent_days = await getAbsentDays(staff_id, resetDate, today.toISOString().split('T')[0]);
-      const total_marked_days = total_absent_days + leaves_reset;
+      const [total_late_mins_rows] = await db.query(`
+        SELECT SUM(late_mins + IFNULL(additional_late_mins, 0)) AS total_late_mins
+        FROM report
+        WHERE staff_id = ? AND date BETWEEN ? AND ?
+      `, [staff_id, resetDate, today.toISOString().split('T')[0]]);
+      const total_late_mins = total_late_mins_rows[0]?.total_late_mins || 0;
+      const [deducted_days] = absent_marked(total_late_mins);
 
       addEntry(category, dept, {
         staff_id,
         ...rest,
-        summary: Number(num1) || 0,
-        absent_days: Number(absent_days) || 0,
+        summary: Number(summary) || 0,
         total_late_mins: Number(total_late_mins) || 0,
-        total_absent_days: Number(total_absent_days) || 0,
-        total_marked_days: Number(total_marked_days) || 0,
+        deducted_days: Number(deducted_days) || 0,
         dept
       });
     }
@@ -368,9 +367,8 @@ router.post('/dept_summary', async (req, res) => {
 
     const start_Date = formatDate(start_date);
     const end_Date = formatDate(end_date);
-    const total_marked_days_col = 'Total Deducted Days';
 
-    res.json({ date: [start_Date, end_Date], data: result, total_marked_days_col });
+    res.json({ date: [start_Date, end_Date], data: result });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -482,22 +480,7 @@ router.post('/individual_data', async (req, res) => {
       WHERE staff_id = ? AND date BETWEEN ? AND ?
   `, [id, start, end]);
 
-    let [absent_days] = await db.query(`
-        SELECT
-           COUNT(attendance) as absent
-        FROM
-            report
-      WHERE staff_id = ? AND date BETWEEN ? AND ? AND attendance = ?
-    `, [id, start_date, end_date, 'A']);
-
-    let [total_absent_days] = await db.query(`
-       SELECT
-           COUNT(attendance) as absent
-        FROM
-            report
-      WHERE staff_id = ? AND date BETWEEN ? AND ? AND attendance = ?
-    `, [id, start, end, 'a']);
-
+   
     // Get filtered late minutes (between start_date and end_date)
     let [filtered_late_mins] = await db.query(`
   SELECT SUM(late_mins + IFNULL(additional_late_mins, 0)) AS filtered_late_mins
@@ -541,15 +524,13 @@ router.post('/individual_data', async (req, res) => {
     if (late_mins_1[0].late_mins === null) {
       late_mins_1[0].late_mins = '0';
     };
-
+    
 
     resultData = {
       from: start,
       end: end,
       late_mins: late_mins_1[0].late_mins,
-      total_absent_days: total_absent_days[0].absent,
-      absent_days: absent_days[0].absent,
-      absent_marked: absent_marked1,
+      total_absent_days: absent_marked1,
       total_late_mins: total_late_mins,
       filtered_late_mins: filtered_late_mins,
       timing: result,

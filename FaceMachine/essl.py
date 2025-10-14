@@ -337,6 +337,7 @@ def insert_log(cursor, staffs, logs, date, is_holiday):
                 except ValueError as e:
                     print(f"Error parsing category times for {staff_id}: {e}")
                     continue
+                    continue
 
                 # Morning check
                 if time_objs:
