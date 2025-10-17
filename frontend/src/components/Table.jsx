@@ -51,27 +51,16 @@ function Table({
       `}</style>
 
             <table className="table table-c">
-                <thead
-                    className="table-secondary"
-                    style={{ position: "sticky", top: 0, zIndex: 2 }}
-                >
+                <thead className="table-secondary" style={{ position: "sticky", top: 0, zIndex: 2 }}                >
                     <tr>
                         {columns.map((col, i) => (
-                            <th
-                                key={i}
-                                onClick={() => onSort && onSort(col)}
-                                style={{ cursor: "pointer", userSelect: "none" }}
-                                className="sortable-header"
-                            >
+                            <th key={i} onClick={() => onSort && onSort(col)} style={{ cursor: "pointer", userSelect: "none" }} className="sortable-header"                            >
                                 {capitalize(col)}{" "}
-                                {onSort
-                                    ? (sortConfig?.key === col
-                                        ? sortConfig.direction === "asc"
-                                            ? "▲"
-                                            : "▼"
-                                        : "⇅")
+                                {onSort ? (sortConfig?.key === col ? sortConfig.direction === "asc"
+                                    ? "▲"
+                                    : "▼"
+                                    : "⇅")
                                     : ""}
-
                             </th>
                         ))}
                     </tr>
@@ -80,7 +69,7 @@ function Table({
                 <tbody>
                     {currentData.length > 0 ? (
                         currentData.map((row, rowIndex) => (
-                            <tr
+                            < tr
                                 key={rowIndex}
                                 onClick={onRowClick ? () => onRowClick(row.staff_id) : undefined}
                                 style={onRowClick ? { cursor: "pointer" } : undefined}
@@ -92,7 +81,7 @@ function Table({
                                     const timeValue = row[col];
                                     const flaggedKey =
                                         row.staff_id && timeValue
-                                            ? `${row.staff_id}_${selectedDate}_${timeValue}`
+                                            ? `${row.staff_id}_${row.Date}_${timeValue}`
                                             : undefined;
                                     const isFlagged =
                                         flaggedCells && flaggedKey && flaggedCells[flaggedKey];
@@ -105,15 +94,13 @@ function Table({
                                             onClick={(e) => {
                                                 if (isClickable) {
                                                     e.stopPropagation();
-                                                    onFlagClick(row.staff_id,selectedDate, timeValue);
+                                                    onFlagClick(row.staff_id, selectedDate, timeValue);
                                                 }
                                             }}
                                             className={[
                                                 isClickable ? "flag-hover-cell" : "",
                                                 isFlagged ? "bg-c-warning" : "",
-                                            ]
-                                                .filter(Boolean)
-                                                .join(" ")}
+                                            ].filter(Boolean).join(" ")}
                                             style={{
                                                 cursor: (!isFlagMode && onRowClick) || (isFlagMode && isClickable) ? "pointer" : "default",
                                             }}
@@ -134,49 +121,39 @@ function Table({
                 </tbody>
             </table>
 
-            {totalPages > 1 && (
-                <div className="d-flex justify-content-center my-3">
-                    <ul className="pagination">
-                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                            <button
-                                className="page-link page-link-c"
-                                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                            >
-                                &laquo;
-                            </button>
-                        </li>
-
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
-                            <li
-                                key={num}
-                                className={`page-item ${num === currentPage ? "active" : ""}`}
-                            >
+            {
+                totalPages > 1 && (
+                    <div className="d-flex justify-content-center my-3">
+                        <ul className="pagination">
+                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
                                 <button
-                                    className="page-link shadow-none page-link-c"
-                                    onClick={() => setCurrentPage(num)}
+                                    className="page-link page-link-c"
+                                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                                 >
-                                    {num}
+                                    &laquo;
                                 </button>
                             </li>
-                        ))}
 
-                        <li
-                            className={`page-item ${currentPage === totalPages ? "disabled" : ""
-                                }`}
-                        >
-                            <button
-                                className="page-link page-link-c"
-                                onClick={() =>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+                                <li key={num} className={`page-item ${num === currentPage ? "active" : ""}`}                            >
+                                    <button className="page-link shadow-none page-link-c" onClick={() => setCurrentPage(num)}                                >
+                                        {num}
+                                    </button>
+                                </li>
+                            ))}
+
+                            <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                                <button className="page-link page-link-c" onClick={() =>
                                     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                                }
-                            >
-                                &raquo;
-                            </button>
-                        </li>
-                    </ul>
-                </div>
-            )}
-        </div>
+                                }>
+                                    &raquo;
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                )
+            }
+        </div >
     );
 }
 

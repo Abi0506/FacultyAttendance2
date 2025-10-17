@@ -21,6 +21,8 @@ function IndividualStaffReport() {
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [flaggedCells, setFlaggedCells] = useState({});
   const [sortConfig, setSortConfig] = useState({ key: 'Date', direction: 'desc' });
+  const [viewMode, setViewMode] = useState('Combined'); // New state for dropdown selection
+  const [isLoading, setIsLoading] = useState(true); // New state for loader
   const columnKeyMap = {
     "Date": "date",
     "Late Mins": "late_mins",
@@ -73,16 +75,7 @@ function IndividualStaffReport() {
       setColumnsToShow(visibleCols);
       setRecords(recordsData);
       setSubmitted(true);
-
-      // Log timing records to browser console for debugging (attendance & working hours)
-      try {
-        console.debug('IndividualStaffReport - timing', recordsData.map(r => ({ date: r.date, attendance: (r.attendance || 'P').toString().toUpperCase(), working_hours: r.working_hours, late_mins: r.late_mins })));
-      } catch (e) {
-        console.debug('IndividualStaffReport - timing (raw)', recordsData);
-      }
-
       fetchFlagsForStaff(recordsData);
-
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to fetch data.');
       setSubmitted(false);
@@ -93,6 +86,7 @@ function IndividualStaffReport() {
   // Decide how to display attendance in UI/PDF: show 'N/A' when DB value is 'I' or there is exactly one log present.
   // Do NOT convert zero-log days to N/A (keep DB attendance such as 'A').
   const decideAttendanceDisplay = (rec) => {
+    if (!rec.attendance) return 'N/A';
     const dbAtt = (rec.attendance).toString().toUpperCase();
     // count non-empty time cells among columnsToShow
     const timeCount = columnsToShow.reduce((acc, col) => {
@@ -115,13 +109,7 @@ function IndividualStaffReport() {
         start_date: formData.startDate,
         end_date: formData.endDate,
       });
-
-      // Map flagged times to use {staffId_date_time: true}
-      const flags = {};
-      const data = response.data || {};
-      for (const key in data) {
-        flags[key] = true;
-      }
+      const flags = response.data || {};
       setFlaggedCells(flags);
     } catch (err) {
       console.error('Failed to fetch flagged times', err);
@@ -129,31 +117,27 @@ function IndividualStaffReport() {
   };
 
   const handleSaveAsPDF = () => {
+    const { columns, data } = getTableColumnsAndData(); // Use the current table view and data
+
+    const formatDate = (date) => date.split('-').reverse().join('-'); // Convert yyyy-mm-dd to dd-mm-yyyy
+
     const details = [
       { label: 'Name', value: staffInfo.name || '' },
       { label: 'Designation', value: staffInfo.designation || '' },
       { label: 'Department', value: staffInfo.department || '' },
-      { label: 'Date Range', value: `${formData.startDate} to ${formData.endDate}` },
-      { label: `Late Minutes (${formData.startDate} to ${formData.endDate})`, value: lateMins },
+      { label: 'Date Range', value: `${formatDate(formData.startDate)} to ${formatDate(formData.endDate)}` },
+      { label: `Late Minutes (${formatDate(formData.startDate)} to ${formatDate(formData.endDate)})`, value: lateMins },
       { label: 'Total Late Minutes (Since Previous Reset)', value: totalLateMins },
     ];
 
-    const tableColumns = ['Date', ...columnsToShow, 'Attendance', 'Late Mins', "Additional Late Mins", 'Working Hours'];
-
-    const tableRows = records.map((rec, idx) => [
-      rec.date,
-      ...columnsToShow.map((col) => rec[col] || '-'),
-      decideAttendanceDisplay(rec),
-      rec.late_mins,
-      rec.additional_late_mins || 0,
-      rec.working_hours,
-    ]);
-
+    const tableRows = data.map((row) => columns.map((col) => col === 'Date' ? formatDate(row[col]) : row[col] || '-'));
+    console.log(flaggedCells)
     PdfTemplate({
       title: 'Biometric Attendance Report for ' + staffInfo.name,
-      tables: [{ columns: tableColumns, data: tableRows }],
+      tables: [{ columns, data: tableRows }],
       details,
       fileName: `Biometric Attendance_${staffInfo.name || 'employee'}.pdf`,
+      flaggedCells,
     });
   };
 
@@ -200,6 +184,53 @@ function IndividualStaffReport() {
     return sorted;
   }, [records, sortConfig]);
 
+  const handleViewChange = (e) => {
+    setViewMode(e.target.value);
+  };
+
+  const getTableColumnsAndData = () => {
+    const formatDate = (date) => date.split('-').reverse().join('-'); // Convert yyyy-mm-dd to dd-mm-yyyy
+
+    switch (viewMode) {
+      case 'Logs':
+        return {
+          columns: ['Date', ...columnsToShow],
+          data: sortedRecords.map((rec) => ({
+            Date: rec.date, // Format the date
+            ...columnsToShow.reduce((acc, col) => ({ ...acc, [col]: rec[col] || '-' }), {}),
+            staff_id: formData.employeeId, // Still passing staff_id to each row
+          })),
+        };
+      case 'Calculated':
+        return {
+          columns: ['Date', 'Attendance', 'Late Mins', 'Additional Late Mins', 'Working Hours'],
+          data: sortedRecords.map((rec) => ({
+            Date: rec.date, // Format the date
+            Attendance: decideAttendanceDisplay(rec),
+            'Late Mins': rec.late_mins,
+            'Additional Late Mins': rec.additional_late_mins || 0,
+            'Working Hours': rec.working_hours,
+            staff_id: formData.employeeId, // Still passing staff_id to each row
+          })),
+        };
+      default:
+        return {
+          columns: ['Date', ...columnsToShow, 'Attendance', 'Late Mins', 'Additional Late Mins', 'Working Hours'],
+          data: sortedRecords.map((rec) => ({
+            Date: rec.date,
+            ...columnsToShow.reduce((acc, col) => ({ ...acc, [col]: rec[col] || '-' }), {}),
+            Attendance: decideAttendanceDisplay(rec),
+            'Late Mins': rec.late_mins,
+            'Additional Late Mins': rec.additional_late_mins || 0,
+            'Working Hours': rec.working_hours,
+            staff_id: formData.employeeId, // Still passing staff_id to each row
+          })),
+        };
+    }
+  };
+
+  const { columns, data } = getTableColumnsAndData();
+
   useEffect(() => {
     const today = new Date();
     const yyyy = today.getFullYear();
@@ -222,11 +253,31 @@ function IndividualStaffReport() {
   }, [user]);
 
   useEffect(() => {
-    if (formData.startDate && formData.endDate && formData.employeeId) {
-      handleSubmit({ preventDefault: () => { } });
-    }
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        if (formData.startDate && formData.endDate && formData.employeeId) {
+          await handleSubmit({ preventDefault: () => { } });
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
     // eslint-disable-next-line
   }, [formData.startDate, formData.endDate, formData.employeeId]);
+
+  if (isLoading) {
+    return (
+      <PageWrapper>
+        <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </PageWrapper>
+    );
+  }
 
   return (
     <PageWrapper>
@@ -308,32 +359,41 @@ function IndividualStaffReport() {
             <h4 className="m-0">
               Attendance Details for {formData.startDate} to {formData.endDate}:
             </h4>
-            <div className="d-flex align-items-center">
-              <label htmlFor="rowsPerPage" className="me-2 fw-semibold mb-0">Rows per page:</label>
-              <select
-                id="rowsPerPage"
-                className="form-select form-select-sm w-auto"
-                value={rowsPerPage}
-                onChange={(e) => setRowsPerPage(parseInt(e.target.value))}
-                style={{ minWidth: '80px' }}
-              >
-                {[10, 25, 50, 100, 200].map(num => (
-                  <option key={num} value={num}>{num}</option>
-                ))}
-              </select>
+            <div className="d-flex align-items-center gap-3">
+              <div className="d-flex align-items-center">
+                <label htmlFor="viewMode" className="me-2 fw-semibold mb-0">View:</label>
+                <select
+                  id="viewMode"
+                  className="form-select form-select-sm w-auto"
+                  value={viewMode}
+                  onChange={handleViewChange}
+                  style={{ minWidth: '120px' }}
+                >
+                  <option value="Combined">Combined</option>
+                  <option value="Logs">Logs</option>
+                  <option value="Calculated">Calculated</option>
+                </select>
+              </div>
+              <div className="d-flex align-items-center">
+                <label htmlFor="rowsPerPage" className="me-2 fw-semibold mb-0">Rows per page:</label>
+                <select
+                  id="rowsPerPage"
+                  className="form-select form-select-sm w-auto"
+                  value={rowsPerPage}
+                  onChange={(e) => setRowsPerPage(parseInt(e.target.value))}
+                  style={{ minWidth: '80px' }}
+                >
+                  {[10, 25, 50, 100, 200].map(num => (
+                    <option key={num} value={num}>{num}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
           <Table
-            columns={["Date", ...columnsToShow, 'Attendance', "Late Mins", "Additional Late Mins", "Working Hours"]}
-            data={sortedRecords.map((rec) => ({
-              Date: rec.date,
-              ...columnsToShow.reduce((acc, col) => ({ ...acc, [col]: rec[col] || "-" }), {}),
-              "Attendance": decideAttendanceDisplay(rec),
-              "Late Mins": rec.late_mins,
-              "Additional Late Mins": rec.additional_late_mins || 0,
-              "Working Hours": rec.working_hours,
-            }))}
+            columns={columns}
+            data={data}
             sortConfig={sortConfig}
             onSort={handleSort}
             selectedDate={formData.startDate}
