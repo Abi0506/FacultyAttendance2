@@ -21,6 +21,7 @@ function IndividualAttendanceTable() {
   const [editingLateMins, setEditingLateMins] = useState({});
   const { staffId } = useParams();
   const [flaggedCells, setFlaggedCells] = useState({}); // new state for flagged times
+  
 
   // Fetch flagged times for selected user
   const fetchFlagsForUser = async (employeeId, start, end) => {
@@ -39,6 +40,21 @@ function IndividualAttendanceTable() {
     } catch (err) {
       console.error('Failed to fetch flagged times', err);
     }
+  };
+
+  const decideAttendanceDisplay = (rec) => {
+    const dbAtt = (rec.attendance).toString().toUpperCase();
+    // count non-empty time cells among columnsToShow
+    const timeCount = columnsToShow.reduce((acc, col) => {
+      const v = rec[col];
+      if (v && v !== '---') return acc + 1;
+      return acc;
+    }, 0);
+    // Show N/A when DB explicitly marks 'I'
+    if (dbAtt === 'I') return 'N/A';
+    // For a single log, only show N/A when DB indicates present (P) or is missing.
+    if (timeCount === 1 && (dbAtt === 'P' || !rec.attendance)) return 'N/A';
+    return dbAtt;
   };
 
   const handleSearch = async (query) => {
@@ -112,11 +128,20 @@ function IndividualAttendanceTable() {
       setColumnsToShow(visibleCols);
       fetchFlagsForUser(employeeId, start, end);
       setRecords(timing || []);
+
+      // Debugging output to console
+      try {
+        console.debug('IndividualAttendanceTable - timing', timing.map(r => ({ date: r.date, attendance: (r.attendance||'P').toString().toUpperCase(), working_hours: r.working_hours, late_mins: r.late_mins })));
+      } catch (e) {
+        console.debug('IndividualAttendanceTable - timing (raw)', timing);
+      }
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.error || 'Failed to fetch data.');
     }
   };
+
+  
 
   const handleDateChange = (e) => {
     const { name, value } = e.target;
@@ -189,11 +214,12 @@ function IndividualAttendanceTable() {
       { label: `Late Minutes (Filtered)`, value: lateMins },
       { label: 'Late Minutes(Total)', value: totalLateMins },
     ];
-    const tableColumn = ['Date', ...columnsToShow, 'Late Mins', 'Working Hours', 'Additional Late Mins'];
+    const tableColumn = ['Date', ...columnsToShow, 'Attendance', 'Late Mins', 'Working Hours', 'Additional Late Mins'];
 
     const tableRows = records.map((rec) => [
       rec.date,
       ...columnsToShow.map((col) => rec[col] || '-'),
+      decideAttendanceDisplay(rec),
       rec.late_mins,
       rec.working_hours,
       rec.additional_late_mins || 0,
@@ -277,9 +303,10 @@ function IndividualAttendanceTable() {
                   {columnsToShow.map((col, i) => (
                     <th key={i}>{col}</th>
                   ))}
-                  <th>Late Mins</th>
-                  <th>Working Hours</th>
-                  <th style={{ width: '80px', textAlign: 'center' }}>Additional Late Mins</th>
+                    <th>Late Mins</th>
+                    <th>Working Hours</th>
+                    <th style={{ width: '80px', textAlign: 'center' }}>Additional Late Mins</th>
+                    <th>Attendance</th>
                 </tr>
               </thead>
               <tbody>
@@ -311,6 +338,7 @@ function IndividualAttendanceTable() {
                         className="form-control form-control-sm text-center"
                       />
                     </td>
+                    <td>{decideAttendanceDisplay(rec)}</td>
                   </tr>
                 ))}
               </tbody>

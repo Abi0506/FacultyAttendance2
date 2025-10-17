@@ -4,27 +4,13 @@ import math
 from connection import db as db_connect
 from holiday import get_holidays
 
-def ensure_report_table(cursor):
-    """Create the report table if it doesn't exist."""
-    try:
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS report (
-                staff_id VARCHAR(50),
-                date DATE,
-                late_mins FLOAT,
-                attendance VARCHAR(1),
-                PRIMARY KEY (staff_id, date)
-            )
-        """)
-        print("Ensured report table exists")
-    except mysql.connector.Error as err:
-        print(f"Error creating report table: {err}")
+
 
 def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories):
     """Process logs and insert attendance records for a single staff member."""
-    print(f"Inserting log for staff_id: {staff_id}, category_id: {category_id}")
     if not logs:
         return
+    print(f"Inserting log for staff_id: {staff_id}, category_id: {category_id}")
     try:
         cursor.execute(
             "SELECT time FROM attendance_flags WHERE staff_id = %s AND date = %s",
@@ -601,7 +587,7 @@ def process_logs(date1=None):
     print(f"Processing date: {today}, is_holiday: {is_holiday}")
 
     try:
-        ensure_report_table(cursor)
+       
         cursor.execute("SELECT staff_id, category FROM staff")
         staffs = cursor.fetchall()
         print(f"Staffs fetched: {staffs}")
@@ -634,4 +620,4 @@ def process_logs(date1=None):
         conn.close()
 
 if __name__ == "__main__":
-    process_logs("2025-07-01")
+    process_logs("")
