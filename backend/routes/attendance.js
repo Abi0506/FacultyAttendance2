@@ -463,7 +463,7 @@ router.post('/individual_data', async (req, res) => {
     `, [id]);
 
     let [late_mins] = await db.query(`
-      SELECT late_mins,additional_late_mins, date
+      SELECT late_mins, additional_late_mins, date, attendance
       FROM report
       WHERE staff_id = ? AND date BETWEEN ? AND ?
     `, [id, start_date, end_date]);
@@ -500,21 +500,50 @@ router.post('/individual_data', async (req, res) => {
     for (const [date, times] of Object.entries(groupedByDate)) {
       times.sort();
       const row = { date: date.split('-').reverse().join('-') };
-      let totalMinutes = 0;
+
+      // Populate IN/OUT columns up to 3 pairs for compatibility with frontend
       for (let i = 0; i < 3; i++) {
         const inTime = times[i * 2] || null;
         const outTime = times[i * 2 + 1] || null;
         row[`IN${i + 1}`] = inTime;
         row[`OUT${i + 1}`] = outTime || (inTime ? "---" : null);
-        if (inTime && outTime && outTime !== "---") {
-          const inMin = parseTimeToMinutes(inTime);
-          const outMin = parseTimeToMinutes(outTime);
-          if (outMin > inMin) totalMinutes += (outMin - inMin);
-        }
       }
-      row.working_hours = totalMinutes > 0 ? minutesToHHMM(totalMinutes) : 'Invalid';
-      row.late_mins = late_mins.find(l => l.date === date)?.late_mins || 0;
-      row.additional_late_mins = late_mins.find(l => l.date === date)?.additional_late_mins || 0;
+
+      // Working hours: use only first and last log
+      let workingMinutes = 0;
+      if (times.length >= 2) {
+        try {
+          const first = parseTimeToMinutes(times[0]);
+          const last = parseTimeToMinutes(times[times.length - 1]);
+          if (last > first) workingMinutes = last - first;
+        } catch (e) {
+          workingMinutes = 0;
+        }
+      } else {
+        // single log or no logs → working minutes 0
+        workingMinutes = 0;
+      }
+
+      // Subtract late minutes (late_mins + additional_late_mins) for that date
+      const reportRow = late_mins.find(l => l.date === date) || {};
+      const dateLate = Number(reportRow.late_mins || 0) + Number(reportRow.additional_late_mins || 0);
+      workingMinutes = Math.max(0, workingMinutes - dateLate);
+
+      row.working_hours = workingMinutes > 0 ? minutesToHHMM(workingMinutes) : '00hrs 00mins';
+      row.late_mins = Number(reportRow.late_mins || 0);
+      row.additional_late_mins = Number(reportRow.additional_late_mins || 0);
+
+      // Include attendance status: use DB value when available, otherwise fallback
+      // Normalize to uppercase so frontend receives consistent values (P/H/I/A)
+     
+      // Log attendance details for this date (server-side)
+      try {
+        const dbAttendance = reportRow.attendance || 'N/A';
+        console.log(`individual_data: staff_id=${id} date=${date} db_attendance=${dbAttendance} mapped_attendance=${row.attendance} working_hours=${row.working_hours} late_mins=${row.late_mins} additional_late_mins=${row.additional_late_mins}`);
+      } catch (e) {
+        console.log('individual_data: logging error', e);
+      }
+
       result.push(row);
     }
 

@@ -74,6 +74,13 @@ function IndividualStaffReport() {
       setRecords(recordsData);
       setSubmitted(true);
 
+      // Log timing records to browser console for debugging (attendance & working hours)
+      try {
+        console.debug('IndividualStaffReport - timing', recordsData.map(r => ({ date: r.date, attendance: (r.attendance || 'P').toString().toUpperCase(), working_hours: r.working_hours, late_mins: r.late_mins })));
+      } catch (e) {
+        console.debug('IndividualStaffReport - timing (raw)', recordsData);
+      }
+
       fetchFlagsForStaff(recordsData);
 
     } catch (err) {
@@ -81,6 +88,23 @@ function IndividualStaffReport() {
       setSubmitted(false);
       setRecords([]);
     }
+  };
+
+  // Decide how to display attendance in UI/PDF: show 'N/A' when DB value is 'I' or there is exactly one log present.
+  // Do NOT convert zero-log days to N/A (keep DB attendance such as 'A').
+  const decideAttendanceDisplay = (rec) => {
+    const dbAtt = (rec.attendance).toString().toUpperCase();
+    // count non-empty time cells among columnsToShow
+    const timeCount = columnsToShow.reduce((acc, col) => {
+      const v = rec[col];
+      if (v && v !== '---') return acc + 1;
+      return acc;
+    }, 0);
+    // Show N/A when DB explicitly marks 'I'
+    if (dbAtt === 'I') return 'N/A';
+    // For a single log, only show N/A when DB indicates present (P) or is missing.
+    if (timeCount === 1 && (dbAtt === 'P' || !rec.attendance)) return 'N/A';
+    return dbAtt;
   };
 
   const fetchFlagsForStaff = async (recordsData) => {
@@ -114,10 +138,12 @@ function IndividualStaffReport() {
       { label: 'Total Late Minutes (Since Previous Reset)', value: totalLateMins },
     ];
 
-    const tableColumns = ['Date', ...columnsToShow, 'Late Mins', "Additional Late Mins", 'Working Hours'];
+    const tableColumns = ['Date', ...columnsToShow, 'Attendance', 'Late Mins', "Additional Late Mins", 'Working Hours'];
+
     const tableRows = records.map((rec, idx) => [
       rec.date,
       ...columnsToShow.map((col) => rec[col] || '-'),
+      decideAttendanceDisplay(rec),
       rec.late_mins,
       rec.additional_late_mins || 0,
       rec.working_hours,
@@ -299,10 +325,11 @@ function IndividualStaffReport() {
           </div>
 
           <Table
-            columns={["Date", ...columnsToShow, "Late Mins", "Additional Late Mins", "Working Hours"]}
+            columns={["Date", ...columnsToShow, 'Attendance', "Late Mins", "Additional Late Mins", "Working Hours"]}
             data={sortedRecords.map((rec) => ({
               Date: rec.date,
               ...columnsToShow.reduce((acc, col) => ({ ...acc, [col]: rec[col] || "-" }), {}),
+              "Attendance": decideAttendanceDisplay(rec),
               "Late Mins": rec.late_mins,
               "Additional Late Mins": rec.additional_late_mins || 0,
               "Working Hours": rec.working_hours,
