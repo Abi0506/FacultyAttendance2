@@ -185,7 +185,7 @@ function IndividualAttendanceTable() {
       { label: 'Category', value: selectedUser.category },
       { label: 'Designation', value: selectedUser.designation },
       { label: 'Email', value: selectedUser.email || 'No Email' },
-      { label: 'Date Range', value: `${fromDate} to ${endDate}` },
+      { label: 'Date Range', value: `${formData.startDate} to ${formData.endDate}` },
       { label: `Late Minutes (Filtered)`, value: lateMins },
       { label: 'Late Minutes(Total)', value: totalLateMins },
     ];

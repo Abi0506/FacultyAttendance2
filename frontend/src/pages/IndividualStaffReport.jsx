@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from '../axios';
 import PdfTemplate from '../components/PdfTemplate';
 import { useAuth } from '../auth/authProvider';
 import PageWrapper from '../components/PageWrapper';
+import Table from '../components/Table';
 
 function IndividualStaffReport() {
   const { user } = useAuth();
@@ -17,7 +18,15 @@ function IndividualStaffReport() {
   const [lateMins, setLateMins] = useState(0);
   const [fromDate, setFromDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [rowsPerPage, setRowsPerPage] = useState(25);
   const [flaggedCells, setFlaggedCells] = useState({});
+  const [sortConfig, setSortConfig] = useState({ key: 'Date', direction: 'desc' });
+  const columnKeyMap = {
+    "Date": "date",
+    "Late Mins": "late_mins",
+    "Additional Late Mins": "additional_late_mins",
+    "Working Hours": "working_hours",
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -100,12 +109,12 @@ function IndividualStaffReport() {
       { label: 'Name', value: staffInfo.name || '' },
       { label: 'Designation', value: staffInfo.designation || '' },
       { label: 'Department', value: staffInfo.department || '' },
-      { label: 'Date Range', value: `${fromDate} to ${endDate}` },
-      { label: `Late Minutes (${fromDate} to ${endDate})`, value: lateMins },
+      { label: 'Date Range', value: `${formData.startDate} to ${formData.endDate}` },
+      { label: `Late Minutes (${formData.startDate} to ${formData.endDate})`, value: lateMins },
       { label: 'Total Late Minutes (Since Previous Reset)', value: totalLateMins },
     ];
 
-    const tableColumns = ['Date', ...columnsToShow, 'Late Mins', "Additional Late Mins",'Working Hours'];
+    const tableColumns = ['Date', ...columnsToShow, 'Late Mins', "Additional Late Mins", 'Working Hours'];
     const tableRows = records.map((rec, idx) => [
       rec.date,
       ...columnsToShow.map((col) => rec[col] || '-'),
@@ -121,6 +130,49 @@ function IndividualStaffReport() {
       fileName: `Biometric Attendance_${staffInfo.name || 'employee'}.pdf`,
     });
   };
+
+  const handleSort = (column) => {
+    setSortConfig((prev) =>
+      prev.key === column
+        ? { key: column, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+        : { key: column, direction: 'asc' }
+    );
+  };
+
+  const sortedRecords = useMemo(() => {
+    if (!sortConfig.key) return records;
+
+    const realKey = columnKeyMap[sortConfig.key] || sortConfig.key; // map label to data key
+    const sorted = [...records].sort((a, b) => {
+      let aValue = a[realKey] ?? '';
+      let bValue = b[realKey] ?? '';
+
+      if (realKey === 'date') {
+        // Handle DD-MM-YYYY format properly
+        const parseDDMMYYYY = (str) => {
+          if (!str || typeof str !== 'string') return new Date('Invalid');
+          const [day, month, year] = str.split('-');
+          return new Date(`${year}-${month}-${day}`);
+        };
+        aValue = parseDDMMYYYY(aValue);
+        bValue = parseDDMMYYYY(bValue);
+      }
+      else if (typeof aValue === 'string' && aValue.includes(':')) {
+        // handle time strings like '09:45'
+        aValue = aValue === '-' ? '00:00' : aValue;
+        bValue = bValue === '-' ? '00:00' : bValue;
+      } else if (!isNaN(parseFloat(aValue)) && !isNaN(parseFloat(bValue))) {
+        aValue = parseFloat(aValue);
+        bValue = parseFloat(bValue);
+      }
+
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  }, [records, sortConfig]);
 
   useEffect(() => {
     const today = new Date();
@@ -224,58 +276,48 @@ function IndividualStaffReport() {
               </div>
             </div>
 
-            <div>
-              <span className="text-danger small fst-italic">
-                If any record seems incorrect or missing, please report to HR.
-              </span>
+
+          </div>
+          <div className="d-flex align-items-center justify-content-between mt-4 mb-3">
+            <h4 className="m-0">
+              Attendance Details for {formData.startDate} to {formData.endDate}:
+            </h4>
+            <div className="d-flex align-items-center">
+              <label htmlFor="rowsPerPage" className="me-2 fw-semibold mb-0">Rows per page:</label>
+              <select
+                id="rowsPerPage"
+                className="form-select form-select-sm w-auto"
+                value={rowsPerPage}
+                onChange={(e) => setRowsPerPage(parseInt(e.target.value))}
+                style={{ minWidth: '80px' }}
+              >
+                {[10, 25, 50, 100, 200].map(num => (
+                  <option key={num} value={num}>{num}</option>
+                ))}
+              </select>
             </div>
           </div>
 
-          <h4 className="mt-4 mb-3">Attendance Details for {fromDate} to {endDate}:</h4>
-          <table className="table table-c mt-3">
-            <thead className="table-secondary">
-              <tr>
-                <th>S.No</th>
-                <th>Date</th>
-                {columnsToShow.map((col, i) => <th key={i}>{col}</th>)}
-                <th>Late Mins</th>
-                <th>Additional Late Mins</th>
-                <th>Working Hours</th>
-              </tr>
-            </thead>
-            <tbody>
-              {records.length === 0 ? (
-                <tr>
-                  <td colSpan={columnsToShow.length + 4} className="text-center">
-                    No data available
-                  </td>
-                </tr>
-              ) : (
-                records.map((rec, index) => (
-                  <tr key={index}>
-                    <td>{index + 1}</td>
-                    <td>{rec.date}</td>
-                    {columnsToShow.map((col, i) => {
-                      const timeValue = rec[col];
-                      const dateParts = rec.date.split('-');
-                      const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-                      const key = `${formData.employeeId}_${formattedDate}_${timeValue}`;
-                      const isFlagged = flaggedCells[key];
-                      return (
-                        <td key={i} className={isFlagged ? 'table-warning' : ''}>
-                          {rec[col] || '-'}
-                        </td>
-                      );
-                    })}
-
-                    <td>{rec.late_mins}</td>
-                    <td>{rec.additional_late_mins}</td>
-                    <td>{rec.working_hours}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          <Table
+            columns={["Date", ...columnsToShow, "Late Mins", "Additional Late Mins", "Working Hours"]}
+            data={sortedRecords.map((rec) => ({
+              Date: rec.date,
+              ...columnsToShow.reduce((acc, col) => ({ ...acc, [col]: rec[col] || "-" }), {}),
+              "Late Mins": rec.late_mins,
+              "Additional Late Mins": rec.additional_late_mins || 0,
+              "Working Hours": rec.working_hours,
+            }))}
+            sortConfig={sortConfig}
+            onSort={handleSort}
+            selectedDate={formData.startDate}
+            flaggedCells={flaggedCells}
+            rowsPerPage={rowsPerPage}
+          />
+          <div>
+            <span className="text-danger small fst-italic float-end pb-2">
+              If any record seems incorrect or missing, please report to HR.
+            </span>
+          </div>
         </>
       )}
     </PageWrapper>
