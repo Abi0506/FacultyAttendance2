@@ -20,22 +20,22 @@ const capitalize = (str) => {
 const PdfTemplate = ({
     title = '',
     tables = [],
-    logoBase64 = null, // optional
+    logoBase64 = null,
     fileName = 'Report.pdf',
     details = null,
     banner = 'psgitarlogo.jpg',
     fromDate = null,
-    toDate = null
+    toDate = null,
+    flaggedCells = {}, // <--- added
 }) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const fixedTopMargin = 10; // Consistent top margin for all pages (including continuations)
-    const titleHeight = 8; // Approximate height added by a title
-    const minTableSpace = 20; // Minimum space for at least table header + one row
-    const footerReserve = 30; // Increased space for footer to accommodate additional text
+    const fixedTopMargin = 10;
+    const titleHeight = 8;
+    const minTableSpace = 20;
+    const footerReserve = 30;
 
-    // Helper function for footer
     const drawFooter = () => {
         doc.setDrawColor(150);
         doc.setLineWidth(0.5);
@@ -43,22 +43,13 @@ const PdfTemplate = ({
         const footerText = `Report generated on ${new Date().toLocaleString()}`;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
-        doc.text(
-            footerText,
-            pageWidth - doc.getTextWidth(footerText) - 10,
-            pageHeight - 10
-        );
+        doc.text(footerText, pageWidth - doc.getTextWidth(footerText) - 10, pageHeight - 10);
 
-        // Add faded disclaimer text on the left, same line
-        const disclaimer = "This is a auto-generated report. No physical signature is required";
-        doc.setTextColor(150); // Faded gray
+        const disclaimer = "This is an auto-generated report. No physical signature is required.";
+        doc.setTextColor(150);
         doc.setFontSize(7);
-        doc.text(
-            disclaimer,
-            10,
-            pageHeight - 10
-        );
-        doc.setTextColor(0); // Reset to black
+        doc.text(disclaimer, 10, pageHeight - 10);
+        doc.setTextColor(0);
     };
 
     // Draw banner
@@ -74,20 +65,18 @@ const PdfTemplate = ({
 
     let startY = bannerHeight + 25;
 
-    // Record date text
     doc.setFontSize(10);
     if (fromDate && toDate) {
         if (fromDate === toDate) {
             doc.text(`Records for ${formatDate(fromDate)}`, 14, startY);
-            startY += 7;
         } else {
             doc.text(`Records from ${formatDate(fromDate)} to ${formatDate(toDate)}`, 14, startY);
-            startY += 7;
         }
+        startY += 7;
     }
 
+    // Employee details table
     if (details && Array.isArray(details) && details.length > 0) {
-        // Group details into rows of two pairs (4 cells per row)
         const groupedData = [];
         for (let i = 0; i < details.length; i += 2) {
             const d1 = details[i];
@@ -105,24 +94,15 @@ const PdfTemplate = ({
             styles: { fontSize: 9, cellPadding: 1.3, overflow: 'linebreak', fontStyle: 'plain' },
             margin: { left: 14, right: 14, top: fixedTopMargin, bottom: footerReserve },
             tableWidth: 'auto',
-            didDrawPage: () => {
-                drawFooter();
-            },
+            didDrawPage: drawFooter,
         });
 
         startY = doc.lastAutoTable.finalY + 6;
     }
 
-    // Draw tables
+    // Main data tables
     if (Array.isArray(tables) && tables.length > 0) {
         tables.forEach((table) => {
-            let effectiveTitleHeight = table.title ? titleHeight : 0;
-            if (startY + effectiveTitleHeight + footerReserve + minTableSpace > pageHeight) {
-                doc.addPage();
-                startY = fixedTopMargin; // Start from fixed top on new page
-            }
-
-            // Draw title if present
             if (table.title) {
                 doc.setFontSize(11);
                 doc.setFont('helvetica', 'bold');
@@ -130,7 +110,6 @@ const PdfTemplate = ({
                 startY += titleHeight;
             }
 
-            // Now draw the table (there should be enough space for min)
             autoTable(doc, {
                 startY,
                 showHead: 'firstPage',
@@ -139,18 +118,41 @@ const PdfTemplate = ({
                 theme: "plain",
                 styles: { fontSize: 8.5, cellPadding: 2, overflow: 'linebreak' },
                 headStyles: { fillColor: [63, 63, 149], textColor: [255, 255, 255] },
-                margin: { top: fixedTopMargin, bottom: footerReserve, left: 14, right: 14 }, // FIXED top margin
+                margin: { top: fixedTopMargin, bottom: footerReserve, left: 14, right: 14 },
                 pageBreak: 'auto',
                 rowPageBreak: 'avoid',
-                didDrawPage: () => {
-                    drawFooter();
-                }
+
+                // 💡 Highlight flagged rows
+                didParseCell: (data) => {
+                    try {
+                        const rowData = table.data[data.row.index];
+                        const colName = table.columns[data.column.index];
+
+                        // Extract fields from your data row
+                        const staffId = rowData.staff_id;
+                        const date = rowData.Date;
+                        const time = rowData.Time; // if your record has it
+
+                        // Build the same key format as in flaggedCells
+                        const key = `${staffId}_${date}_${time}`;
+
+                        if (flaggedCells[key]) {
+                            data.cell.styles.fillColor = [255, 243, 205]; // soft yellow
+                            data.cell.styles.textColor = [0, 0, 0];
+                        }
+                    } catch (e) {
+                        console.error("Error parsing flagged cell:", e);
+                    }
+                },
+
+
+                didDrawPage: drawFooter,
             });
 
             startY = doc.lastAutoTable.finalY + 6;
         });
     } else {
-        drawFooter(); // Footer even if no tables
+        drawFooter();
     }
 
     doc.save(fileName);

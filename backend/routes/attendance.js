@@ -20,7 +20,7 @@ function absent_marked(summary) {
   if (num >= 360) {
     num -= 360;
     leaves += 0.5;
-    while (num >= 240) { 
+    while (num >= 240) {
       num -= 240;
       leaves += 0.5;
     }
@@ -112,6 +112,7 @@ router.post('/get_flags_for_staff', async (req, res) => {
     const flaggedMap = {};
     rows.forEach(row => {
       const timeStr = row.time.toString().slice(0, 8); // 'HH:MM:SS'
+      row.date = row.date.split("-").reverse().join("-")
       flaggedMap[`${staff_id}_${row.date}_${timeStr}`] = true;
     });
 
@@ -231,6 +232,7 @@ router.post('/attendance_viewer', async (req, res) => {
     const result = Object.entries(categorized).map(([staff_id, { name, times }]) => ({
       staff_id,
       name,
+      Date: date,
       IN1: times[0] || null,
       OUT1: times[1] || null,
       IN2: times[2] || null,
@@ -480,7 +482,7 @@ router.post('/individual_data', async (req, res) => {
       WHERE staff_id = ? AND date BETWEEN ? AND ?
   `, [id, start, end]);
 
-   
+
     // Get filtered late minutes (between start_date and end_date)
     let [filtered_late_mins] = await db.query(`
   SELECT SUM(late_mins + IFNULL(additional_late_mins, 0)) AS filtered_late_mins
@@ -557,7 +559,7 @@ router.post('/individual_data', async (req, res) => {
     if (late_mins_1[0].late_mins === null) {
       late_mins_1[0].late_mins = '0';
     };
-    
+
 
     resultData = {
       from: start,
