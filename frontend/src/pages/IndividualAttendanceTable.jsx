@@ -43,7 +43,7 @@ function IndividualAttendanceTable() {
   };
 
   const decideAttendanceDisplay = (rec) => {
-    const dbAtt = (rec.attendance).toString().toUpperCase();
+    const dbAtt = (rec.attendance ?? '').toString().toUpperCase();
     // count non-empty time cells among columnsToShow
     const timeCount = columnsToShow.reduce((acc, col) => {
       const v = rec[col];

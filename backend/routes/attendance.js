@@ -533,12 +533,16 @@ router.post('/individual_data', async (req, res) => {
       row.late_mins = Number(reportRow.late_mins || 0);
       row.additional_late_mins = Number(reportRow.additional_late_mins || 0);
 
-      // Include attendance status: use DB value when available, otherwise fallback
-      // Normalize to uppercase so frontend receives consistent values (P/H/I/A)
+      // Include attendance status: use DB value when available, otherwise fallback.
+      // Normalize to uppercase so frontend receives consistent values (P/H/I/A).
+      // Do not modify the DB value; only provide a normalized value to the client.
+      const dbAttendanceRaw = reportRow.attendance;
      
+      const dbAttendance = (dbAttendanceRaw).toString().toUpperCase();
+      row.attendance = dbAttendance;
+
       // Log attendance details for this date (server-side)
       try {
-        const dbAttendance = reportRow.attendance || 'N/A';
         console.log(`individual_data: staff_id=${id} date=${date} db_attendance=${dbAttendance} mapped_attendance=${row.attendance} working_hours=${row.working_hours} late_mins=${row.late_mins} additional_late_mins=${row.additional_late_mins}`);
       } catch (e) {
         console.log('individual_data: logging error', e);

@@ -48,6 +48,7 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
                 temp_half_day_afternoon = False
                 temp_morning_late_mins = 0
                 temp_afternoon_late_mins = 0
+                temp_break_mins = 0
 
                 try:
                     temp_time_objs = [datetime.strptime(f"{date} {t}", "%Y-%m-%d %H:%M:%S") for t in temp_time_logs]
@@ -101,20 +102,13 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
                             temp_morning_late_mins = 0
                             temp_attendance = 'H'
 
-                    # Break check (select one break with lowest late_mins)
-                    best_break_late_mins = float('inf')
-                    best_break_duration = 0
-                    best_temp_half_day_morning = temp_half_day_morning
-                    best_temp_half_day_afternoon = temp_half_day_afternoon
-                    best_temp_attendance = temp_attendance
-                    best_temp_morning_late_mins = temp_morning_late_mins
-                    best_temp_afternoon_late_mins = temp_afternoon_late_mins
-
-                    temp_break_morning_late_mins = temp_morning_late_mins
-                    temp_break_afternoon_late_mins = temp_afternoon_late_mins
-                    temp_break_half_day_morning = temp_half_day_morning
-                    temp_break_half_day_afternoon = False
-                    temp_break_attendance = temp_attendance
+                    # Break check: select break with greatest valid duration within end_time
+                    breaks = []
+                    temp_morning_late_mins = temp_morning_late_mins
+                    temp_afternoon_late_mins = temp_afternoon_late_mins
+                    temp_half_day_morning = temp_half_day_morning
+                    temp_half_day_afternoon = False
+                    temp_attendance = temp_attendance
                     temp_break_mins = 0
 
                     i = 1
@@ -122,87 +116,82 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
                         exit_time = temp_time_objs[i]
                         entry_time = temp_time_objs[i + 1]
                         break_duration = (entry_time - exit_time).total_seconds() / 60
-                        temp_break_mins = 0
-                        temp_break_morning_late_mins = temp_morning_late_mins
-                        temp_break_afternoon_late_mins = temp_afternoon_late_mins
-                        temp_break_half_day_morning = temp_half_day_morning
-                        temp_break_half_day_afternoon = False
-                        temp_break_attendance = temp_attendance
+                        print(f"Evaluating break {i//2 + 1} for {staff_id}: {break_duration:.2f} mins (from {exit_time} to {entry_time})")
 
-                        # Calculate late minutes for out-of-bounds break
-                        break_late_mins = 0
-                        if exit_time < break_in_const:
-                            break_late_mins += (break_in_const - exit_time).total_seconds() / 60
-                            print(f"Break starts before break_in for {staff_id}: {break_late_mins:.2f} mins added (exit_time={exit_time}, break_in={break_in_const})")
-                        if entry_time > break_out_const:
-                            break_late_mins += (entry_time - break_out_const).total_seconds() / 60
-                            print(f"Break ends after break_out for {staff_id}: {(entry_time - break_out_const).total_seconds() / 60:.2f} mins added (entry_time={entry_time}, break_out={break_out_const})")
+                        # Skip breaks after end_time
+                        if exit_time > end_const:
+                            print(f"Break starts after out_time for {staff_id}, no late_mins added")
+                            i += 2
+                            continue
 
-                        # Align break to morning or afternoon
-                        if break_late_mins > 0:
-                            if exit_time <= middle_time:
-                                temp_break_morning_late_mins += break_late_mins
-                                if break_late_mins > 90:
-                                    temp_break_half_day_morning = True
-                                    temp_break_morning_late_mins = 0
-                                    temp_break_attendance = 'H'
-                                print(f"Break aligned to morning for {staff_id}: {break_late_mins:.2f} mins added")
-                            else:
-                                temp_break_afternoon_late_mins += break_late_mins
-                                if break_late_mins > 90:
-                                    temp_break_half_day_afternoon = True
-                                    temp_break_afternoon_late_mins = 0
-                                    temp_break_attendance = 'H'
-                                print(f"Break aligned to afternoon for {staff_id}: {break_late_mins:.2f} mins added")
+                        # Calculate valid duration
+                        valid_start = max(exit_time, break_in_const)
+                        valid_end = min(entry_time, break_out_const)
+                        valid_duration = max(0, (valid_end - valid_start).total_seconds() / 60) if valid_start <= valid_end else 0
+                        is_valid = valid_duration > 0 and entry_time <= break_out_const
+                        print(f"Break {i//2 + 1} valid duration: {valid_duration:.2f} mins (from {valid_start} to {valid_end})")
 
-                        if break_in_const <= exit_time <= break_out_const and entry_time <= break_out_const:
-                            temp_break_mins = break_duration
-                            print(f"Break {i//2 + 1} for {staff_id}: Valid break {break_duration:.2f} mins")
-
-                        total_temp_late_mins = temp_break_morning_late_mins + temp_break_afternoon_late_mins
-                        if total_temp_late_mins < best_break_late_mins:
-                            best_break_late_mins = total_temp_late_mins
-                            best_break_duration = temp_break_mins
-                            best_temp_half_day_morning = temp_break_half_day_morning
-                            best_temp_half_day_afternoon = temp_break_half_day_afternoon
-                            best_temp_attendance = temp_break_attendance
-                            best_temp_morning_late_mins = temp_break_morning_late_mins
-                            best_temp_afternoon_late_mins = temp_break_afternoon_late_mins
-
+                        breaks.append((i//2 + 1, exit_time, entry_time, break_duration, valid_duration))
                         i += 2
 
-                    temp_morning_late_mins = best_temp_morning_late_mins
-                    temp_afternoon_late_mins = best_temp_afternoon_late_mins
-                    temp_break_mins = best_break_duration
-                    temp_half_day_morning = best_temp_half_day_morning
-                    temp_half_day_afternoon = best_temp_half_day_afternoon
-                    temp_attendance = best_temp_attendance
+                    # Select break with greatest valid duration
+                    if breaks:
+                        valid_breaks = [(num, exit_time, entry_time, break_dur, valid_dur) for num, exit_time, entry_time, break_dur, valid_dur in breaks if valid_dur > 0]
+                        if valid_breaks:
+                            selected_break = max(valid_breaks, key=lambda x: x[4])  # Max by valid_duration
+                            temp_break_mins = selected_break[4]
+                            print(f"Selected break {selected_break[0]} for {staff_id}: valid {temp_break_mins:.2f} mins (from {selected_break[1]} to {selected_break[2]})")
+                            # Calculate late minutes for selected break (invalid portions)
+                            break_late_mins = 0
+                            if selected_break[1] < break_in_const:
+                                break_late_mins += (break_in_const - selected_break[1]).total_seconds() / 60
+                                print(f"Selected break starts before break_in for {staff_id}: {break_late_mins:.2f} mins added (exit_time={selected_break[1]}, break_in={break_in_const})")
+                            if selected_break[2] > break_out_const:
+                                break_late_mins += (selected_break[2] - break_out_const).total_seconds() / 60
+                                print(f"Selected break ends after break_out for {staff_id}: {break_late_mins:.2f} mins added (entry_time={selected_break[2]}, break_out={break_out_const})")
+                            if break_late_mins > 0:
+                                if selected_break[1] <= middle_time:
+                                    temp_morning_late_mins += break_late_mins
+                                    print(f"Selected break late mins aligned to morning for {staff_id}: {break_late_mins:.2f} mins added")
+                                else:
+                                    temp_afternoon_late_mins += break_late_mins
+                                    print(f"Selected break late mins aligned to afternoon for {staff_id}: {break_late_mins:.2f} mins added")
 
-                    if temp_time_objs and not any(t > out2_const for t in temp_time_objs):
+                        # Add full durations of all other breaks within end_time to late_mins
+                        for break_num, exit_time, _, break_duration, _ in breaks:
+                            if not valid_breaks or break_num != selected_break[0]:
+                                if exit_time <= middle_time:
+                                    temp_morning_late_mins += break_duration
+                                    print(f"Other break {break_num} aligned to morning for {staff_id}: {break_duration:.2f} mins added to late_mins")
+                                else:
+                                    temp_afternoon_late_mins += break_duration
+                                    print(f"Other break {break_num} aligned to afternoon for {staff_id}: {break_duration:.2f} mins added to late_mins")
+                    else:
+                        print(f"No breaks within end_time for {staff_id}")
+
+                    # Apply half-day if late_mins exceed 90
+                    if temp_morning_late_mins > 90:
+                        temp_half_day_morning = True
+                        temp_morning_late_mins = 0
+                        temp_attendance = 'H'
+                        print(f"Morning late_mins > 90 for {staff_id}, marking morning half-day")
+                    if temp_afternoon_late_mins > 90:
                         temp_half_day_afternoon = True
                         temp_afternoon_late_mins = 0
                         temp_attendance = 'H'
+                        print(f"Afternoon late_mins > 90 for {staff_id}, marking afternoon half-day")
 
-                    if temp_time_objs and temp_time_objs[-1] < end_const and not temp_half_day_afternoon:
-                        early_minutes = (end_const - temp_time_objs[-1]).total_seconds() / 60
-                        if early_minutes > 90:
-                            temp_half_day_afternoon = True
-                            temp_afternoon_late_mins = 0
-                            temp_attendance = 'H'
-                        else:
-                            temp_afternoon_late_mins += early_minutes
-
+                    temp_late_mins = temp_morning_late_mins + temp_afternoon_late_mins
                     if temp_half_day_morning and temp_half_day_afternoon:
                         temp_attendance = 'I'
                         temp_morning_late_mins = 0
                         temp_afternoon_late_mins = 0
+                        temp_late_mins = 0
 
-                    temp_late_mins = temp_morning_late_mins + temp_afternoon_late_mins
-
-                options.append((int(temp_half_day_morning) + int(temp_half_day_afternoon), temp_late_mins, temp_attendance, temp_time_logs, removal_type))
+                    options.append((int(temp_half_day_morning) + int(temp_half_day_afternoon), temp_late_mins, temp_attendance, temp_time_logs, removal_type, temp_break_mins))
 
         else:
-            options.append((0, 0, 'P', time_logs, 'none'))
+            options.append((0, 0, 'P', time_logs, 'none', 0))
 
         if not time_logs:
             print(f"No logs for {staff_id} on {date}, marking as absent")
@@ -219,7 +208,7 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
 
         if options:
             options.sort()
-            num_half_days, late_mins, attendance, time_logs, removal_type = options[0]
+            num_half_days, late_mins, attendance, time_logs, removal_type, break_mins = options[0]
             print(f"Selected option ({removal_type}) for {staff_id}: num_half_days={num_half_days}, late_mins={late_mins}, attendance={attendance}")
         else:
             print(f"No valid logs for {staff_id} after processing options")
@@ -351,23 +340,10 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
                     attendance = 'H'
                     print(f"No logs after in1 for {staff_id}, marking morning half-day")
 
-                # Break check (select one break with lowest late_mins)
+                # Break check: select break with greatest valid duration within end_time
+                breaks = []
                 break_mins = 0
-                best_late_mins = float('inf')
-                best_break_duration = 0
-                best_half_day_morning = half_day_morning
-                best_half_day_afternoon = False
-                best_attendance = attendance
-                best_morning_late_mins = morning_late_mins
-                best_afternoon_late_mins = afternoon_late_mins
                 selected_break = None
-
-                temp_morning_late_mins = morning_late_mins
-                temp_afternoon_late_mins = afternoon_late_mins
-                temp_half_day_morning = half_day_morning
-                temp_half_day_afternoon = False
-                temp_attendance = attendance
-                temp_break_mins = 0
 
                 i = 1
                 while i < n - 1:
@@ -375,74 +351,74 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
                         exit_time = time_objs[i]
                         entry_time = time_objs[i + 1]
                         break_duration = (entry_time - exit_time).total_seconds() / 60
-                        temp_morning_late_mins = morning_late_mins
-                        temp_afternoon_late_mins = afternoon_late_mins
-                        temp_half_day_morning = half_day_morning
-                        temp_half_day_afternoon = False
-                        temp_attendance = attendance
-                        temp_break_mins = 0
-
                         print(f"Evaluating break {i//2 + 1} for {staff_id}: {break_duration:.2f} mins (from {exit_time} to {entry_time})")
 
-                        # Calculate late minutes for out-of-bounds break
-                        break_late_mins = 0
-                        if exit_time < break_in_const:
-                            break_late_mins += (break_in_const - exit_time).total_seconds() / 60
-                            print(f"Break starts before break_in for {staff_id}: {break_late_mins:.2f} mins added (exit_time={exit_time}, break_in={break_in_const})")
-                        if entry_time > break_out_const:
-                            break_late_mins += (entry_time - break_out_const).total_seconds() / 60
-                            print(f"Break ends after break_out for {staff_id}: {(entry_time - break_out_const).total_seconds() / 60:.2f} mins added (entry_time={entry_time}, break_out={break_out_const})")
+                        # Skip breaks after end_time
+                        if exit_time > end_const:
+                            print(f"Break starts after out_time for {staff_id}, no late_mins added")
+                            i += 2
+                            continue
 
-                        # Align break to morning or afternoon
-                        if break_late_mins > 0:
-                            if exit_time <= middle_time:
-                                temp_morning_late_mins += break_late_mins
-                                print(f"Break aligned to morning for {staff_id}: {break_late_mins:.2f} mins added")
-                                if break_late_mins > 90:
-                                    temp_half_day_morning = True
-                                    temp_morning_late_mins = 0
-                                    temp_attendance = 'H'
-                                    print(f"Break aligned to morning > 90 mins for {staff_id}, marking morning half-day")
-                            else:
-                                temp_afternoon_late_mins += break_late_mins
-                                print(f"Break aligned to afternoon for {staff_id}: {break_late_mins:.2f} mins added")
-                                if break_late_mins > 90:
-                                    temp_half_day_afternoon = True
-                                    temp_afternoon_late_mins = 0
-                                    temp_attendance = 'H'
-                                    print(f"Break aligned to afternoon > 90 mins for {staff_id}, marking afternoon half-day")
+                        # Calculate valid duration
+                        valid_start = max(exit_time, break_in_const)
+                        valid_end = min(entry_time, break_out_const)
+                        valid_duration = max(0, (valid_end - valid_start).total_seconds() / 60) if valid_start <= valid_end else 0
+                        is_valid = valid_duration > 0 and entry_time <= break_out_const
+                        print(f"Break {i//2 + 1} valid duration: {valid_duration:.2f} mins (from {valid_start} to {valid_end})")
 
-                        if break_in_const <= exit_time <= break_out_const and entry_time <= break_out_const:
-                            temp_break_mins = break_duration
-                            print(f"Break {i//2 + 1} for {staff_id}: Valid break {break_duration:.2f} mins")
-
-                        total_temp_late_mins = temp_morning_late_mins + temp_afternoon_late_mins
-                        if total_temp_late_mins < best_late_mins:
-                            best_late_mins = total_temp_late_mins
-                            best_break_duration = temp_break_mins
-                            best_half_day_morning = temp_half_day_morning
-                            best_half_day_afternoon = temp_half_day_afternoon
-                            best_attendance = temp_attendance
-                            best_morning_late_mins = temp_morning_late_mins
-                            best_afternoon_late_mins = temp_afternoon_late_mins
-                            selected_break = (i//2 + 1, exit_time, entry_time, break_duration)
-
+                        breaks.append((i//2 + 1, exit_time, entry_time, break_duration, valid_duration))
                         i += 2
                     except IndexError:
                         print(f"IndexError in break calculation for {staff_id} at index {i}")
                         break
 
-                if selected_break:
-                    break_mins = best_break_duration
-                    half_day_morning = best_half_day_morning
-                    half_day_afternoon = best_half_day_afternoon
-                    attendance = best_attendance
-                    morning_late_mins = best_morning_late_mins
-                    afternoon_late_mins = best_afternoon_late_mins
-                    print(f"Selected break {selected_break[0]} for {staff_id}: {selected_break[3]:.2f} mins (from {selected_break[1]} to {selected_break[2]})")
+                # Select break with greatest valid duration
+                if breaks:
+                    valid_breaks = [(num, exit_time, entry_time, break_dur, valid_dur) for num, exit_time, entry_time, break_dur, valid_dur in breaks if valid_dur > 0]
+                    if valid_breaks:
+                        selected_break = max(valid_breaks, key=lambda x: x[4])  # Max by valid_duration
+                        break_mins = selected_break[4]
+                        print(f"Selected break {selected_break[0]} for {staff_id}: valid {break_mins:.2f} mins (from {selected_break[1]} to {selected_break[2]})")
+                        # Calculate late minutes for selected break (invalid portions)
+                        break_late_mins = 0
+                        if selected_break[1] < break_in_const:
+                            break_late_mins += (break_in_const - selected_break[1]).total_seconds() / 60
+                            print(f"Selected break starts before break_in for {staff_id}: {break_late_mins:.2f} mins added (exit_time={selected_break[1]}, break_in={break_in_const})")
+                        if selected_break[2] > break_out_const:
+                            break_late_mins += (selected_break[2] - break_out_const).total_seconds() / 60
+                            print(f"Selected break ends after break_out for {staff_id}: {break_late_mins:.2f} mins added (entry_time={selected_break[2]}, break_out={break_out_const})")
+                        if break_late_mins > 0:
+                            if selected_break[1] <= middle_time:
+                                morning_late_mins += break_late_mins
+                                print(f"Selected break late mins aligned to morning for {staff_id}: {break_late_mins:.2f} mins added")
+                            else:
+                                afternoon_late_mins += break_late_mins
+                                print(f"Selected break late mins aligned to afternoon for {staff_id}: {break_late_mins:.2f} mins added")
+
+                    # Add full durations of all other breaks within end_time to late_mins
+                    for break_num, exit_time, _, break_duration, _ in breaks:
+                        if not valid_breaks or break_num != selected_break[0]:
+                            if exit_time <= middle_time:
+                                morning_late_mins += break_duration
+                                print(f"Other break {break_num} aligned to morning for {staff_id}: {break_duration:.2f} mins added to late_mins")
+                            else:
+                                afternoon_late_mins += break_duration
+                                print(f"Other break {break_num} aligned to afternoon for {staff_id}: {break_duration:.2f} mins added to late_mins")
                 else:
-                    print(f"No valid break pairs for {staff_id}")
+                    print(f"No breaks within end_time for {staff_id}")
                 print(f"Total valid break mins for {staff_id}: {break_mins:.2f}")
+
+                # Apply half-day if late_mins exceed 90
+                if morning_late_mins > 90:
+                    half_day_morning = True
+                    morning_late_mins = 0
+                    attendance = 'H'
+                    print(f"Morning late_mins > 90 for {staff_id}, marking morning half-day")
+                if afternoon_late_mins > 90:
+                    half_day_afternoon = True
+                    afternoon_late_mins = 0
+                    attendance = 'H'
+                    print(f"Afternoon late_mins > 90 for {staff_id}, marking afternoon half-day")
 
                 if time_objs and not any(t > out2_const for t in time_objs):
                     half_day_afternoon = True
@@ -587,8 +563,8 @@ def process_logs(date1=None):
     print(f"Processing date: {today}, is_holiday: {is_holiday}")
 
     try:
-       
-        cursor.execute("SELECT staff_id, category FROM staff")
+        
+        cursor.execute("SELECT staff_id, category FROM staff ")
         staffs = cursor.fetchall()
         print(f"Staffs fetched: {staffs}")
 
