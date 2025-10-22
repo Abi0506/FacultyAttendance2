@@ -21,7 +21,7 @@ function IndividualAttendanceTable() {
   const [editingLateMins, setEditingLateMins] = useState({});
   const { staffId } = useParams();
   const [flaggedCells, setFlaggedCells] = useState({}); // new state for flagged times
-  
+
 
   // Fetch flagged times for selected user
   const fetchFlagsForUser = async (employeeId, start, end) => {
@@ -43,6 +43,7 @@ function IndividualAttendanceTable() {
   };
 
   const decideAttendanceDisplay = (rec) => {
+    if (!rec.attendance) rec.attendance = 'N/A';
     const dbAtt = (rec.attendance).toString().toUpperCase();
     // count non-empty time cells among columnsToShow
     const timeCount = columnsToShow.reduce((acc, col) => {
@@ -128,20 +129,13 @@ function IndividualAttendanceTable() {
       setColumnsToShow(visibleCols);
       fetchFlagsForUser(employeeId, start, end);
       setRecords(timing || []);
-
-      // Debugging output to console
-      try {
-        console.debug('IndividualAttendanceTable - timing', timing.map(r => ({ date: r.date, attendance: (r.attendance||'P').toString().toUpperCase(), working_hours: r.working_hours, late_mins: r.late_mins })));
-      } catch (e) {
-        console.debug('IndividualAttendanceTable - timing (raw)', timing);
-      }
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.error || 'Failed to fetch data.');
     }
   };
 
-  
+
 
   const handleDateChange = (e) => {
     const { name, value } = e.target;
@@ -193,12 +187,14 @@ function IndividualAttendanceTable() {
       };
       fetchUser();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [staffId]);
 
   useEffect(() => {
     if (selectedUser && formData.startDate && formData.endDate) {
       fetchAttendance(selectedUser.staff_id, formData.startDate, formData.endDate);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedUser, formData.startDate, formData.endDate]);
 
   const handleSaveAsPDF = () => {
@@ -207,7 +203,7 @@ function IndividualAttendanceTable() {
       { label: 'Name', value: selectedUser.name },
       { label: 'ID', value: selectedUser.staff_id },
       { label: 'Department', value: selectedUser.dept },
-      { label: 'Category', value: selectedUser.category },
+      { label: 'Category', value: selectedUser.category_name },
       { label: 'Designation', value: selectedUser.designation },
       { label: 'Email', value: selectedUser.email || 'No Email' },
       { label: 'Date Range', value: `${formData.startDate} to ${formData.endDate}` },
@@ -275,7 +271,7 @@ function IndividualAttendanceTable() {
             <div><strong>Name:</strong> {selectedUser.name}</div>
             <div><strong>ID:</strong> {selectedUser.staff_id}</div>
             <div><strong>Department:</strong> {selectedUser.dept}</div>
-            <div><strong>Category:</strong> {selectedUser.category}</div>
+            <div><strong>Category:</strong> {selectedUser.category_name}</div>
             <div><strong>Designation:</strong> {selectedUser.designation}</div>
             <div><strong>Email:</strong> {selectedUser.email || "No Email"}</div>
             <div><strong>Late Minutes (filtered):</strong> {lateMins}</div>
@@ -303,10 +299,10 @@ function IndividualAttendanceTable() {
                   {columnsToShow.map((col, i) => (
                     <th key={i}>{col}</th>
                   ))}
-                    <th>Late Mins</th>
-                    <th>Working Hours</th>
-                    <th style={{ width: '80px', textAlign: 'center' }}>Additional Late Mins</th>
-                    <th>Attendance</th>
+                  <th>Late Mins</th>
+                  <th>Working Hours</th>
+                  <th style={{ width: '80px', textAlign: 'center' }}>Additional Late Mins</th>
+                  <th>Attendance</th>
                 </tr>
               </thead>
               <tbody>
@@ -346,8 +342,9 @@ function IndividualAttendanceTable() {
             </table>
           )}
         </>
-      )}
-    </PageWrapper>
+      )
+      }
+    </PageWrapper >
   );
 }
 

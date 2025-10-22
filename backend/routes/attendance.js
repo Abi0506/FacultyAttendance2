@@ -131,7 +131,21 @@ router.get('/probable_flagged_records', async (req, res) => {
     return res.status(400).json({ error: "Missing from/to query params" });
   }
 
+  // Helper functions
+  function parseTimeToMinutes(timeStr) {
+    if (!timeStr || !timeStr.includes(':')) return 0;
+    const [h, m] = timeStr.split(":").map(Number);
+    return h * 60 + m;
+  }
+
+  function minutesToHHMM(minutes) {
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hrs.toString().padStart(2, '0')}hr${hrs !== 1 ? 's' : ''} ${mins.toString().padStart(2, '0')}mins`;
+  }
+
   try {
+    // Fetch data
     const [rows] = await db.query(
       `SELECT 
           logs.staff_id,
@@ -144,14 +158,14 @@ router.get('/probable_flagged_records', async (req, res) => {
           ) - COUNT(flagged.time) OVER (
               PARTITION BY logs.staff_id, logs.date
           ) AS Count
-       FROM logs
-       JOIN staff ON staff.staff_id = logs.staff_id
-       LEFT JOIN attendance_flags AS flagged
-         ON flagged.staff_id = logs.staff_id
-        AND flagged.date = logs.date
-        AND flagged.time = logs.time
-       WHERE logs.date BETWEEN ? AND ?
-       ORDER BY logs.date, logs.time;`,
+        FROM logs
+        JOIN staff ON staff.staff_id = logs.staff_id
+        LEFT JOIN attendance_flags AS flagged
+          ON flagged.staff_id = logs.staff_id
+         AND flagged.date = logs.date
+         AND flagged.time = logs.time
+        WHERE logs.date BETWEEN ? AND ?
+        ORDER BY logs.date, logs.time;`,
       [from, to]
     );
 
@@ -164,19 +178,34 @@ router.get('/probable_flagged_records', async (req, res) => {
     }
 
     const result = [];
+
     for (const [staff_id, dates] of Object.entries(categorized)) {
       for (const [date, { name, times, Count }] of Object.entries(dates)) {
+        // Sort times for safety
+        times.sort();
+
+        // Compute working hours (first to last punch)
+        let workingMinutes = 0;
+        if (times.length >= 2) {
+          const first = parseTimeToMinutes(times[0]);
+          const last = parseTimeToMinutes(times[times.length - 1]);
+          if (last > first) workingMinutes = last - first;
+        }
+
+        const working_hours = workingMinutes > 0 ? minutesToHHMM(workingMinutes) : '00hrs 00mins';
+
         result.push({
           staff_id,
           name,
-          date,
+          Date: date,
           IN1: times[0] || null,
           OUT1: times[1] || null,
           IN2: times[2] || null,
           OUT2: times[3] || null,
           IN3: times[4] || null,
           OUT3: times[5] || null,
-          Count
+          Count,
+          working_hours
         });
       }
     }
@@ -541,7 +570,7 @@ router.post('/individual_data', async (req, res) => {
       // Log attendance details for this date (server-side)
       try {
         const dbAttendance = reportRow.attendance || 'N/A';
-        console.log(`individual_data: staff_id=${id} date=${date} db_attendance=${dbAttendance} mapped_attendance=${row.attendance} working_hours=${row.working_hours} late_mins=${row.late_mins} additional_late_mins=${row.additional_late_mins}`);
+        // console.log(`individual_data: staff_id=${id} date=${date} db_attendance=${dbAttendance} mapped_attendance=${row.attendance} working_hours=${row.working_hours} late_mins=${row.late_mins} additional_late_mins=${row.additional_late_mins}`);
       } catch (e) {
         console.log('individual_data: logging error', e);
       }
@@ -722,7 +751,7 @@ router.post('/hr_exemptions/reject', async (req, res) => {
 router.post("/search/getuser", async (req, res) => {
   const { staffId } = req.body;
   try {
-    const [rows] = await db.query('SELECT * FROM staff WHERE staff_id = ?', [staffId]);
+    const [rows] = await db.query('SELECT s.*, c.category_description AS category_name FROM staff s JOIN category c ON c.category_no = s.category WHERE s.staff_id = ?;', [staffId]);
     if (rows.length === 0) {
       return res.status(404).json({ message: "Staff not found" });
     }

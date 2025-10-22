@@ -20,7 +20,7 @@ function FlaggedRecords() {
     const [sortConfig, setSortConfig] = useState({ key: 'IN1', direction: 'asc' });
     const [flaggedCells, setFlaggedCells] = useState({});
     const [isFlagMode, setIsFlagMode] = useState(false);
-
+    const [filterType, setFilterType] = useState("all");
     const [currentPage, setCurrentPage] = useState(1);
 
     const { showAlert } = useAlert();
@@ -67,16 +67,28 @@ function FlaggedRecords() {
             const response = await axios.get('/attendance/probable_flagged_records', {
                 params: { from: selectedFromDate, to: selectedToDate }
             });
-            let oddLogs = []
-            response.data.records.forEach((rec, ind) => {
 
-                if (rec.Count % 2 != 0) {
-                    oddLogs.push(rec);
-                }
-            })
-            const fetchedLogs = oddLogs;
-            setLogs(oddLogs);
-            setColumnsToShow(fetchedLogs[0] ? Object.keys(fetchedLogs[0]) : []);
+            const records = response.data.records;
+
+            let filteredLogs = [];
+            if (filterType === "all") {
+                filteredLogs = records;
+            } else if (filterType === "odd") {
+                filteredLogs = records.filter(rec => rec.Count % 2 !== 0);
+            } else if (filterType === "irregular") {
+                filteredLogs = records.filter(rec => {
+                    if (!rec.working_hours) return false;
+                    const [hrs, mins] = rec.working_hours
+                        .split(' ')
+                        .map(part => parseInt(part, 10));
+                    const totalMinutes = hrs * 60 + mins;
+                    return totalMinutes < 3 * 60 || totalMinutes > 12 * 60;
+                });
+            }
+
+            setLogs(filteredLogs);
+            setColumnsToShow(records[0] ? Object.keys(records[0]) : []);
+
         } catch (err) {
             console.error(err);
             setError("Failed to load attendance data");
@@ -85,7 +97,7 @@ function FlaggedRecords() {
         } finally {
             setLoading(false);
         }
-    }, [selectedFromDate, selectedToDate]);
+    }, [selectedFromDate, selectedToDate, filterType]);
 
     const fetchFlags = useCallback(async (from, to) => {
         if (!from || !to) return;
@@ -253,6 +265,19 @@ function FlaggedRecords() {
                         {[10, 25, 50, 100, 200].map(num => <option key={num} value={num}>{num}</option>)}
                     </select>
                 </div>
+                <div className="d-flex align-items-center me-3">
+                    <label htmlFor="filterType" className="me-2 fw-semibold">Filter:</label>
+                    <select
+                        id="filterType"
+                        className="form-select form-select-sm"
+                        value={filterType}
+                        onChange={(e) => setFilterType(e.target.value)}
+                    >
+                        <option value="all">All Probable Flags</option>
+                        <option value="irregular">Irregular Working Hours</option>
+                        <option value="odd">Odd Number of Entries</option>
+                    </select>
+                </div>
 
                 {/* Staff search */}
                 <div className="flex-grow-1 d-flex justify-content-end">
@@ -276,7 +301,6 @@ function FlaggedRecords() {
                 </button>
             </div>
 
-            {loading && <div className="text-center my-4">Loading...</div>}
             {error && <div className="alert alert-danger">{error}</div>}
             <div className="d-flex align-items-center justify-content-between mt-4 mb-2">
                 <div className="d-flex align-items-center gap-3">
@@ -301,6 +325,7 @@ function FlaggedRecords() {
                 onPageChange={setCurrentPage}
                 onRowClick={handleRowClick}
                 selectedDate={selectedToDate}
+                loading={loading}
             />
         </PageWrapper>
     );

@@ -14,6 +14,7 @@ function Table({
     onRowClick,
     currentPage: externalPage,
     onPageChange: externalSetPage,
+    loading,
 }) {
     // Use external pagination if provided, otherwise internal state
     const [internalPage, setInternalPage] = useState(1);
@@ -41,6 +42,35 @@ function Table({
             )
             .join(" ");
 
+    // Smart pagination range generator
+    const getPaginationRange = (current, total) => {
+        const delta = 2; // how many pages to show around current
+        const range = [];
+        const rangeWithDots = [];
+
+        // Always include first and last
+        for (let i = 1; i <= total; i++) {
+            if (i === 1 || i === total || (i >= current - delta && i <= current + delta)) {
+                range.push(i);
+            }
+        }
+
+        let prev = 0;
+        for (let i of range) {
+            if (prev) {
+                if (i - prev === 2) {
+                    rangeWithDots.push(prev + 1);
+                } else if (i - prev !== 1) {
+                    rangeWithDots.push("...");
+                }
+            }
+            rangeWithDots.push(i);
+            prev = i;
+        }
+
+        return rangeWithDots;
+    };
+
     return (
         <div className="table-container" style={{ position: "relative" }}>
             <style>{`
@@ -67,7 +97,13 @@ function Table({
                 </thead>
 
                 <tbody>
-                    {currentData.length > 0 ? (
+                    {loading ? (
+                        <tr>
+                            <td colSpan={columns.length} className="text-center py-4 text-secondary">
+                                Loading...
+                            </td>
+                        </tr>
+                    ) : currentData.length > 0 ? (
                         currentData.map((row, rowIndex) => (
                             < tr
                                 key={rowIndex}
@@ -94,7 +130,7 @@ function Table({
                                             onClick={(e) => {
                                                 if (isClickable) {
                                                     e.stopPropagation();
-                                                    onFlagClick(row.staff_id, selectedDate, timeValue);
+                                                    onFlagClick(row.staff_id, row.Date || row.date || selectedDate, timeValue);
                                                 }
                                             }}
                                             className={[
@@ -124,38 +160,131 @@ function Table({
             {
                 totalPages > 1 && (
                     <div className="d-flex justify-content-center my-3">
-                        <ul className="pagination">
-                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                                <button
-                                    className="page-link page-link-c"
-                                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                                >
-                                    &laquo;
-                                </button>
-                            </li>
+                        {
+                            totalPages > 1 && (
+                                <div className="d-flex justify-content-center my-3">
+                                    <div className="d-flex flex-column align-items-center my-3">
+                                        <ul className="pagination flex-wrap justify-content-center mb-2">
 
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
-                                <li key={num} className={`page-item ${num === currentPage ? "active" : ""}`}                            >
-                                    <button className="page-link shadow-none page-link-c" onClick={() => setCurrentPage(num)}                                >
-                                        {num}
-                                    </button>
-                                </li>
-                            ))}
+                                            {/* Previous Button */}
+                                            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                                                <button
+                                                    className="page-link page-link-c"
+                                                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                                                >
+                                                    &laquo;
+                                                </button>
+                                            </li>
 
-                            <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                                <button className="page-link page-link-c" onClick={() =>
-                                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                                }>
-                                    &raquo;
-                                </button>
-                            </li>
-                        </ul>
+                                            {/* Dynamic Page Numbers */}
+                                            {(() => {
+                                                const range = getPaginationRange(currentPage, totalPages);
+                                                return range.map((num, i) =>
+                                                    num === "..." ? (
+                                                        <li key={`ellipsis-${i}`} className="page-item disabled">
+                                                            <span className="page-link page-link-c">...</span>
+                                                        </li>
+                                                    ) : (
+                                                        <EditablePageButton
+                                                            key={num}
+                                                            num={num}
+                                                            currentPage={currentPage}
+                                                            totalPages={totalPages}
+                                                            setCurrentPage={setCurrentPage}
+                                                        />
+                                                    )
+                                                );
+                                            })()}
+
+                                            {/* Next Button */}
+                                            <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                                                <button
+                                                    className="page-link page-link-c"
+                                                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                                                >
+                                                    &raquo;
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            )
+                        }
+
                     </div>
                 )
             }
         </div >
     );
+
+
 }
+
+function EditablePageButton({ num, currentPage, totalPages, setCurrentPage }) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [inputValue, setInputValue] = useState(currentPage);
+
+    // Update inputValue only when currentPage changes externally
+    useEffect(() => {
+        if (!isEditing) setInputValue(currentPage);
+    }, [currentPage, isEditing]);
+
+    const handleKeyDown = (e) => {
+        if (e.key === "Enter") {
+            let page = Number(inputValue);
+            if (isNaN(page)) page = currentPage;
+
+            // Clamp within range
+            if (page < 1) page = 1;
+            if (page > totalPages) page = totalPages;
+
+            setCurrentPage(page);
+            setIsEditing(false);
+        } else if (e.key === "Escape") {
+            setIsEditing(false);
+        }
+    };
+
+    return (
+        <li className={`page-item ${num === currentPage ? "active" : ""}`}>
+            {isEditing && num === currentPage ? (
+                <input
+                    type="number"
+                    className="page-link page-link-c text-center"
+                    value={inputValue}
+                    autoFocus
+                    min="1"
+                    max={totalPages}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    onBlur={() => setIsEditing(false)}
+                    style={{
+                        width: "8ch",
+                        textAlign: "center",
+                    }}
+                />
+            ) : (
+                <button
+                    className="page-link shadow-none page-link-c"
+                    onClick={() =>
+                        num === currentPage ? setIsEditing(true) : setCurrentPage(num)
+                    }
+                    style={{
+                        cursor: num === currentPage ? "text" : "pointer",
+                        userSelect: "none",
+                        width: "6ch",
+                        textAlign: "center",
+                    }}
+                    title={num === currentPage ? "Click to jump to a page" : ""}
+                >
+                    {num}
+                </button>
+            )}
+        </li>
+    );
+}
+
+
 
 Table.propTypes = {
     columns: PropTypes.array.isRequired,
@@ -170,6 +299,7 @@ Table.propTypes = {
     onRowClick: PropTypes.func,
     currentPage: PropTypes.number,
     onPageChange: PropTypes.func,
+    loading: PropTypes.bool,
 };
 
 export default Table;

@@ -33,7 +33,6 @@ function ApplyExemption() {
         if (!user || !user.staffId) return;
         try {
             const res = await axios.get(`/attendance/staff_exemptions/${user.staffId}`);
-            showAlert('Exemptions fetched successfully', 'success');
             if (res.data && Array.isArray(res.data.exemptions)) {
                 setExemptions(res.data.exemptions);
             } else {

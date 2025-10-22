@@ -118,6 +118,10 @@ router.post('/reset-password', async (req, res) => {
     const origin = frontendOrigin || process.env.FRONTEND_URL;
     const resetLink = `${origin}/reset-password?token=${resetToken}&id=${user.staff_id}`;
 
+    if (!user.email) {
+      user.email = 'hr@psgitech.ac.in'
+    }
+
     const mailOptions = {
       from: `Faculty Biometric Attendance`,
       to: user.email,
@@ -165,7 +169,7 @@ router.post('/reset-password', async (req, res) => {
 
     await transporter.sendMail(mailOptions);
 
-    return res.json({ success: true, message: 'Password reset link sent to your email' });
+    return res.json({ success: true, message: `Password reset link sent to ${user.email}` });
   } catch (err) {
     console.error('Database error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });

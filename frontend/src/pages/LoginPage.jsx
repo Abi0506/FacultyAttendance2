@@ -41,7 +41,7 @@ function LoginPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
   const handleChange1 = (e) => {
-    setFormData({ ...formData, ['remember']: e.target.checked });
+    setFormData({ ...formData, 'remember': e.target.checked });
   };
 
   const handleSubmit = async (e) => {
@@ -74,7 +74,7 @@ function LoginPage() {
       <PageWrapper title="Login">
 
         {/* Social logins */}
-        <div className="text-center mb-3" style={{ cursor: 'not-allowed' }}>
+        {/* <div className="text-center mb-3" style={{ cursor: 'not-allowed' }}>
           <div style={{ pointerEvents: 'none', display: 'inline-block' }}>
             <button className="btn btn-outline-danger me-2" title="Feature under maintenance"
               onClick={() => {
@@ -85,14 +85,14 @@ function LoginPage() {
               <i className="bi bi-google me-2"></i> Google
             </button>
           </div>
-        </div>
+        </div> */}
 
         {/* Divider */}
-        <div className="d-flex align-items-center my-3">
+        {/* <div className="d-flex align-items-center my-3">
           <hr className="flex-grow-1" />
           <span className="mx-2 text-muted small">OR</span>
           <hr className="flex-grow-1" />
-        </div>
+        </div> */}
 
         {/* Login form */}
         <form onSubmit={handleSubmit}>
@@ -147,7 +147,7 @@ function LoginPage() {
             </button>
           </div>
 
-          <button type="submit" className="btn btn-primary w-100 mb-2">Login</button>
+          <button type="submit" className="btn btn-c-primary w-100 mb-2">Login</button>
         </form>
       </PageWrapper>
 
@@ -163,13 +163,13 @@ function LoginPage() {
                   <button type="button" className="btn-close" onClick={() => setShowResetModal(false)}></button>
                 </div>
                 <div className="modal-body">
-                  <label className="form-label">Enter your ID or Email</label>
+                  <label className="form-label">Enter your User ID or Email</label>
                   <input
                     type="email"
                     value={resetEmail || formData.userIdorEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
                     className="form-control"
-                    placeholder="example@email.com"
+                    placeholder="example@psgitech.ac.in"
                     required
                   />
                 </div>

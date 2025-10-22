@@ -10,15 +10,10 @@
 23. Make additional late minutes appear everywhere
 24. Revoke Exemption option
 25. Check delete option 
-24. Table component in staff indivual report page
-26. Use seperate views for the individual staffs
 27. Default windows startup
 28. Check DB Data for 25th and 26th
 29. Add other user to the database
-30. Add email id when password reset request is sent
 31. Search user by name in edit user section
 32. HALF DAY DISPLAY
 33. PDF flag display
-34. Date filter not being displayed in pdf
-35. Google login
 36. Break Mins check(2 break and out of bound late_mins)

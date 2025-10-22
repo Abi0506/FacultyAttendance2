@@ -16,8 +16,8 @@ function IndividualStaffReport() {
   const [totalLateMins, setTotalLateMins] = useState(0);
   const [totalAbsentDays, setTotalAbsentDays] = useState(0);
   const [lateMins, setLateMins] = useState(0);
-  const [fromDate, setFromDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  // const [fromDate, setFromDate] = useState('');
+  // const [endDate, setEndDate] = useState('');
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [flaggedCells, setFlaggedCells] = useState({});
   const [sortConfig, setSortConfig] = useState({ key: 'Date', direction: 'desc' });
@@ -47,8 +47,8 @@ function IndividualStaffReport() {
       });
 
       const {
-        from,
-        end,
+        // from,
+        // end,
         late_mins,
         total_late_mins,
         data, total_absent_days,
@@ -67,8 +67,8 @@ function IndividualStaffReport() {
       const allColumns = ['IN1', 'OUT1', 'IN2', 'OUT2', 'IN3', 'OUT3'];
       const visibleCols = allColumns.filter((col) => recordsData.some((row) => row[col]));
 
-      setFromDate(from || formData.startDate);
-      setEndDate(end || formData.endDate);
+      // setFromDate(from || formData.startDate);
+      // setEndDate(end || formData.endDate);
       setLateMins(late_mins || 0);
       setTotalLateMins(total_late_mins || 0);
       setTotalAbsentDays(total_absent_days || 0);
@@ -125,9 +125,10 @@ function IndividualStaffReport() {
       { label: 'Name', value: staffInfo.name || '' },
       { label: 'Designation', value: staffInfo.designation || '' },
       { label: 'Department', value: staffInfo.department || '' },
-      { label: 'Date Range', value: `${formatDate(formData.startDate)} to ${formatDate(formData.endDate)}` },
+      // { label: 'Date Range', value: `${formatDate(formData.startDate)} to ${formatDate(formData.endDate)}` },
       { label: `Late Minutes (${formatDate(formData.startDate)} to ${formatDate(formData.endDate)})`, value: lateMins },
       { label: 'Total Late Minutes (Since Previous Reset)', value: totalLateMins },
+      { label: 'Total Days to be Deducted', value: totalAbsentDays },
     ];
 
     const tableRows = data.map((row) => columns.map((col) => col === 'Date' ? formatDate(row[col]) : row[col] || '-'));
@@ -149,6 +150,7 @@ function IndividualStaffReport() {
     );
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const sortedRecords = useMemo(() => {
     if (!sortConfig.key) return records;
 
@@ -182,6 +184,7 @@ function IndividualStaffReport() {
     });
 
     return sorted;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [records, sortConfig]);
 
   const handleViewChange = (e) => {
@@ -189,8 +192,6 @@ function IndividualStaffReport() {
   };
 
   const getTableColumnsAndData = () => {
-    const formatDate = (date) => date.split('-').reverse().join('-'); // Convert yyyy-mm-dd to dd-mm-yyyy
-
     switch (viewMode) {
       case 'Logs':
         return {
@@ -357,7 +358,7 @@ function IndividualStaffReport() {
           </div>
           <div className="d-flex align-items-center justify-content-between mt-4 mb-3">
             <h4 className="m-0">
-              Attendance Details for {formData.startDate} to {formData.endDate}:
+              Records from {formData.startDate} to {formData.endDate}:
             </h4>
             <div className="d-flex align-items-center gap-3">
               <div className="d-flex align-items-center">

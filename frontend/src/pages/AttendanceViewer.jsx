@@ -75,13 +75,14 @@ function AttendanceViewer() {
     if (!date) return;
     try {
       const response = await axios.post('/attendance/get_flags', { date });
+      console.log(response.data)
       setFlaggedCells(response.data || {});
     } catch (err) {
       console.error("Failed to fetch flagged times", err);
     }
   }, []);
 
-  const handleFlagTime = async (staff_id,selectedDate, timeValue) => {
+  const handleFlagTime = async (staff_id, selectedDate, timeValue) => {
     if (!isFlagMode) return;
     try {
       const response = await axios.post('/attendance/flag_time', {
