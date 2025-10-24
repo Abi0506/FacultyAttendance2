@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import axios from '../axios';
 import PdfTemplate from '../components/PdfTemplate';
 import { useAlert } from '../components/AlertProvider';
+import Table from '../components/Table';
 import PageWrapper from '../components/PageWrapper';
 import { useParams } from 'react-router-dom';
+import { useMemo } from 'react';
 
 function IndividualAttendanceTable() {
   const { showAlert } = useAlert();
@@ -20,7 +22,17 @@ function IndividualAttendanceTable() {
   const [endDate, setEndDate] = useState('');
   const [editingLateMins, setEditingLateMins] = useState({});
   const { staffId } = useParams();
-  const [flaggedCells, setFlaggedCells] = useState({}); // new state for flagged times
+  const [flaggedCells, setFlaggedCells] = useState({});
+  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+
+  const handleSort = (column) => {
+    setSortConfig((prev) =>
+      prev.key === column
+        ? { key: column, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+        : { key: column, direction: 'asc' }
+    );
+  };
+
 
 
   // Fetch flagged times for selected user
@@ -36,6 +48,7 @@ function IndividualAttendanceTable() {
       const flags = {};
       const data = response.data || {};
       for (const key in data) flags[key] = true;
+      console.log(flags)
       setFlaggedCells(flags);
     } catch (err) {
       console.error('Failed to fetch flagged times', err);
@@ -90,8 +103,12 @@ function IndividualAttendanceTable() {
 
       const today = new Date();
       const yyyy = today.getFullYear();
+      const janFirst = new Date(yyyy, 0, 1);
+      const julFirst = new Date(yyyy, 6, 1);
+      const startDateObj = today >= julFirst ? julFirst : janFirst;
+
+      const startDate = `${startDateObj.getFullYear()}-${String(startDateObj.getMonth() + 1).padStart(2, '0')}-${String(startDateObj.getDate()).padStart(2, '0')}`;
       const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const startDate = `2025-07-01`;
       const lastDay = new Date(yyyy, today.getMonth() + 1, 0).getDate();
       const endDate = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`;
       setFormData({ startDate, endDate });
@@ -226,6 +243,40 @@ function IndividualAttendanceTable() {
       fileName: `Attendance_${selectedUser.name || 'employee'}.pdf`,
     });
   };
+  const sortedRecords = useMemo(() => {
+    if (!sortConfig.key) return records;
+
+    const sorted = [...records].sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+
+       if (sortConfig.key === 'date') {
+      const parseDMY = (str) => {
+        if (!str || typeof str !== 'string') return new Date('Invalid');
+        const [d, m, y] = str.split('-').map(Number);
+        return new Date(y, m - 1, d);
+      };
+
+      const aDate = parseDMY(aValue);
+      const bDate = parseDMY(bValue);
+
+      if (aDate < bDate) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aDate > bDate) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    }
+          // Handle numeric comparison
+      if (!isNaN(aValue) && !isNaN(bValue)) {
+        aValue = parseFloat(aValue);
+        bValue = parseFloat(bValue);
+      }
+
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  }, [records, sortConfig]);
 
   return (
     <PageWrapper>
@@ -247,6 +298,14 @@ function IndividualAttendanceTable() {
           placeholder="Search by User ID or Name"
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (searchResults.length > 0) {
+                handleSelectUser(searchResults[0]);
+              }
+            }
+          }}
         />
         {searchResults.length > 0 && (
           <div className="list-group position-absolute w-100 shadow-sm" style={{ zIndex: 10 }}>
@@ -290,56 +349,22 @@ function IndividualAttendanceTable() {
 
           {error && <div className="alert alert-danger">{error}</div>}
 
-          {records.length > 0 && (
-            <table className="table table-c mt-3">
-              <thead className="table-secondary">
-                <tr>
-                  <th>Date</th>
-                  {columnsToShow.map((col, i) => (
-                    <th key={i}>{col}</th>
-                  ))}
-                  <th>Late Mins</th>
-                  <th>Working Hours</th>
-                  <th style={{ width: '80px', textAlign: 'center' }}>Additional Late Mins</th>
-                  <th>Attendance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.map((rec, idx) => (
-                  <tr key={idx}>
-                    <td>{rec.date}</td>
-                    {columnsToShow.map((col, i) => {
-                      const timeValue = rec[col];
-                      const key = `${selectedUser.staff_id}_${rec.date.split("-").reverse().join("-")}_${timeValue}`;
-                      const isFlagged = flaggedCells[key];
-                      return (
-                        <td key={i} className={isFlagged ? 'table-warning' : ''}>
-                          {timeValue || '-'}
-                        </td>
-                      );
-                    })}
-                    <td>{rec.late_mins}</td>
-                    <td>{rec.working_hours}</td>
-                    <td>
-                      <input
-                        type="number"
-                        min="0"
-                        max="90"
-                        value={editingLateMins[rec.date] ?? rec.additional_late_mins ?? 0}
-                        onChange={(e) =>
-                          setEditingLateMins((prev) => ({ ...prev, [rec.date]: e.target.value }))
-                        }
-                        onBlur={(e) => handleUpdateAdditional(rec.date, e.target.value)}
-                        className="form-control form-control-sm text-center"
-                      />
-                    </td>
-                    <td>{decideAttendanceDisplay(rec)}</td>
-                  </tr>
-                ))}
-              </tbody>
 
-            </table>
-          )}
+          <Table
+            columns={['date', ...columnsToShow, 'late_mins', 'additional_late_mins', 'working_hours', 'attendance']}
+            data={sortedRecords}
+            flaggedCells={flaggedCells}
+            editableColumns={['additional_late_mins']}
+            editConfig={{ min: -90, max: 90 }}
+            onSort={handleSort}
+            sortConfig={sortConfig}
+            onEdit={(row, column, value, meta) => {
+              if (meta.onBlur) handleUpdateAdditional(row.date, value);
+              else {
+                setEditingLateMins((prev) => ({ ...prev, [row.date]: value }));
+              }
+            }}
+          />
         </>
       )
       }

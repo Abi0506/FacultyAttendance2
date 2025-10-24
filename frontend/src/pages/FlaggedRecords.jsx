@@ -51,10 +51,10 @@ function FlaggedRecords() {
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const dd = String(today.getDate()).padStart(2, '0');
-        if (today < new Date(`${year}-06-01`)) {
+        if (today < new Date(`${year}-07-01`)) {
             setSelectedFromDate(`${year}-01-01`);
         } else {
-            setSelectedFromDate(`${year}-06-01`);
+            setSelectedFromDate(`${year}-07-01`);
         }
         setSelectedToDate(`${yyyy}-${mm}-${dd}`);
     }, []);
@@ -71,10 +71,27 @@ function FlaggedRecords() {
             const records = response.data.records;
 
             let filteredLogs = [];
+
             if (filterType === "all") {
-                filteredLogs = records;
+                // Combine odd (excluding single entries) and irregular
+                const oddRecords = records.filter(rec => rec.no_of_records % 2 !== 0);
+                const irregularRecords = records.filter(rec => {
+                    if (!rec.working_hours) return false;
+                    const [hrs, mins] = rec.working_hours
+                        .split(' ')
+                        .map(part => parseInt(part, 10));
+                    const totalMinutes = hrs * 60 + mins;
+                    return totalMinutes < 3 * 60 || totalMinutes > 12 * 60;
+                });
+                filteredLogs = [...oddRecords, ...irregularRecords];
+
             } else if (filterType === "odd") {
-                filteredLogs = records.filter(rec => rec.Count % 2 !== 0);
+                // Odd number of records but not single entries
+                filteredLogs = records.filter(rec => rec.no_of_records % 2 !== 0 && rec.no_of_records !== 1);
+
+            } else if (filterType === "single") {
+                filteredLogs = records.filter(rec => rec.no_of_records === 1);
+
             } else if (filterType === "irregular") {
                 filteredLogs = records.filter(rec => {
                     if (!rec.working_hours) return false;
@@ -85,6 +102,7 @@ function FlaggedRecords() {
                     return totalMinutes < 3 * 60 || totalMinutes > 12 * 60;
                 });
             }
+
 
             setLogs(filteredLogs);
             setColumnsToShow(records[0] ? Object.keys(records[0]) : []);
@@ -165,6 +183,7 @@ function FlaggedRecords() {
     useEffect(() => {
         fetchAttendanceLogs();
         fetchFlags(selectedFromDate, selectedToDate);
+        setCurrentPage(1)
     }, [selectedFromDate, selectedToDate, fetchAttendanceLogs, fetchFlags]);
 
     const handleSort = (column) => {
@@ -276,6 +295,7 @@ function FlaggedRecords() {
                         <option value="all">All Probable Flags</option>
                         <option value="irregular">Irregular Working Hours</option>
                         <option value="odd">Odd Number of Entries</option>
+                        <option value="single">Single Entries</option>
                     </select>
                 </div>
 

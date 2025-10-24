@@ -86,7 +86,7 @@ function IndividualStaffReport() {
   // Decide how to display attendance in UI/PDF: show 'N/A' when DB value is 'I' or there is exactly one log present.
   // Do NOT convert zero-log days to N/A (keep DB attendance such as 'A').
   const decideAttendanceDisplay = (rec) => {
-    if (!rec.attendance) return 'N/A';
+    if (rec.attendance) rec.attendance ?? ''.toString().toUpperCase();
     const dbAtt = (rec.attendance).toString().toUpperCase();
     // count non-empty time cells among columnsToShow
     const timeCount = columnsToShow.reduce((acc, col) => {

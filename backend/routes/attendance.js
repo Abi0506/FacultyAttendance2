@@ -204,7 +204,7 @@ router.get('/probable_flagged_records', async (req, res) => {
           OUT2: times[3] || null,
           IN3: times[4] || null,
           OUT3: times[5] || null,
-          Count,
+          no_of_records: Count,
           working_hours
         });
       }
@@ -567,14 +567,16 @@ router.post('/individual_data', async (req, res) => {
       // Include attendance status: use DB value when available, otherwise fallback.
       // Normalize to uppercase so frontend receives consistent values (P/H/I/A).
       // Do not modify the DB value; only provide a normalized value to the client.
-      const dbAttendanceRaw = reportRow.attendance;
-     
+      let dbAttendanceRaw = reportRow.attendance;
+      if(!dbAttendanceRaw){
+        dbAttendanceRaw = "N\A";
+      }
       const dbAttendance = (dbAttendanceRaw).toString().toUpperCase();
       row.attendance = dbAttendance;
 
       // Log attendance details for this date (server-side)
       try {
-        console.log(`individual_data: staff_id=${id} date=${date} db_attendance=${dbAttendance} mapped_attendance=${row.attendance} working_hours=${row.working_hours} late_mins=${row.late_mins} additional_late_mins=${row.additional_late_mins}`);
+        // console.log(`individual_data: staff_id=${id} date=${date} db_attendance=${dbAttendance} mapped_attendance=${row.attendance} working_hours=${row.working_hours} late_mins=${row.late_mins} additional_late_mins=${row.additional_late_mins}`);
       } catch (e) {
         console.log('individual_data: logging error', e);
       }
