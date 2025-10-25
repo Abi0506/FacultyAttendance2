@@ -157,42 +157,58 @@ function HRExcemptions() {
 
     const modifyExemption = async (index, action) => {
         const updated = [...exemptions];
-        const exemptionId = updated[index].exemptionId;
-        if (action === "approve") {
-            const exemptionData = updated[index];
-            const res = await axios.post("/attendance/hr_exemptions/approve", {
-                exemptionId,
-                staffId: exemptionData.staffId,
-                exemptionType: exemptionData.exemptionType,
-                exemptionDate: exemptionData.exemptionDate,
-                exemptionSession: exemptionData.exemptionSession,
-                start_time: exemptionData.start_time,
-                end_time: exemptionData.end_time,
-                exemptionReason: exemptionData.exemptionReason,
-                otherReason: exemptionData.otherReason,
-                exemptionStatus: 'approved'
-            });
-            if (res.data.message !== "Exemption approved successfully") {
-                showAlert('Failed to approve exemption', 'error');
-                return;
+        const exemption = updated[index];
+        const exemptionId = exemption.exemptionId;
+
+        try {
+            // For both approve and reject, move to processing
+            if (action === "approve" || action === "reject") {
+                const res = await axios.post("/attendance/hr_exemptions/processing", {
+                    exemptionId,
+                    staffId: exemption.staffId,
+                    exemptionType: exemption.exemptionType,
+                    exemptionDate: exemption.exemptionDate,
+                    exemptionSession: exemption.exemptionSession,
+                    start_time: exemption.start_time,
+                    end_time: exemption.end_time,
+                    exemptionReason: exemption.exemptionReason,
+                    otherReason: exemption.otherReason,
+                    exemptionStatus: 'processing',
+                    action: action // optional: pass the original action
+                });
+
+                if (res.data.message !== "Exemption moved to processing") {
+                    showAlert('Failed to mark exemption as processing', 'error');
+                    return;
+                }
+
+                showAlert(
+                    action === "approve"
+                        ? 'Exemption approved and marked as processing!'
+                        : 'Exemption rejected and marked as processing!',
+                    'success'
+                );
+                updated[index].exemptionStatus = 'processing';
             }
-            showAlert('Exemption approved successfully!', 'success');
-            updated[index].exemptionStatus = 'approved';
-            // Trigger a refetch of pending counts by emitting a custom event
-            window.dispatchEvent(new Event('exemptionStatusChanged'));
-        } else {
-            const res = await axios.post("/attendance/hr_exemptions/reject", { exemptionId });
-            if (res.data.message !== "Exemption rejected successfully") {
-                showAlert('Failed to reject exemption', 'error');
-                return;
+            else if (action === "revoke") {
+                const res = await axios.post("/attendance/hr_exemptions/revoke", { exemptionId });
+                if (res.data.message !== "Exemption revoked successfully") {
+                    showAlert('Failed to revoke exemption', 'error');
+                    return;
+                }
+                showAlert('Exemption moved back to pending!', 'success');
+                updated[index].exemptionStatus = 'pending';
             }
-            showAlert('Exemption rejected successfully!', 'success');
-            updated[index].exemptionStatus = 'rejected';
-            // Trigger a refetch of pending counts by emitting a custom event
+
+            setExemptions(updated);
             window.dispatchEvent(new Event('exemptionStatusChanged'));
+        } catch (error) {
+            showAlert('Operation failed', 'error');
+            console.error("Error modifying exemption:", error);
         }
-        setExemptions(updated);
     };
+
+
 
     const downloadPDF = () => {
         const title = 'Exemptions';
@@ -307,33 +323,45 @@ function HRExcemptions() {
                                             <td>
                                                 {exemption.exemptionStatus === 'approved' ? (
                                                     <span className="badge bg-success">Approved</span>
-                                                ) : (exemption.exemptionStatus === 'rejected') ? (
+                                                ) : exemption.exemptionStatus === 'rejected' ? (
                                                     <span className="badge bg-danger">Rejected</span>
+                                                ) : exemption.exemptionStatus === 'processing' ? (
+                                                    <span className="badge bg-info text-light">Processing</span>
                                                 ) : (
-                                                    <span className="badge bg-warning text-dark">Pending</span>
+                                                    <span className="badge bg-warning text-light">Pending</span>
                                                 )}
                                             </td>
+
                                             <td style={{ width: "0px" }}>
                                                 {exemption.exemptionStatus === 'pending' && (
                                                     <div className='btn-group' role='group'>
                                                         <button
-                                                            className="btn btn-sm btn-outline-success approve-btn py-0 px-2"
+                                                            className="btn btn-sm btn-outline-success py-0 px-2"
                                                             onClick={() => modifyExemption(index, "approve")}
-                                                            tabIndex={-1}
                                                             type="button"
                                                         >
                                                             Approve
                                                         </button>
                                                         <button
-                                                            className="btn btn-sm btn-outline-danger reject-btn py-0 px-2"
+                                                            className="btn btn-sm btn-outline-danger py-0 px-2"
                                                             onClick={() => modifyExemption(index, "reject")}
-                                                            tabIndex={-1}
                                                             type="button"
                                                         >
                                                             Reject
                                                         </button>
                                                     </div>
                                                 )}
+
+                                                {exemption.exemptionStatus === 'processing' && (
+                                                    <button
+                                                        className="btn btn-sm btn-outline-warning py-0 px-2"
+                                                        onClick={() => modifyExemption(index, "revoke")}
+                                                        type="button"
+                                                    >
+                                                        Revoke
+                                                    </button>
+                                                )}
+
                                             </td>
                                         </tr>
                                     );

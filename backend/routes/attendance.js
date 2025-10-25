@@ -568,7 +568,7 @@ router.post('/individual_data', async (req, res) => {
       // Normalize to uppercase so frontend receives consistent values (P/H/I/A).
       // Do not modify the DB value; only provide a normalized value to the client.
       let dbAttendanceRaw = reportRow.attendance;
-      if(!dbAttendanceRaw){
+      if (!dbAttendanceRaw) {
         dbAttendanceRaw = "N\A";
       }
       const dbAttendance = (dbAttendanceRaw).toString().toUpperCase();
@@ -716,43 +716,115 @@ router.post('/hr_exemptions/approve', async (req, res) => {
   const { exemptionId } = req.body;
 
   try {
-    let sql = 'UPDATE exemptions SET exemptionStatus = "approved" WHERE exemptionId = ?';
-    let params = [exemptionId];
+    const [result] = await db.query(
+      'UPDATE exemptions SET exemptionStatus = "approved" WHERE exemptionId = ?',
+      [exemptionId]
+    );
 
-    const [result] = await db.query(sql, params);
     if (result.affectedRows > 0) {
       res.json({ message: "Exemption approved successfully" });
-
-      try {
-        let sql1 = 'SELECT '
-      }
-      catch {
-        console.error("Error fetching approved exemption details:", error);
-        res.status(500).json({ message: "Failed to fetch approved exemption details" });
-      }
     } else {
       res.json({ message: "No matching exemption found" });
     }
-  } catch (err) {
+  } catch (error) {
+    console.error("Error approving exemption:", error);
     res.status(500).json({ message: "Failed to approve exemption" });
   }
 });
-
 router.post('/hr_exemptions/reject', async (req, res) => {
   const { exemptionId } = req.body;
   try {
-    let sql = 'UPDATE exemptions SET exemptionStatus = "rejected" WHERE exemptionId = ?';
-    let params = [exemptionId];
-    const [result] = await db.query(sql, params);
+    const [result] = await db.query(
+      'UPDATE exemptions SET exemptionStatus = "rejected" WHERE exemptionId = ?',
+      [exemptionId]
+    );
+
     if (result.affectedRows > 0) {
       res.json({ message: "Exemption rejected successfully" });
     } else {
       res.json({ message: "No matching exemption found" });
     }
-  } catch (err) {
+  } catch (error) {
+    console.error("Error rejecting exemption:", error);
     res.status(500).json({ message: "Failed to reject exemption" });
   }
 });
+
+router.post('/hr_exemptions/pending', async (req, res) => {
+  const { exemptionId } = req.body;
+  try {
+    const [result] = await db.query(
+      'UPDATE exemptions SET exemptionStatus = "pending" WHERE exemptionId = ?',
+      [exemptionId]
+    );
+
+    if (result.affectedRows > 0) {
+      res.json({ message: "Exemption marked as pending" });
+    } else {
+      res.json({ message: "No matching exemption found" });
+    }
+  } catch (error) {
+    console.error("Error marking exemption as pending:", error);
+    res.status(500).json({ message: "Failed to mark exemption as pending" });
+  }
+});
+
+router.post('/hr_exemptions/processing', async (req, res) => {
+  const { exemptionId } = req.body;
+
+  try {
+    let sql = 'UPDATE exemptions SET exemptionStatus = "processing" WHERE exemptionId = ?';
+    const [result] = await db.query(sql, [exemptionId]);
+
+    if (result.affectedRows > 0) {
+      res.json({ message: "Exemption moved to processing" });
+    } else {
+      res.status(404).json({ message: "No matching exemption found" });
+    }
+  } catch (error) {
+    console.error("Error moving exemption to processing:", error);
+    res.status(500).json({ message: "Failed to move exemption to processing" });
+  }
+});
+
+router.post('/hr_exemptions/resolve', async (req, res) => {
+  const { exemptionId } = req.body;
+
+  try {
+    const [result] = await db.query(
+      'UPDATE exemptions SET exemptionStatus = "resolved" WHERE exemptionId = ?',
+      [exemptionId]
+    );
+
+    if (result.affectedRows > 0) {
+      res.json({ message: "Exemption resolved successfully" });
+    } else {
+      res.json({ message: "No matching exemption found" });
+    }
+  } catch (error) {
+    console.error("Error resolving exemption:", error);
+    res.status(500).json({ message: "Failed to resolve exemption" });
+  }
+});
+
+router.post('/hr_exemptions/revoke', async (req, res) => {
+  const { exemptionId } = req.body;
+
+  try {
+    let sql = 'UPDATE exemptions SET exemptionStatus = "pending" WHERE exemptionId = ?';
+    const [result] = await db.query(sql, [exemptionId]);
+
+    if (result.affectedRows > 0) {
+      res.json({ message: "Exemption revoked successfully" });
+    } else {
+      res.status(404).json({ message: "No matching exemption found" });
+    }
+  } catch (error) {
+    console.error("Error revoking exemption:", error);
+    res.status(500).json({ message: "Failed to revoke exemption" });
+  }
+});
+
 
 router.post("/search/getuser", async (req, res) => {
   const { staffId } = req.body;

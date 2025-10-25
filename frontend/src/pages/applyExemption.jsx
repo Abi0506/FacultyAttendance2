@@ -147,6 +147,7 @@ function ApplyExemption() {
                         <label className="form-label mb-1">Status:</label>
                         <select className="form-select" value={status} onChange={(e) => setStatus(e.target.value)}>
                             <option value="">All</option>
+                            <option value="processing">Processing</option>
                             <option value="approved">Approved</option>
                             <option value="rejected">Rejected</option>
                             <option value="pending">Pending</option>
@@ -181,8 +182,10 @@ function ApplyExemption() {
                                                 <span className="badge bg-success">Approved</span>
                                             ) : (exemption.exemptionStatus === 'rejected') ? (
                                                 <span className="badge bg-danger">Rejected</span>
+                                            ) : exemption.exemptionStatus === 'processing' ? (
+                                                <span className="badge bg-info text-light">Processing</span>
                                             ) : (
-                                                <span className="badge bg-warning text-dark">Pending</span>
+                                                <span className="badge bg-warning text-light">Pending</span>
                                             )}
                                         </td>
                                     </tr>
