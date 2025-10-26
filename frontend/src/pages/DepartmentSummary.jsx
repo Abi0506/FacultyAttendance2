@@ -228,7 +228,7 @@ function DepartmentSummary() {
         'name',
         'staff_id',
         'designation',
-        'summary', // Represents late_mins
+        'filtered_late_mins', // Represents late_mins
         'total_late_mins',
         'deducted_days'
     ], []);

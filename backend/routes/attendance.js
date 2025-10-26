@@ -383,7 +383,7 @@ router.post('/dept_summary', async (req, res) => {
       addEntry(category, dept, {
         staff_id,
         ...rest,
-        summary: Number(summary) || 0,
+        filtered_late_mins: Number(summary) || 0,
         total_late_mins: Number(total_late_mins) || 0,
         deducted_days: Number(deducted_days) || 0,
         dept
