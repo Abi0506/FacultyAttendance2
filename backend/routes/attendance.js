@@ -112,7 +112,7 @@ router.post('/get_flags_for_staff', async (req, res) => {
     const flaggedMap = {};
     rows.forEach(row => {
       const timeStr = row.time.toString().slice(0, 8); // 'HH:MM:SS'
-      row.date = row.date.split("-").reverse().join("-")
+      // row.date = row.date.split("-").reverse().join("-")
       flaggedMap[`${staff_id}_${row.date}_${timeStr}`] = true;
     });
 
@@ -530,7 +530,7 @@ router.post('/individual_data', async (req, res) => {
     const result = [];
     for (const [date, times] of Object.entries(groupedByDate)) {
       times.sort();
-      const row = { date: date.split('-').reverse().join('-') };
+      const row = { date: date};
 
       // Populate IN/OUT columns up to 3 pairs for compatibility with frontend
       for (let i = 0; i < 3; i++) {

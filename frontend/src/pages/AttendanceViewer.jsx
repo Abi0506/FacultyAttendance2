@@ -75,6 +75,7 @@ function AttendanceViewer() {
     if (!date) return;
     try {
       const response = await axios.post('/attendance/get_flags', { date });
+      console.log(response.data)
       setFlaggedCells(response.data || {});
     } catch (err) {
       console.error("Failed to fetch flagged times", err);
@@ -116,6 +117,7 @@ function AttendanceViewer() {
 
   const handleSaveAsPDF = () => {
     const newDate = selectedDate.split('-').reverse().join('-');
+    console.log(flaggedCells)
     PdfTemplate({
       title: `Faculty Attendance Record - ${newDate}`,
       tables: [{

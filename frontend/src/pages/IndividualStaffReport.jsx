@@ -110,6 +110,7 @@ function IndividualStaffReport() {
         end_date: formData.endDate,
       });
       const flags = response.data || {};
+      console.log(flags)
       setFlaggedCells(flags);
     } catch (err) {
       console.error('Failed to fetch flagged times', err);
@@ -119,28 +120,38 @@ function IndividualStaffReport() {
   const handleSaveAsPDF = () => {
     const { columns, data } = getTableColumnsAndData(); // Use the current table view and data
 
-    const formatDate = (date) => date.split('-').reverse().join('-'); // Convert yyyy-mm-dd to dd-mm-yyyy
+    const formatDate = (date) => date;
+
+    // Add "Staff ID" and "Name" at the start
+    const pdfColumns = ['Staff ID', 'Name', ...columns];
+
+    // Map each row, prepending staff_id and name
+    const tableRows = data.map((row) => [
+      formData.employeeId || '-',            // Staff ID
+      staffInfo.name || '-',                 // Staff Name
+      ...columns.map((col) => row[col] || '-') // Rest of data
+    ]);
 
     const details = [
       { label: 'Name', value: staffInfo.name || '' },
       { label: 'Designation', value: staffInfo.designation || '' },
       { label: 'Department', value: staffInfo.department || '' },
-      // { label: 'Date Range', value: `${formatDate(formData.startDate)} to ${formatDate(formData.endDate)}` },
       { label: `Late Minutes (${formatDate(formData.startDate)} to ${formatDate(formData.endDate)})`, value: lateMins },
       { label: 'Total Late Minutes (Since Previous Reset)', value: totalLateMins },
       { label: 'Total Days to be Deducted', value: totalAbsentDays },
     ];
 
-    const tableRows = data.map((row) => columns.map((col) => col === 'Date' ? formatDate(row[col]) : row[col] || '-'));
-    console.log(flaggedCells)
+    console.log(flaggedCells);
+
     PdfTemplate({
       title: 'Biometric Attendance Report for ' + staffInfo.name,
-      tables: [{ columns, data: tableRows }],
+      tables: [{ columns: pdfColumns, data: tableRows }],
       details,
       fileName: `Biometric Attendance_${staffInfo.name || 'employee'}.pdf`,
       flaggedCells,
     });
   };
+
 
   const handleSort = (column) => {
     setSortConfig((prev) =>
