@@ -94,7 +94,7 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
                                 temp_half_day_morning = True
                                 temp_morning_late_mins = 0
                                 temp_attendance = 'H'
-                            elif late_minutes > 15:
+                            elif late_minutes > 16:
                                 temp_morning_late_mins += late_minutes
 
                         if not any(t > in1_const for t in temp_time_objs):
@@ -297,7 +297,7 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
                         morning_late_mins = 0
                         attendance = 'H'
                         print(f"Single log late > 90 mins for {staff_id} compared to in_time: {late_minutes:.2f}")
-                    elif late_minutes > 15:
+                    elif late_minutes > 16:
                         morning_late_mins = late_minutes
                         print(f"Single log late mins for {staff_id} compared to in_time: {late_minutes:.2f}")
                 elif closest_name == 'in1' and log_time < in1_const:
@@ -330,7 +330,7 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
                         morning_late_mins = 0
                         attendance = 'H'
                         print(f"Morning absence > 90 mins for {staff_id}: {late_minutes}")
-                    elif late_minutes > 15:
+                    elif late_minutes > 16:
                         morning_late_mins += late_minutes
                         print(f"Morning late mins for {staff_id}: {late_minutes}")
 

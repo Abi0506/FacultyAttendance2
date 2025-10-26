@@ -229,7 +229,7 @@ def process_exemptions():
                                             temp_morning_late_mins = 0
                                             temp_attendance = 'H'
                                             print(f"Single log late > 90 mins for {staff_id}: {late_minutes:.2f}")
-                                        elif late_minutes > 15:
+                                        elif late_minutes > 16:
                                             temp_morning_late_mins = late_minutes
                                             print(f"Single log late mins for {staff_id}: {late_minutes:.2f}")
                                     elif closest_name == 'in1' and log_time < in1_const:
@@ -263,7 +263,7 @@ def process_exemptions():
                                                 temp_morning_late_mins = 0
                                                 temp_attendance = 'H'
                                                 print(f"Morning absence > 90 mins for {staff_id}: {late_minutes}")
-                                            elif late_minutes > 15:
+                                            elif late_minutes > 16:
                                                 temp_morning_late_mins += late_minutes
                                                 print(f"Morning late mins for {staff_id}: {late_minutes}")
 

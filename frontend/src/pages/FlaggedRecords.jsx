@@ -17,7 +17,7 @@ function FlaggedRecords() {
     const [columnsToShow, setColumnsToShow] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [rowsPerPage, setRowsPerPage] = useState(25);
-    const [sortConfig, setSortConfig] = useState({ key: 'IN1', direction: 'asc' });
+    const [sortConfig, setSortConfig] = useState({ key: 'Date', direction: 'desc' });
     const [flaggedCells, setFlaggedCells] = useState({});
     const [isFlagMode, setIsFlagMode] = useState(false);
     const [filterType, setFilterType] = useState("all");
