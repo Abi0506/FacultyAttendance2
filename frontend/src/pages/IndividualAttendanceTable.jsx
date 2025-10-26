@@ -33,8 +33,6 @@ function IndividualAttendanceTable() {
     );
   };
 
-
-
   // Fetch flagged times for selected user
   const fetchFlagsForUser = async (employeeId, start, end) => {
     if (!employeeId) return;
