@@ -7,6 +7,7 @@
   --color-4: #727597;
   --color-5: #e3d9dc;
   --color-6: #ffffff;
+  --color-flag: #ffeda7;
   --color-7: rgba(255, 99, 71, 0.15);
 }
 
@@ -354,7 +355,7 @@
 }
 
 .bg-c-warning {
-  background-color: var(--color-7) !important;
+  background-color: var(--color-flag) !important;
   /* border-color: var(--color-7); */
   /* color: var(--color-7) !important; */
   /* border-width: 2px; */
@@ -364,8 +365,13 @@
 .flag-indicator {
   width: 20px;
   height: 20px;
-  background-color: #fff3cd;
+  background-color: var(--color-flag);
   border: 1px solid #e0a800;
   border-radius: 4px;
   margin-right: 8px;
+}
+
+.flag-hover-cell:hover {
+  border: 2px solid #ff9800 !important;
+  box-shadow: 0 0 0 2px #ffe0b2;
 }

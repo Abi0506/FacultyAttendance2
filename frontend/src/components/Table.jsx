@@ -68,12 +68,7 @@ function Table({
 
     return (
         <div className="table-container" style={{ position: "relative" }}>
-            <style>{`
-        .flag-hover-cell:hover {
-          border: 2px solid #ff9800 !important;
-          box-shadow: 0 0 0 2px #ffe0b2;
-        }
-      `}</style>
+            
 
             <table className="table table-c">
                 <thead className="table-secondary" style={{ position: "sticky", top: 0, zIndex: 2 }}>
@@ -128,7 +123,7 @@ function Table({
                                         timeValue &&
                                         onFlagClick;
 
-                                    // NEW: handle editable numeric column
+                                    // Handle editable numeric column
                                     const isEditable = editableColumns.includes(col);
                                     if (isEditable) {
                                         return (

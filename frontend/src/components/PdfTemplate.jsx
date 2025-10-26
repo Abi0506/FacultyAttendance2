@@ -125,19 +125,23 @@ const PdfTemplate = ({
                 // 💡 Highlight flagged rows
                 didParseCell: (data) => {
                     try {
+                        if (data.section !== 'body') return;
                         const rowData = table.data[data.row.index];
                         const colName = table.columns[data.column.index];
 
                         // Extract fields from your data row
-                        const staffId = rowData.staff_id;
-                        const date = rowData.Date;
-                        const time = rowData.Time; // if your record has it
-
-                        // Build the same key format as in flaggedCells
+                        const staffId = rowData[0];
+                        const date = rowData[2];
+                        let time;
+                        if (colName === 'IN1') time = rowData[3];
+                        else if (colName === 'OUT1') time = rowData[4];
+                        else if (colName === 'IN2') time = rowData[5];
+                        else if (colName === 'OUT2') time = rowData[6];
+                        else if (colName === 'IN3') time = rowData[7];
+                        else if (colName === 'OUT3') time = rowData[8];
                         const key = `${staffId}_${date}_${time}`;
-
                         if (flaggedCells[key]) {
-                            data.cell.styles.fillColor = [255, 243, 205]; // soft yellow
+                            data.cell.styles.fillColor = [255, 237, 167];
                             data.cell.styles.textColor = [0, 0, 0];
                         }
                     } catch (e) {
