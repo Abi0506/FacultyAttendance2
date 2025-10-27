@@ -18,6 +18,7 @@ function AttendanceViewer() {
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [sortConfig, setSortConfig] = useState({ key: 'IN1', direction: 'asc' });
   const [flaggedCells, setFlaggedCells] = useState({});
+  const [approvedExemptionsMap, setApprovedExemptionsMap] = useState({});
   const [isFlagMode, setIsFlagMode] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -82,6 +83,25 @@ function AttendanceViewer() {
     }
   }, []);
 
+  // Fetch approved exemptions for the selected date and prepare a highlight map
+  const fetchApprovedExemptionsForDate = useCallback(async (date) => {
+    if (!date) return;
+    try {
+      // Call backend endpoint that returns approved exemptions for a given date (query param)
+      const res = await axios.post('/attendance/hr_approved_exemptions', {date } );
+      const rows = (res.data && res.data.exemptions) ? res.data.exemptions : [];
+
+      const map = {};
+      rows.forEach(r => {
+        if (r.staffId) map[r.staffId] = { backgroundColor: '#e4d386' }; // light yellow, more visible
+      });
+      setApprovedExemptionsMap(map);
+    } catch (err) {
+      console.error('Failed to fetch approved exemptions', err);
+      setApprovedExemptionsMap({});
+    }
+  }, []);
+
   const handleFlagTime = async (staff_id, selectedDate, timeValue) => {
     if (!isFlagMode) return;
     try {
@@ -132,7 +152,8 @@ function AttendanceViewer() {
   useEffect(() => {
     fetchAttendanceLogs(selectedDate);
     fetchFlags(selectedDate);
-  }, [selectedDate, fetchAttendanceLogs, fetchFlags]);
+    fetchApprovedExemptionsForDate(selectedDate);
+  }, [selectedDate, fetchAttendanceLogs, fetchFlags, fetchApprovedExemptionsForDate]);
 
   const handleSort = (column) => {
     setSortConfig(prev => prev.key === column
@@ -263,6 +284,7 @@ function AttendanceViewer() {
         onSort={handleSort}
         rowsPerPage={rowsPerPage}
         flaggedCells={flaggedCells}
+        rowHighlightMap={approvedExemptionsMap}
         onFlagClick={handleFlagTime}
         isFlagMode={isFlagMode}
         currentPage={currentPage}

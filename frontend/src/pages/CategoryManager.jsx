@@ -11,8 +11,10 @@ function CategoryManagerPage() {
         category_description: '',
         type: 'fixed',
         in_time: '',
+        in1: '',
         break_in: '',
         break_out: '',
+        out2: '',
         out_time: '',
         break_time_mins: '',
         working_hrs: '',
@@ -104,8 +106,10 @@ function CategoryManagerPage() {
             category_description: form.category_description,
             type: form.type,
             in_time: form.type === 'fixed' ? form.in_time : '',
+            in1: form.type === 'fixed' ? form.in1 : '',
             break_in: form.type === 'fixed' ? form.break_in : '',
             break_out: form.type === 'fixed' ? form.break_out : '',
+            out2: form.type === 'fixed' ? form.out2 : '',
             out_time: out_time,
             break_time_mins: form.break_time_mins,
             working_hrs: form.type === 'hrs' ? working_hrs : '',
@@ -118,8 +122,10 @@ function CategoryManagerPage() {
                     category_description: '',
                     type: 'fixed',
                     in_time: '',
+                        in1: '',
                     break_in: '',
                     break_out: '',
+                        out2: '',
                     out_time: '',
                     break_time_mins: '',
                     working_hrs: '',
@@ -154,14 +160,16 @@ function CategoryManagerPage() {
 
     const downloadPDF = () => {
         const title = 'Categories';
-        const columns = ['#', 'Description', 'Type', 'In Time', 'Break In', 'Break Out', 'Out Time', 'Working Hrs', 'Break (mins)'];
+        const columns = ['#', 'Description', 'Type', 'Session 1 In', 'Session 1 Out', 'Break In', 'Break Out', 'Session 2 In', 'Session 2 Out', 'Working Hrs', 'Break (mins)'];
         const data = categories.map(cat => [
             cat.category_no,
             cat.category_description,
             cat.type || 'fixed',
             formatTime(cat.in_time),
+            formatTime(cat.in1),
             formatTime(cat.break_in),
             formatTime(cat.break_out),
+            formatTime(cat.out2),
             formatTime(cat.out_time),
             cat.working_hrs || '—',
             cat.break_time_mins
@@ -193,10 +201,12 @@ function CategoryManagerPage() {
                                     <th>#</th>
                                     <th>Description</th>
                                     <th>Type</th>
-                                    <th>In Time</th>
+                                    <th>Session 1 In</th>
+                                    <th>Session 1 Out</th>
                                     <th>Break In</th>
                                     <th>Break Out</th>
-                                    <th>Out Time</th>
+                                    <th>Session 2 In</th>
+                                    <th>Session 2 Out</th>
                                     <th>Working Hrs</th>
                                     <th>Break (mins)</th>
                                     <th>Actions</th>
@@ -251,6 +261,19 @@ function CategoryManagerPage() {
                                             {editingId === cat.category_no ? (
                                                 <input
                                                     type="time"
+                                                    name="in1"
+                                                    value={editForm.in1 || ''}
+                                                    onChange={handleEditChange}
+                                                    className="form-control"
+                                                />
+                                            ) : (
+                                                formatTime(cat.in1)
+                                            )}
+                                        </td>
+                                        <td>
+                                            {editingId === cat.category_no ? (
+                                                <input
+                                                    type="time"
                                                     name="break_in"
                                                     value={editForm.break_in || ''}
                                                     onChange={handleEditChange}
@@ -271,6 +294,19 @@ function CategoryManagerPage() {
                                                 />
                                             ) : (
                                                 formatTime(cat.break_out)
+                                            )}
+                                        </td>
+                                        <td>
+                                            {editingId === cat.category_no ? (
+                                                <input
+                                                    type="time"
+                                                    name="out2"
+                                                    value={editForm.out2 || ''}
+                                                    onChange={handleEditChange}
+                                                    className="form-control"
+                                                />
+                                            ) : (
+                                                formatTime(cat.out2)
                                             )}
                                         </td>
                                         <td>
@@ -420,12 +456,34 @@ function CategoryManagerPage() {
                                 />
                             </div>
                             <div className="col-md-2">
+                                <label className="form-label">Session 1 Out</label>
+                                <input
+                                    type="time"
+                                    className="form-control"
+                                    name="in1"
+                                    value={form.in1}
+                                    onChange={handleChange}
+                                    required={form.type === 'fixed'}
+                                />
+                            </div>
+                            <div className="col-md-2">
                                 <label className="form-label">Out Time</label>
                                 <input
                                     type="time"
                                     className="form-control"
                                     name="out_time"
                                     value={form.out_time}
+                                    onChange={handleChange}
+                                    required={form.type === 'fixed'}
+                                />
+                            </div>
+                            <div className="col-md-2">
+                                <label className="form-label">Session 2 In</label>
+                                <input
+                                    type="time"
+                                    className="form-control"
+                                    name="out2"
+                                    value={form.out2}
                                     onChange={handleChange}
                                     required={form.type === 'fixed'}
                                 />

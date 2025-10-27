@@ -375,3 +375,8 @@
   border: 2px solid #ff9800 !important;
   box-shadow: 0 0 0 2px #ffe0b2;
 }
+
+/* Approved exemption row highlight - light, visible color */
+.exemption-approved {
+  background-color: #fff3bf !important; /* light yellow */
+}

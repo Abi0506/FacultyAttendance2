@@ -15,14 +15,8 @@ SESSION_TIMES = {
     "8": {"start": "15:55:00", "end": "16:45:00"}
 }
 
-def process_exemptions():
-    """
-    Processes all approved and unprocessed exemptions where exemptionDate is before yesterday.
-    - Day: Sets late_mins=0, attendance='P', skips log processing.
-    - Time/Session: If one log in exempted period, use its time as exemption_end_dt and keep all logs.
-      If multiple logs in exempted period, exclude them. Calculates late_mins using essl.py logic for fixed category.
-    - Uses 'P', 'H', 'I' for attendance (no 'A').
-    """
+def process_exemptions(today = None):
+ 
     conn = db_connect()
     if not conn:
         print("Database connection failed.")
@@ -33,9 +27,14 @@ def process_exemptions():
 
     try:
         # Fetch all unprocessed approved exemptions
-        cursor.execute(
-            "SELECT * FROM exemptions WHERE exemptionStatus = 'approved' AND processed = 0"
-        )
+        if not today:
+            cursor.execute(
+            "SELECT * FROM exemptions WHERE exemptionStatus = 'processing' AND processed = 0"
+            )
+        else:
+            cursor.execute(
+                "SELECT * FROM exemptions WHERE (exemptionStatus = 'approved' OR exemptionStatus = 'processing') AND exemptionDate = %s", (today,)
+            )
         exemptions_to_process = cursor.fetchall()
         print(f"Exemptions to process: {exemptions_to_process}")
         if not exemptions_to_process:
@@ -508,4 +507,4 @@ def process_exemptions():
         conn.close()
 
 if __name__ == "__main__":
-    process_exemptions()
+    process_exemptions("")
