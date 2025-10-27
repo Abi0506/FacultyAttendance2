@@ -24,6 +24,7 @@ function IndividualAttendanceTable() {
   const [editingLateMins, setEditingLateMins] = useState({});
   const { staffId } = useParams();
   const [flaggedCells, setFlaggedCells] = useState({});
+  const [approvedExemptionsMap, setApprovedExemptionsMap] = useState({});
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
 
   const handleSort = (column) => {
@@ -45,7 +46,8 @@ function IndividualAttendanceTable() {
         start_date: start,
         end_date: end,
       });
-      // Map flags to {staffId_date_time: true}
+  // Map flags to {staffId_date_time: true}
+  console.log("Flags response from /get_flags_for_staff:", response.data);
       const flags = {};
       const data = response.data || {};
       for (const key in data) flags[key] = true;
@@ -146,12 +148,60 @@ function IndividualAttendanceTable() {
       const visibleCols = allColumns.filter((col) => timing.some((row) => row[col]));
       setColumnsToShow(visibleCols);
       fetchFlagsForUser(employeeId, start, end);
+      fetchApprovedExemptionsForUser(employeeId, start, end);
       setRecords(timing || []);
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.error || 'Failed to fetch data.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const normalizeDateYMD = (d) => {
+    if (!d) return d;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+    if (/^\d{2}-\d{2}-\d{4}$/.test(d)) {
+      const [day, month, year] = d.split('-');
+      return `${year}-${month}-${day}`;
+    }
+    return d;
+  };
+
+  const normalizeDateDMY = (d) => {
+    if (!d) return d;
+    if (/^\d{2}-\d{2}-\d{4}$/.test(d)) return d;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      const [year, month, day] = d.split('-');
+      return `${day}-${month}-${year}`;
+    }
+    return d;
+  };
+
+  const fetchApprovedExemptionsForUser = async (employeeId, start, end) => {
+    if (!employeeId) return;
+    try {
+      const res = await axios.post('/attendance/hr_approved_exemptions_for_staff', {
+        start,
+        end,
+        id: employeeId,
+      });
+  console.log('Approved exemptions raw response:', res.data);
+  const rows = res.data?.exemptions || res.data || [];
+  console.log('Approved exemptions rows:', rows);
+      const map = {};
+      rows.forEach((r) => {
+        const raw = r.exemptionDate || r.exemption_date || r.date || r.exemptionDate;
+        if (!raw) return;
+        const ymd = normalizeDateYMD(raw);
+        const dmy = normalizeDateDMY(raw);
+        const entry = { backgroundColor: '#fff3bf', note: 'Approved Exemption' };
+        map[ymd] = entry;
+        map[dmy] = entry;
+      });
+      setApprovedExemptionsMap(map);
+    } catch (err) {
+      console.error('Failed to fetch approved exemptions for user', err);
     }
   };
 
@@ -235,18 +285,27 @@ function IndividualAttendanceTable() {
       { label: 'Late Minutes(Total)', value: totalLateMins },
     ];
     const tableColumn = ['Date', ...columnsToShow, 'Attendance', 'Late Mins', 'Working Hours', 'Additional Late Mins'];
-
-    const tableRows = records.map((rec) => [
-      rec.date,
-      ...columnsToShow.map((col) => rec[col] || '-'),
-      decideAttendanceDisplay(rec),
-      rec.late_mins,
-      rec.working_hours,
-      rec.additional_late_mins || 0,
-    ]);
+    // Add Note column for approved exemptions
+    const tableRows = records.map((rec) => {
+      const recDate = (rec.date || '').toString();
+      const ymd = normalizeDateYMD(recDate);
+      const dmy = normalizeDateDMY(recDate);
+      const match = approvedExemptionsMap[recDate] || approvedExemptionsMap[ymd] || approvedExemptionsMap[dmy];
+      const note = match ? match.note : '-';
+      return [
+        rec.date,
+        ...columnsToShow.map((col) => rec[col] || '-'),
+        decideAttendanceDisplay(rec),
+        rec.late_mins,
+        rec.working_hours,
+        rec.additional_late_mins || 0,
+        note,
+      ];
+    });
+    const tableColumnWithNote = [...tableColumn, 'Note'];
     PdfTemplate({
       title: 'Biometric Attendance Report for ' + selectedUser.name,
-      tables: [{ columns: tableColumn, data: tableRows }],
+      tables: [{ columns: tableColumnWithNote, data: tableRows }],
       details,
       fileName: `Attendance_${selectedUser.name || 'employee'}.pdf`,
     });
@@ -362,6 +421,7 @@ function IndividualAttendanceTable() {
             columns={['date', ...columnsToShow, 'late_mins', 'additional_late_mins', 'working_hours', 'attendance']}
             data={sortedRecords}
             flaggedCells={flaggedCells}
+            rowHighlightMap={approvedExemptionsMap}
             editableColumns={['additional_late_mins']}
             editConfig={{ min: -90, max: 90 }}
             onSort={handleSort}

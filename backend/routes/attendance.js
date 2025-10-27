@@ -6,10 +6,10 @@ async function start_end_time() {
   const today = new Date();
   const year = today.getFullYear();
   let start;
-  if (today < new Date(`${year}-06-01`)) {
+  if (today < new Date(`${year}-07-01`)) {
     start = `${year}-01-01`;
   } else {
-    start = `${year}-06-01`;
+    start = `${year}-07-01`;
   }
   return [start, today.toISOString().split('T')[0]];
 }
@@ -686,6 +686,39 @@ router.get('/hr_exemptions_all', async (req, res) => {
   }
 });
 
+router.post('/hr_approved_exemptions', async (req, res) => {
+  try {
+    // Expect date as a query parameter: /hr_approved_exemptions?date=YYYY-MM-DD
+    const { date } = req.body;
+    if (!date) return res.status(400).json({ message: 'Missing date query parameter' });
+    const [rows] = await db.query(
+      'SELECT * FROM exemptions WHERE exemptionStatus = ? AND exemptionDate = ? ORDER BY exemptionDate DESC',
+      ['approved', date]
+    );
+    res.json({ message: 'Exemptions fetched successfully', exemptions: rows });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch exemptions" });
+  }
+});
+
+router.post('/hr_approved_exemptions_for_staff', async (req, res) => {
+  try {
+    // Expect date as a query parameter: /hr_approved_exemptions?date=YYYY-MM-DD
+    const { start , end ,id } = req.body;
+    
+    const [rows] = await db.query(
+      'SELECT exemptionDate FROM exemptions WHERE exemptionStatus = ? AND (exemptionDate BETWEEN ? AND ?) AND staffId = ? ORDER BY exemptionDate DESC',
+      ['approved', start, end, id]
+    );
+    console.log(rows);
+    res.json({ message: 'Exemptions fetched successfully', exemptions: rows });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch exemptions" });
+  }
+});
+
+
+
 router.get("/staff_exemptions/:staffId", async (req, res) => {
   const { staffId } = req.params;
   try {
@@ -697,13 +730,13 @@ router.get("/staff_exemptions/:staffId", async (req, res) => {
 });
 
 router.post('/categories/update', async (req, res) => {
-  const { category_no, category_description, type, in_time, break_in, break_out, out_time, working_hrs, break_time_mins } = req.body;
+  const { category_no, category_description, type, in_time, in1, break_in, break_out, out2, out_time, working_hrs, break_time_mins } = req.body;
   try {
     await db.query(
       `UPDATE category
-             SET category_description=?,  in_time=?, break_in=?, break_out=?, out_time=?, break_time_mins=?
+             SET category_description=?, in_time=?, in1=?, break_in=?, break_out=?, out2=?, out_time=?, break_time_mins=?
              WHERE category_no=?`,
-      [category_description, in_time, break_in, break_out, out_time, break_time_mins, category_no]
+      [category_description, in_time, in1, break_in, break_out, out2, out_time, break_time_mins, category_no]
     );
     res.json({ success: true });
   } catch (err) {
@@ -871,25 +904,29 @@ router.get("/categories", async (req, res) => {
 })
 
 router.post("/add_categories", async (req, res) => {
-  const { category_description, in_time, break_in, break_out, out_time, break_time_mins } = req.body;
+  const { category_description, in_time, in1, break_in, break_out, out2, out_time, break_time_mins } = req.body;
 
   try {
     // Append seconds
-    const in_time1 = (in_time) ? in_time + ':00' : null;
-    const break_in1 = (break_in) ? break_in + ':00' : null;
-    const break_out1 = (break_out) ? break_out + ':00' : null;
-    const out_time1 = (out_time) ? out_time + ':00' : null;
+  const in_time1 = (in_time) ? in_time + ':00' : null;
+  const in11 = (in1) ? in1 + ':00' : null;
+  const break_in1 = (break_in) ? break_in + ':00' : null;
+  const break_out1 = (break_out) ? break_out + ':00' : null;
+  const out21 = (out2) ? out2 + ':00' : null;
+  const out_time1 = (out_time) ? out_time + ':00' : null;
 
     // Check if category already exists using SQL
     const [rows] = await db.query(
       `SELECT * FROM category 
        WHERE category_description = ? 
-       AND in_time = ? 
-       AND break_in = ? 
-       AND break_out = ? 
-       AND out_time = ? 
-       AND break_time_mins = ?`,
-      [category_description, in_time1, break_in1, break_out1, out_time1, break_time_mins]
+  AND in_time = ? 
+  AND in1 = ? 
+  AND break_in = ? 
+  AND break_out = ? 
+  AND out2 = ? 
+  AND out_time = ? 
+  AND break_time_mins = ?`,
+  [category_description, in_time1, in11, break_in1, break_out1, out21, out_time1, break_time_mins]
     );
 
     if (rows.length > 0) {
@@ -900,8 +937,8 @@ router.post("/add_categories", async (req, res) => {
     let count = Number(countResult[0].total) + 1;
 
     await db.query(
-      "INSERT INTO category (category_no, category_description, in_time, break_in, break_out, out_time, break_time_mins) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [count, category_description, in_time1, break_in1, break_out1, out_time1, break_time_mins]
+      "INSERT INTO category (category_no, category_description, in_time, in1, break_in, break_out, out2, out_time, break_time_mins) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [count, category_description, in_time1, in11, break_in1, break_out1, out21, out_time1, break_time_mins]
     );
 
     res.json({ message: "Category added successfully", success: true });
@@ -965,9 +1002,11 @@ router.get('/get_user/:id', async (req, res) => {
             staff.category,
             category.category_description,
             category.in_time,
-            category.out_time,
+            category.in1,
             category.break_in,
             category.break_out,
+            category.out2,
+            category.out_time,
             category.break_time_mins
           FROM staff
           JOIN category ON staff.category = category.category_no

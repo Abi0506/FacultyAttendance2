@@ -34,15 +34,6 @@ router.post('/add_user', async (req, res) => {
     return res.status(500).json({ success: false, message: 'Database error' });
   }
 
-  try {
-    const pythonResult = await runPythonScript(['set_user_credentials', id, name]);
-    if (pythonResult.includes('Error')) {
-      throw new Error(pythonResult);
-    }
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
-
   if (category === -1) {
     
     try {
@@ -108,10 +99,7 @@ router.post('/delete_user', async (req, res) => {
 
 
   try {
-    const pythonResult = await runPythonScript(['delete_user', id]);
-    if (pythonResult.includes('Error')) {
-      throw new Error(pythonResult);
-    }
+   
      await db.query(`SET FOREIGN_KEY_CHECKS = 0;
                     DELETE FROM staff WHERE staff_id = ?;
                     SET FOREIGN_KEY_CHECKS = 1;`, [id]);

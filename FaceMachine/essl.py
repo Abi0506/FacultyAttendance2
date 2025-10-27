@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import math
 from connection import db as db_connect
 from holiday import get_holidays
-
+from exemption import process_exemptions
 
 
 def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories):
@@ -586,7 +586,9 @@ def process_logs(date1=None):
             print(f"Logs fetched for {staff_id}: {logs}")
 
             insert_log(cursor, staff_id, category_id, logs, today, is_holiday, categories)
+              
         conn.commit()
+        process_exemptions(today)  
 
     except mysql.connector.Error as err:
         print(f"Error: {err}")

@@ -20,6 +20,7 @@ function IndividualStaffReport() {
   // const [endDate, setEndDate] = useState('');
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [flaggedCells, setFlaggedCells] = useState({});
+  const [approvedExemptionsMap, setApprovedExemptionsMap] = useState({});
   const [sortConfig, setSortConfig] = useState({ key: 'Date', direction: 'desc' });
   const [viewMode, setViewMode] = useState('Combined'); // New state for dropdown selection
   const [isLoading, setIsLoading] = useState(true); // New state for loader
@@ -76,10 +77,61 @@ function IndividualStaffReport() {
       setRecords(recordsData);
       setSubmitted(true);
       fetchFlagsForStaff(recordsData);
+      fetchApprovedExemptionsForStaff();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to fetch data.');
       setSubmitted(false);
       setRecords([]);
+    }
+  };
+
+  const normalizeDateYMD = (d) => {
+    if (!d) return d;
+    // if already YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+    // if DD-MM-YYYY
+    if (/^\d{2}-\d{2}-\d{4}$/.test(d)) {
+      const [day, month, year] = d.split('-');
+      return `${year}-${month}-${day}`;
+    }
+    return d;
+  };
+
+  const normalizeDateDMY = (d) => {
+    if (!d) return d;
+    if (/^\d{2}-\d{2}-\d{4}$/.test(d)) return d;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      const [year, month, day] = d.split('-');
+      return `${day}-${month}-${year}`;
+    }
+    return d;
+  };
+
+  const fetchApprovedExemptionsForStaff = async () => {
+    if (!formData.employeeId || !formData.startDate || !formData.endDate) return;
+    try {
+      const res = await axios.post('/attendance/hr_approved_exemptions_for_staff', {
+        start: formData.startDate,
+        end: formData.endDate,
+        id: formData.employeeId,
+      });
+      console.log('Approved exemptions raw response (staff report):', res.data);
+      const rows = res.data?.exemptions || res.data || [];
+      console.log('Approved exemptions rows (staff report):', rows);
+      const map = {};
+      rows.forEach((r) => {
+        const raw = r.exemptionDate || r.exemption_date || r.date || r.exemptionDate;
+        if (!raw) return;
+        const ymd = normalizeDateYMD(raw);
+        const dmy = normalizeDateDMY(raw);
+        // light highlight and note
+        const entry = { backgroundColor: '#fff3bf', note: 'Approved Exemption' };
+        map[ymd] = entry;
+        map[dmy] = entry;
+      });
+      setApprovedExemptionsMap(map);
+    } catch (err) {
+      console.error('Failed to fetch approved exemptions', err);
     }
   };
 
@@ -109,8 +161,9 @@ function IndividualStaffReport() {
         start_date: formData.startDate,
         end_date: formData.endDate,
       });
+      console.log('Flags response from /get_flags_for_staff (staff report):', response.data);
       const flags = response.data || {};
-      console.log(flags)
+      console.log('Mapped flags (staff report):', flags);
       setFlaggedCells(flags);
     } catch (err) {
       console.error('Failed to fetch flagged times', err);
@@ -143,9 +196,21 @@ function IndividualStaffReport() {
 
     console.log(flaggedCells);
 
+    // Add a Note column that mentions approved exemptions if present for the date
+    const pdfColumnsWithNote = [...pdfColumns, 'Note'];
+    const tableRowsWithNote = tableRows.map((r) => {
+      // r[0] is staff id, r[1] is name, r[2] is Date in our mapping above
+      const recDate = (r[2] || '').toString();
+      const ymd = normalizeDateYMD(recDate);
+      const dmy = normalizeDateDMY(recDate);
+      const match = approvedExemptionsMap[recDate] || approvedExemptionsMap[ymd] || approvedExemptionsMap[dmy];
+      const note = match ? match.note : '-';
+      return [...r, note];
+    });
+
     PdfTemplate({
       title: 'Biometric Attendance Report for ' + staffInfo.name,
-      tables: [{ columns: pdfColumns, data: tableRows }],
+      tables: [{ columns: pdfColumnsWithNote, data: tableRowsWithNote }],
       details,
       fileName: `Biometric Attendance_${staffInfo.name || 'employee'}.pdf`,
       flaggedCells,
@@ -410,6 +475,7 @@ function IndividualStaffReport() {
             onSort={handleSort}
             selectedDate={formData.startDate}
             flaggedCells={flaggedCells}
+            rowHighlightMap={approvedExemptionsMap}
             rowsPerPage={rowsPerPage}
           />
           <div>
