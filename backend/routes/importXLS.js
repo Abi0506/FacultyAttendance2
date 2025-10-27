@@ -220,9 +220,73 @@ async function importCanteenStaff(fileName) {
         process.exit(1);
     }
 }
+async function importPhDStudents(fileName) {
+    try {
+        const workbook = xlsx.readFile(fileName);
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const data = xlsx.utils.sheet_to_json(sheet);
+
+        let insertedCount = 0;
+        let skippedCount = 0;
+
+        for (const row of data) {
+            const staff_id = row["Roll No"] || row["Dummy Roll No"];
+            const name = row["Student Name"];
+            const programName = row["Program Name"];
+            const email = row["Student e-mail"];
+
+            if (!staff_id || !name || !programName) {
+                skippedCount++;
+                continue;
+            }
+
+            // Crop "DOCTOR OF PHILOSOPHY IN " from Program Name
+            const designation = programName
+                .replace(/^DOCTOR OF PHILOSOPHY IN\s*/i, "")
+                .trim();
+
+            // Department is fixed as PHD
+            const dept = "PHD";
+
+            // Check if staff already exists
+            const [existing] = await db.query(
+                `SELECT staff_id FROM staff WHERE staff_id = ?`,
+                [staff_id]
+            );
+
+            if (existing.length > 0) {
+                skippedCount++;
+                continue;
+            }
+
+            // Hash Roll No as password
+            const hashedPassword = await hashPassword(staff_id.toString());
+
+            // Insert into table
+            await db.query(
+                `INSERT INTO staff (staff_id, name, dept, category, password, designation, email)
+                 VALUES (?, ?, ?, 5, ?, ?, ?)`,
+                [staff_id, name, dept, hashedPassword, designation, email || null]
+            );
+
+            insertedCount++;
+        }
+
+        console.log("✅ PhD student import completed!");
+        console.log(`➡️ Inserted: ${insertedCount}`);
+        console.log(`➡️ Skipped (missing or duplicate): ${skippedCount}`);
+
+        process.exit(0);
+    } catch (err) {
+        console.error("❌ Failed to import PhD students:", err);
+        process.exit(1);
+    }
+}
+
+importPhDStudents("research.xlsx")
 
 // Example usage:
-importCanteenStaff("canteen.xlsx");
+// importCanteenStaff("canteen.xlsx");
 
 
 // Example usage:
