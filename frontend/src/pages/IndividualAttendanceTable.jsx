@@ -18,6 +18,7 @@ function IndividualAttendanceTable() {
   const [error, setError] = useState('');
   const [totalLateMins, setTotalLateMins] = useState(0);
   const [lateMins, setLateMins] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [fromDate, setFromDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [editingLateMins, setEditingLateMins] = useState({});
@@ -36,7 +37,9 @@ function IndividualAttendanceTable() {
   // Fetch flagged times for selected user
   const fetchFlagsForUser = async (employeeId, start, end) => {
     if (!employeeId) return;
+    setLoading(true);
     try {
+
       const response = await axios.post('/attendance/get_flags_for_staff', {
         staff_id: employeeId,
         start_date: start,
@@ -50,7 +53,7 @@ function IndividualAttendanceTable() {
       setFlaggedCells(flags);
     } catch (err) {
       console.error('Failed to fetch flagged times', err);
-    }
+    } finally { setLoading(false); }
   };
 
   const decideAttendanceDisplay = (rec) => {
@@ -117,6 +120,7 @@ function IndividualAttendanceTable() {
   };
 
   const fetchAttendance = async (employeeId, start, end) => {
+    setLoading(true);
     setError('');
     try {
       const res = await axios.post('/attendance/individual_data', {
@@ -146,6 +150,8 @@ function IndividualAttendanceTable() {
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.error || 'Failed to fetch data.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -188,15 +194,19 @@ function IndividualAttendanceTable() {
   };
 
   useEffect(() => {
+
     if (staffId) {
       // Fetch the user by ID
       const fetchUser = async () => {
+        setLoading(true);
         try {
           const res = await axios.post('/attendance/search/getuser', { staffId });
           const user = res.data.staff;
           handleSelectUser(user); // Reuse your existing function
         } catch (err) {
           console.error(err);
+        } finally {
+          setLoading(false);
         }
       };
       fetchUser();
@@ -248,21 +258,21 @@ function IndividualAttendanceTable() {
       let aValue = a[sortConfig.key];
       let bValue = b[sortConfig.key];
 
-       if (sortConfig.key === 'date') {
-      const parseDMY = (str) => {
-        if (!str || typeof str !== 'string') return new Date('Invalid');
-        const [d, m, y] = str.split('-').map(Number);
-        return new Date(y, m - 1, d);
-      };
+      if (sortConfig.key === 'date') {
+        const parseDMY = (str) => {
+          if (!str || typeof str !== 'string') return new Date('Invalid');
+          const [d, m, y] = str.split('-').map(Number);
+          return new Date(y, m - 1, d);
+        };
 
-      const aDate = parseDMY(aValue);
-      const bDate = parseDMY(bValue);
+        const aDate = parseDMY(aValue);
+        const bDate = parseDMY(bValue);
 
-      if (aDate < bDate) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (aDate > bDate) return sortConfig.direction === 'asc' ? 1 : -1;
-      return 0;
-    }
-          // Handle numeric comparison
+        if (aDate < bDate) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aDate > bDate) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      }
+      // Handle numeric comparison
       if (!isNaN(aValue) && !isNaN(bValue)) {
         aValue = parseFloat(aValue);
         bValue = parseFloat(bValue);
@@ -355,6 +365,7 @@ function IndividualAttendanceTable() {
             editableColumns={['additional_late_mins']}
             editConfig={{ min: -90, max: 90 }}
             onSort={handleSort}
+            loading={loading}
             sortConfig={sortConfig}
             onEdit={(row, column, value, meta) => {
               if (meta.onBlur) handleUpdateAdditional(row.date, value);

@@ -3,13 +3,17 @@ const express = require("express");
 const cookieParser = require('cookie-parser');
 const cors = require("cors");
 const session = require('express-session');
+
+// For vierifying if the user is logged in and has access
+const { verifyToken, authorizeRoles } = require('./middleware/authMiddleware');
+
 const passport = require('passport');
 require('dotenv').config();
 const app = express();
 const { startPythonScript } = require('./server');
 const PORT = 5050;
 const corsOptions = {
-  origin: ['http://10.10.33.251:8000', 'http://localhost:8000', 'http://localhost:3001','http://bio.psgitech.ac.in:8000','http://bio.psgitech.ac.in',"http://bio.psgitech.ac.in:8000/", 'http://10.10.33.251:3000', 'http://localhost:3000'],
+  origin: ['http://10.10.33.251:8000', 'http://localhost:8000', 'http://localhost:3001', 'http://bio.psgitech.ac.in:8000', 'http://bio.psgitech.ac.in', "http://bio.psgitech.ac.in:8000/", 'http://10.10.33.251:3000', 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -61,11 +65,11 @@ const deviceRouter = require("./routes/devices")
 
 app.use("/api/essl", esslFunctionsRouter);
 app.use("/api/login", loginRouter);
-app.use("/api/attendance", attendanceRouter);
-app.use("/api/leave", leaveRouter);
-app.use("/api/instant_attendance", instant)
-app.use("/api/dashboard", dashboardRouter)
-app.use("/api/devices", deviceRouter)
+app.use("/api/attendance", verifyToken, attendanceRouter);
+app.use("/api/leave", verifyToken, leaveRouter);
+app.use("/api/instant_attendance", verifyToken, instant)
+app.use("/api/dashboard", verifyToken, dashboardRouter)
+app.use("/api/devices", verifyToken, deviceRouter)
 
 
 app.listen(PORT, '0.0.0.0', () => {

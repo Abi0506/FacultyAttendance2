@@ -6,13 +6,12 @@
 20. Add custom Holidays and custom calender
 21. Tranfer data between devices
 22. Responsive UI
-24. Revoke Exemption option
 25. Check delete option 
 27. Default windows startup
 28. Check DB Data for 25th and 26th
 29. Add other user to the database
 31. Search user by name in edit user section
-33. PDF flag display
 36. Break Mins check(2 break and out of bound late_mins)
-37. PDF Extra columnsa timing
+37. PDF Extra columns
 38. Exemption table component
+39. Move short names for Principal to the DB

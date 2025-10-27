@@ -530,7 +530,7 @@ router.post('/individual_data', async (req, res) => {
     const result = [];
     for (const [date, times] of Object.entries(groupedByDate)) {
       times.sort();
-      const row = { date: date};
+      const row = { date: date };
 
       // Populate IN/OUT columns up to 3 pairs for compatibility with frontend
       for (let i = 0; i < 3; i++) {
