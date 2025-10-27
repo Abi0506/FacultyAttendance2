@@ -7,7 +7,7 @@ function Table({
     sortConfig,
     onSort,
     selectedDate,
-    rowsPerPage = 10,
+    rowsPerPage = 25,
     flaggedCells,
     onFlagClick,
     isFlagMode,
@@ -69,7 +69,7 @@ function Table({
 
     return (
         <div className="table-container" style={{ position: "relative" }}>
-            
+
 
             <table className="table table-c">
                 <thead className="table-secondary" style={{ position: "sticky", top: 0, zIndex: 2 }}>

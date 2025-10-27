@@ -1,22 +1,46 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from '../axios';
 import PageWrapper from '../components/PageWrapper';
-import { Bar } from 'react-chartjs-2';
+import { Bar, Line } from 'react-chartjs-2';
+import Table from '../components/Table';
+import { useNavigate } from 'react-router-dom';
+import { useRef } from 'react';
 import {
     Chart as ChartJS,
     BarElement,
     CategoryScale,
     LinearScale,
+    PointElement,
+    LineElement,
     Tooltip,
     Legend,
     Title,
+    Filler,
 } from 'chart.js';
 
-ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, Title);
+ChartJS.register(
+    BarElement,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Tooltip,
+    Legend,
+    Title,
+    Filler
+);
 
 function PrincipalDashboard() {
-    const [timeRange, setTimeRange] = useState('day');
     const [chartData, setChartData] = useState([]);
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [selectedDept, setSelectedDept] = useState(null);
+    const [staffData, setStaffData] = useState([]);
+    const [staffSortConfig, setStaffSortConfig] = useState({ key: 'late_count', direction: 'desc' });
+    const [staffPage, setStaffPage] = useState(1);
+    const [dailySummary, setDailySummary] = useState([]);
+    const navigate = useNavigate();
+    const tableRef = useRef(null);
 
     const deptShortNames = {
         "MECHANICAL ENGINEERING": "MECH",
@@ -47,24 +71,123 @@ function PrincipalDashboard() {
         "TAMIL": "TAMIL",
         "COMPUTER MAINTENANCE CELL": "CMC",
         "CONVENTION CENTRE": "CONVENTION",
-        "TRANSPORT": "TRANS"
+        "TRANSPORT": "TRANS",
+        "PSG SOFTWARE TECHNOLOGIES": "PSGT",
     };
 
+    const sortedStaffData = React.useMemo(() => {
+        if (!staffData.length) return [];
+        let sortable = [...staffData];
+        if (staffSortConfig.key) {
+            sortable.sort((a, b) => {
+                let valA = a[staffSortConfig.key];
+                let valB = b[staffSortConfig.key];
 
-    useEffect(() => {
-        fetchData();
-    }, [timeRange]);
+                if (staffSortConfig.key === 'late_count') {
+                    valA = Number(valA);
+                    valB = Number(valB);
+                } else {
+                    if (typeof valA === 'string') valA = valA.toLowerCase();
+                    if (typeof valB === 'string') valB = valB.toLowerCase();
+                }
 
-    const fetchData = async () => {
-        try {
-            const res = await axios.get(`/dashboard/late-summary`, {
-                params: { range: timeRange },
+                if (valA < valB) return staffSortConfig.direction === 'asc' ? -1 : 1;
+                if (valA > valB) return staffSortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
             });
-            setChartData(res.data); // e.g., [{ department: 'Mechanical Engineering', late_count: 10 }]
+        }
+        return sortable;
+    }, [staffData, staffSortConfig]);
+
+
+
+
+    // Fetch data
+    const fetchData = async () => {
+        if (!startDate || !endDate) return;
+        try {
+            const [deptRes, dailyRes] = await Promise.all([
+                axios.get('/dashboard/late-summary', { params: { startDate, endDate } }),
+                axios.get('/dashboard/daily-summary', { params: { startDate, endDate } }),
+            ]);
+            setChartData(deptRes.data);
+            setDailySummary(dailyRes.data);
         } catch (err) {
             console.error(err);
         }
     };
+    // Update table whenever selectedDept or date range changes
+    useEffect(() => {
+        if (!selectedDept) return;
+
+        const fetchStaff = async () => {
+            try {
+                const res = await axios.get('/dashboard/late-staff', {
+                    params: { department: selectedDept, startDate, endDate },
+                });
+                setStaffData(res.data); // update table
+            } catch (err) {
+                console.error(err);
+                setStaffData([]);
+            }
+        };
+
+        fetchStaff();
+    }, [selectedDept, startDate, endDate]);
+
+    const handleBarClick = async (event, elements) => {
+        if (!elements.length) return;
+
+        const index = elements[0].index;
+        const deptName = chartData[index]?.department;
+        setSelectedDept(deptName);
+
+        try {
+            const res = await axios.get('/dashboard/late-staff', {
+                params: { department: deptName, startDate, endDate },
+            });
+            setStaffData(res.data);
+            setTimeout(() => {
+                tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        } catch (err) {
+            console.error(err);
+            setStaffData([]);
+        }
+    };
+    const handleRowClick = (staff_id) => {
+        if (!staff_id) return;
+        navigate(`/individual/${staff_id}`);
+        window.scrollTo(0, 0);
+    };
+
+    // Preset date range setter
+    const setPresetRange = (type) => {
+        const now = new Date();
+        const end = new Date();
+        const start = new Date();
+
+        if (type === 'week') start.setDate(now.getDate() - 7);
+        else if (type === 'month') start.setMonth(now.getMonth() - 1);
+
+        const format = (d) => d.toISOString().slice(0, 10);
+        setStartDate(format(start));
+        setEndDate(format(end));
+    };
+
+    // Default range → Current month
+    useEffect(() => {
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        const format = (d) => d.toISOString().slice(0, 10);
+        setStartDate(format(firstDay));
+        setEndDate(format(now));
+    }, []);
+
+    // Auto-fetch on date change
+    useEffect(() => {
+        if (startDate && endDate) fetchData();
+    }, [startDate, endDate]);
 
     const labels = chartData.map((item) => {
         const deptName = item.department?.trim().toLowerCase();
@@ -74,20 +197,20 @@ function PrincipalDashboard() {
         return normalizedMap[deptName] || item.department;
     });
 
-
     const data = {
         labels,
         datasets: [
             {
                 label: 'Late Attendances',
                 data: chartData.map((item) => item.late_count),
-                backgroundColor: '#F9B75D',
-                borderRadius: 4,
+                backgroundColor: chartData.map((item) =>
+                    item.department === selectedDept ? '#F29C3B' : '#F9B75D'
+                ),
+                borderRadius: 6,
                 borderSkipped: false,
             },
         ],
     };
-
     const options = {
         responsive: true,
         maintainAspectRatio: false,
@@ -95,69 +218,162 @@ function PrincipalDashboard() {
             legend: { position: 'top' },
             title: {
                 display: true,
-                text: `Late Attendance per Department (${timeRange.toUpperCase()})`,
+                text: `Late Attendance Count per Department (${startDate} → ${endDate})`,
                 font: { size: 16 },
             },
             tooltip: {
                 callbacks: {
-                    // 🔹 Show full department name in tooltip
                     title: (tooltipItems) => {
                         const index = tooltipItems[0].dataIndex;
                         return chartData[index]?.department || '';
                     },
-                    label: (tooltipItem) => {
-                        const dept = chartData[tooltipItem.dataIndex]?.department || '';
-                        const count = tooltipItem.formattedValue;
-                        return `Late Count: ${count}`;
-                    },
+                    label: (tooltipItem) => `Late Count: ${tooltipItem.formattedValue}`,
                 },
+            },
+        },
+        onHover: (event, chartElement) => {
+            event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+        },
+        scales: {
+            x: { ticks: { autoSkip: false, maxRotation: 45 } },
+            y: { beginAtZero: true, ticks: { stepSize: 1 } },
+        },
+        onClick: handleBarClick,
+    };
+
+
+    const lineData = {
+        labels: dailySummary.map(item => item.date), // x-axis: dates
+        datasets: [
+            {
+                label: 'Morning Late Count',
+                data: dailySummary.map(item => item.morning_late_count),
+                borderColor: '#F9B75D',
+                backgroundColor: 'rgba(249, 183, 93, 0.3)',
+                // fill: true,
+                tension: 0.3,
+            }
+            // ,
+            // {
+            //     label: 'Evening Early Count',
+            //     data: dailySummary.map(item => item.evening_early_count),
+            //     borderColor: '#EDCE92',
+            //     backgroundColor: 'rgba(237, 206, 146, 0.3)',
+            //     // fill: true,
+            //     tension: 0.3,
+            // },
+        ],
+    };
+
+    const lineOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'top' },
+            title: {
+                display: true,
+                text: `Daily Late & Early Attendance (${startDate} → ${endDate})`,
+                font: { size: 16 },
             },
         },
         scales: {
             x: {
-                ticks: {
-                    autoSkip: false,
-                    maxRotation: 45,
-                    minRotation: 0,
-                    font: { size: 12 },
+                ticks: { maxRotation: 0 },
+                title: {
+                    display: true,
+                    text: 'Date',
                 },
             },
             y: {
                 beginAtZero: true,
                 ticks: { stepSize: 1 },
-                grid: { color: '#eee' },
+                title: {
+                    display: true,
+                    text: 'Count',
+                },
             },
         },
     };
 
-    const rangeButtons = [
-        { label: 'Today', value: 'day' },
-        { label: 'This Week', value: 'week' },
-        { label: 'This Month', value: 'month' },
-    ];
+
 
     return (
         <PageWrapper title="Principal Dashboard">
-            {/* Range Buttons */}
-            <div className="flex justify-end gap-2 mb-4">
-                {rangeButtons.map((btn) => (
+            {/* Date Controls with Preset Options and Filter — Single Row Layout */}
+            <div className="d-flex justify-content-between items-center mb-6 bg-white">
+                {/* Left Section: Date Inputs */}
+                <div className="d-flex items-center gap-4 justify-content-between">
+
+                    <div>
+                        <label className="form-label">Start Date</label>
+                        <input type="date" className="form-control" name="startDate" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+                    </div>
+                    <div>
+                        <label className="form-label">End Date</label>
+                        <input type="date" className="form-control" name="endDate" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+                    </div>
+                </div>
+
+                {/* Right Section: Quick Range Buttons */}
+                <div className="d-flex items-center gap-3">
                     <button
-                        key={btn.value}
-                        onClick={() => setTimeRange(btn.value)}
-                        className={`px-4 py-2 rounded-md border transition-all duration-200 ${timeRange === btn.value
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-100'
-                            }`}
+                        onClick={() => setPresetRange('week')}
+                        className="btn btn-c-primary h-50 float-end my-auto"
                     >
-                        {btn.label}
+                        Last Week
                     </button>
-                ))}
+                    <button
+                        onClick={() => setPresetRange('month')}
+                        className="btn btn-c-primary h-50 my-auto"
+                    >
+                        Last Month
+                    </button>
+                </div>
             </div>
 
+
             {/* Chart */}
+
+            <div className="text-sm italic text-gray-400 fw-light text-end w-100 mb-2">
+                Click on a bar to view staff details
+            </div>
             <div className="bg-white p-6 rounded-xl shadow-md" style={{ minHeight: '400px' }}>
                 <Bar data={data} options={options} />
             </div>
+
+            {selectedDept && (
+                <div ref={tableRef} className="bg-white p-6 rounded-xl shadow-md mt-6">
+                    <div className="bg-white p-6 rounded-xl shadow-md mt-6">
+                        <h5 className="mb-4">
+                            {`Details for ${selectedDept} (${startDate} → ${endDate})`}
+                        </h5>
+
+                        <Table
+                            columns={['staff_id', 'name', 'late_count']}
+                            data={sortedStaffData}
+                            sortConfig={staffSortConfig}
+                            onSort={(col) => {
+                                setStaffSortConfig(prev =>
+                                    prev.key === col
+                                        ? { key: col, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+                                        : { key: col, direction: 'asc' }
+                                );
+                            }}
+                            currentPage={staffPage}
+                            onPageChange={setStaffPage}
+
+                            onRowClick={handleRowClick}
+                        />
+                    </div>
+                </div>
+            )}
+
+            <hr className="my-4" />
+
+            <div style={{ minHeight: '400px' }}>
+                <Line data={lineData} options={lineOptions} />
+            </div>
+
 
 
         </PageWrapper>

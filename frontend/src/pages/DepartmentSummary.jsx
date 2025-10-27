@@ -50,7 +50,14 @@ function DepartmentSummary() {
             try {
                 const response = await axios.post('/attendance/department');
                 if (response.data.success) {
-                    setDepartments(response.data.departments.map(d => d.dept));
+                    const depts = response.data.departments.map(d => d.dept);
+                    setDepartments(depts);
+
+                    // Automatically select first department if mainCategory is "Department Wise"
+                    if (mainCategory === "Department Wise" && depts.length > 0) {
+                        setSelectedDept(depts[0]);
+                    }
+
                 } else {
                     console.error('Failed to fetch departments:', response.data.message);
                 }
@@ -74,7 +81,7 @@ function DepartmentSummary() {
 
         fetchDepartments();
         fetchCategoryMappings();
-    }, []);
+    }, [mainCategory]);
 
     // Filter data based on selectedSubCategory
     useEffect(() => {
@@ -228,7 +235,7 @@ function DepartmentSummary() {
         'name',
         'staff_id',
         'designation',
-        'filtered_late_mins', // Represents late_mins
+        'filtered_late_mins',
         'total_late_mins',
         'deducted_days'
     ], []);
@@ -330,7 +337,6 @@ function DepartmentSummary() {
                                 setSelectedSubCategory('');
                             }}
                         >
-                            <option value="">Choose a department</option>
                             {getSubDepartments().map(dept => (
                                 <option key={dept} value={dept}>{dept}</option>
                             ))}
@@ -402,9 +408,9 @@ function DepartmentSummary() {
                 </div>
             </div>
 
-            {loading && <div className="text-center my-4">Loading...</div>}
-
-            {mainCategory && (mainCategory === "ALL" || selectedDept !== "") && Object.keys(filteredData).length > 0 ? (
+            {loading ? (
+                <div className="text-center my-4">Loading...</div>
+            ) : mainCategory && (mainCategory === "ALL" || selectedDept !== "") && Object.keys(filteredData).length > 0 ? (
                 <>
                     {Object.entries(filteredData).map(([categoryName, departments]) =>
                         renderCategory(categoryName, departments)
@@ -417,6 +423,7 @@ function DepartmentSummary() {
             ) : (
                 <div className="alert alert-info mt-3">No data available for the selected filters.</div>
             )}
+
         </PageWrapper>
     );
 }

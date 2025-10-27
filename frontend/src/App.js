@@ -227,6 +227,29 @@ function AppContent() {
                                     <li className="nav-item">
                                         <Link className="nav-link" to="/dashboard">Dashboard</Link>
                                     </li>
+                                    <li className="nav-item dropdown"
+                                        onMouseEnter={e => e.currentTarget.classList.add("show")}
+                                        onMouseLeave={e => e.currentTarget.classList.remove("show")}>
+                                        <button
+                                            type="button"
+                                            className="nav-link dropdown-toggle btn btn-link"
+                                            id="attendanceDropdown"
+                                            data-bs-toggle="dropdown"
+                                            aria-expanded="false"
+                                            style={{ textDecoration: "none" }}
+                                        >
+                                            Logs
+                                        </button>
+                                        <ul className="dropdown-menu show-on-hover" aria-labelledby="attendanceDropdown">
+                                            <li><Link className="dropdown-item" to="/view">Live</Link></li>
+                                            <li><hr className="dropdown-divider" /></li>
+                                            <li><Link className="dropdown-item" to="/summary">Cumulative</Link></li>
+                                            <li><hr className="dropdown-divider" /></li>
+                                            <li><Link className="dropdown-item" to="/individual">Individual</Link></li>
+                                            <li> <hr className='dropdown-divider' /></li>
+                                            <li><Link className="dropdown-item" to="/staffIndividualReport">My record</Link></li>
+                                        </ul>
+                                    </li>
 
                                 </ul>
                             )}
