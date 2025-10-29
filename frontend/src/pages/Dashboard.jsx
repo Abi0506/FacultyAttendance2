@@ -32,8 +32,7 @@ ChartJS.register(
 
 function PrincipalDashboard() {
     const [chartData, setChartData] = useState([]);
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
+
     const [selectedDept, setSelectedDept] = useState(null);
     const [staffData, setStaffData] = useState([]);
     const [staffSortConfig, setStaffSortConfig] = useState({ key: 'late_count', direction: 'desc' });
@@ -41,6 +40,8 @@ function PrincipalDashboard() {
     const [dailySummary, setDailySummary] = useState([]);
     const navigate = useNavigate();
     const tableRef = useRef(null);
+    const [selectedDate, setSelectedDate] = useState(null);
+    const [dailyStaff, setDailyStaff] = useState([]);
 
     const deptShortNames = {
         "MECHANICAL ENGINEERING": "MECH",
@@ -99,7 +100,20 @@ function PrincipalDashboard() {
         return sortable;
     }, [staffData, staffSortConfig]);
 
+    function getDefaultStartDate() {
+        const today = new Date();
+        const year = today.getFullYear();
+        const janFirst = new Date(year, 0, 1); // January 1
+        const julFirst = new Date(year, 6, 1); // July 1
 
+        let startDateObj = today >= julFirst ? julFirst : janFirst;
+        return `${startDateObj.getFullYear()}-${String(startDateObj.getMonth() + 1).padStart(2, '0')}-${String(startDateObj.getDate()).padStart(2, '0')}`;
+    }
+    function getDefaultEndDate() {
+        return new Date().toISOString().split('T')[0];
+    }
+    const [startDate, setStartDate] = useState(getDefaultStartDate());
+    const [endDate, setEndDate] = useState(getDefaultEndDate());
 
 
     // Fetch data
@@ -161,6 +175,27 @@ function PrincipalDashboard() {
         window.scrollTo(0, 0);
     };
 
+    const handleLineClick = async (event, elements) => {
+        if (!elements.length) return;
+
+        const index = elements[0].index;
+        const clickedDate = dailySummary[index]?.date;
+        setSelectedDate(clickedDate);
+
+        try {
+            const res = await axios.get('/dashboard/daily-staff', { params: { date: clickedDate } });
+            console.log(res.data)
+            setDailyStaff(res.data);
+            setTimeout(() => {
+                tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        } catch (err) {
+            console.error(err);
+            setDailyStaff([]);
+        }
+    };
+
+
     // Preset date range setter
     const setPresetRange = (type) => {
         const now = new Date();
@@ -174,15 +209,6 @@ function PrincipalDashboard() {
         setStartDate(format(start));
         setEndDate(format(end));
     };
-
-    // Default range → Current month
-    useEffect(() => {
-        const now = new Date();
-        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-        const format = (d) => d.toISOString().slice(0, 10);
-        setStartDate(format(firstDay));
-        setEndDate(format(now));
-    }, []);
 
     // Auto-fetch on date change
     useEffect(() => {
@@ -211,6 +237,7 @@ function PrincipalDashboard() {
             },
         ],
     };
+
     const options = {
         responsive: true,
         maintainAspectRatio: false,
@@ -240,7 +267,6 @@ function PrincipalDashboard() {
         },
         onClick: handleBarClick,
     };
-
 
     const lineData = {
         labels: dailySummary.map(item => item.date), // x-axis: dates
@@ -272,10 +298,15 @@ function PrincipalDashboard() {
             legend: { position: 'top' },
             title: {
                 display: true,
-                text: `Daily Late & Early Attendance (${startDate} → ${endDate})`,
+                text: `Daily Late Attendance (${startDate} → ${endDate})`,
                 font: { size: 16 },
             },
         },
+        onClick: handleLineClick,
+        onHover: (event, chartElement) => {
+            event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+        },
+
         scales: {
             x: {
                 ticks: { maxRotation: 0 },
@@ -361,7 +392,6 @@ function PrincipalDashboard() {
                             }}
                             currentPage={staffPage}
                             onPageChange={setStaffPage}
-
                             onRowClick={handleRowClick}
                         />
                     </div>
@@ -369,13 +399,25 @@ function PrincipalDashboard() {
             )}
 
             <hr className="my-4" />
-
-            <div style={{ minHeight: '400px' }}>
+            {/* Line Chart Section */}
+            <div className="bg-white p-6 rounded-xl shadow-md mt-6" style={{ minHeight: '400px' }}>
                 <Line data={lineData} options={lineOptions} />
             </div>
 
+            {/* Daily Staff Table Section */}
+            {selectedDate && (
+                <div ref={tableRef} className="bg-white p-6 rounded-xl shadow-md mt-6">
+                    <h5 className="mb-4">
+                        {`Late Staff on ${selectedDate}`}
+                    </h5>
 
-
+                    <Table
+                        columns={['staff_id', 'name', 'dept']}
+                        data={dailyStaff}
+                        onRowClick={(row) => handleRowClick(row.staff_id)}
+                    />
+                </div>
+            )}
         </PageWrapper>
     );
 }

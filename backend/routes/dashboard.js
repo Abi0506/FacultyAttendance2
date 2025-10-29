@@ -145,6 +145,41 @@ router.get('/daily-summary', async (req, res) => {
     }
 });
 
+// For staff details on a selected date
+router.get('/daily-staff', async (req, res) => {
+    const { date } = req.query;
+
+    if (!date) {
+        return res.status(400).json({ message: "date is required" });
+    }
+
+    try {
+        const [rows] = await db.execute(`
+         SELECT 
+            s.staff_id,
+            s.name,
+            s.dept
+        FROM staff s
+JOIN logs l ON s.staff_id = l.staff_id
+JOIN category c ON c.category_no = s.category
+WHERE l.date = ?
+GROUP BY s.staff_id, s.name, s.dept, c.in_time, l.date
+HAVING 
+    TIMESTAMPDIFF(
+        MINUTE, 
+        CAST(CONCAT(l.date, ' ', c.in_time) AS DATETIME), 
+        MIN(CAST(CONCAT(l.date, ' ', l.time) AS DATETIME))
+    ) > 15
+ORDER BY s.dept, s.name;
+
+        `, [date]);
+        console.log(rows);
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Error fetching daily staff details" });
+    }
+});
 
 
 module.exports = router;
