@@ -168,7 +168,7 @@ function ApplyExemption() {
                         </thead>
                         <tbody>
                             {filteredExemptions.length === 0 ? (
-                                <tr><td colSpan="6" className="text-center">No exemptions found</td></tr>
+                                <tr><td colSpan="6" className="text-center">No exemptions applied</td></tr>
                             ) : (
                                 filteredExemptions.map((exemption, index) => (
                                     <tr key={index} className="exemption-row">

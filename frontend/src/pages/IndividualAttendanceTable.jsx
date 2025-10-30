@@ -26,7 +26,12 @@ function IndividualAttendanceTable() {
   const [flaggedCells, setFlaggedCells] = useState({});
   const [approvedExemptionsMap, setApprovedExemptionsMap] = useState({});
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
-
+  const columnKeyMap = {
+    "Date": "date",
+    "Late Mins": "late_mins",
+    "Additional Late Mins": "additional_late_mins",
+    "Working Hours": "working_hours",
+  };
   const handleSort = (column) => {
     setSortConfig((prev) =>
       prev.key === column
@@ -46,12 +51,12 @@ function IndividualAttendanceTable() {
         start_date: start,
         end_date: end,
       });
-  // Map flags to {staffId_date_time: true}
-  console.log("Flags response from /get_flags_for_staff:", response.data);
+      // Map flags to {staffId_date_time: true}
+      // console.log("Flags response from /get_flags_for_staff:", response.data);
       const flags = {};
       const data = response.data || {};
       for (const key in data) flags[key] = true;
-      console.log(flags)
+      // console.log(flags)
       setFlaggedCells(flags);
     } catch (err) {
       console.error('Failed to fetch flagged times', err);
@@ -186,26 +191,12 @@ function IndividualAttendanceTable() {
         end,
         id: employeeId,
       });
-  console.log('Approved exemptions raw response:', res.data);
-  const rows = res.data?.exemptions || res.data || [];
-  console.log('Approved exemptions rows:', rows);
-      const map = {};
-      rows.forEach((r) => {
-        const raw = r.exemptionDate || r.exemption_date || r.date || r.exemptionDate;
-        if (!raw) return;
-        const ymd = normalizeDateYMD(raw);
-        const dmy = normalizeDateDMY(raw);
-        const entry = { backgroundColor: '#fff3bf', note: 'Approved Exemption' };
-        map[ymd] = entry;
-        map[dmy] = entry;
-      });
-      setApprovedExemptionsMap(map);
+      const rows = res.data?.exemptions || res.data || [];
+      setApprovedExemptionsMap(rows);
     } catch (err) {
       console.error('Failed to fetch approved exemptions for user', err);
     }
   };
-
-
 
   const handleDateChange = (e) => {
     const { name, value } = e.target;
@@ -310,29 +301,70 @@ function IndividualAttendanceTable() {
       fileName: `Attendance_${selectedUser.name || 'employee'}.pdf`,
     });
   };
+  // const sortedRecords = useMemo(() => {
+  //   if (!sortConfig.key) return records;
+
+  //   const sorted = [...records].sort((a, b) => {
+  //     let aValue = a[sortConfig.key];
+  //     let bValue = b[sortConfig.key];
+
+  //     if (sortConfig.key === 'date') {
+  //       const parseDMY = (str) => {
+  //         if (!str || typeof str !== 'string') return new Date('Invalid');
+  //         const [d, m, y] = str.split('-').map(Number);
+  //         return new Date(y, m - 1, d);
+  //       };
+
+  //       const aDate = parseDMY(aValue);
+  //       const bDate = parseDMY(bValue);
+
+  //       if (aDate < bDate) return sortConfig.direction === 'asc' ? -1 : 1;
+  //       if (aDate > bDate) return sortConfig.direction === 'asc' ? 1 : -1;
+  //       return 0;
+  //     }
+  //     // Handle numeric comparison
+  //     if (!isNaN(aValue) && !isNaN(bValue)) {
+  //       aValue = parseFloat(aValue);
+  //       bValue = parseFloat(bValue);
+  //     }
+
+  //     if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+  //     if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+  //     return 0;
+  //   });
+
+  //   return sorted;
+  // }, [records, sortConfig]);
+
   const sortedRecords = useMemo(() => {
     if (!sortConfig.key) return records;
 
+    const realKey = columnKeyMap[sortConfig.key] || sortConfig.key; // map label to data key
     const sorted = [...records].sort((a, b) => {
-      let aValue = a[sortConfig.key];
-      let bValue = b[sortConfig.key];
+      let aValue = a[realKey] ?? '';
+      let bValue = b[realKey] ?? '';
 
-      if (sortConfig.key === 'date') {
-        const parseDMY = (str) => {
+      if (realKey === 'date') {
+        const parseDate = (str) => {
           if (!str || typeof str !== 'string') return new Date('Invalid');
-          const [d, m, y] = str.split('-').map(Number);
-          return new Date(y, m - 1, d);
+          // Handle YYYY-MM-DD
+          if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return new Date(str);
+          // Handle DD-MM-YYYY
+          if (/^\d{2}-\d{2}-\d{4}$/.test(str)) {
+            const [day, month, year] = str.split('-');
+            return new Date(`${year}-${month}-${day}`);
+          }
+          return new Date(str);
         };
-
-        const aDate = parseDMY(aValue);
-        const bDate = parseDMY(bValue);
-
-        if (aDate < bDate) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (aDate > bDate) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
+        aValue = parseDate(aValue);
+        bValue = parseDate(bValue);
       }
-      // Handle numeric comparison
-      if (!isNaN(aValue) && !isNaN(bValue)) {
+
+      else if (typeof aValue === 'string' && aValue.includes(':')) {
+        // handle time strings like '09:45'
+        aValue = aValue === '-' ? '00:00' : aValue;
+        bValue = bValue === '-' ? '00:00' : bValue;
+      } else if (!isNaN(parseFloat(aValue)) && !isNaN(parseFloat(bValue))) {
         aValue = parseFloat(aValue);
         bValue = parseFloat(bValue);
       }
@@ -343,7 +375,9 @@ function IndividualAttendanceTable() {
     });
 
     return sorted;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [records, sortConfig]);
+
 
   return (
     <PageWrapper>
@@ -392,7 +426,7 @@ function IndividualAttendanceTable() {
 
       {selectedUser && (
         <>
-          <div className="border rounded p-4 bg-white mb-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+          <div className="border rounded p-4 bg-white mb-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
             <div><strong>Name:</strong> {selectedUser.name}</div>
             <div><strong>ID:</strong> {selectedUser.staff_id}</div>
             <div><strong>Department:</strong> {selectedUser.dept}</div>
@@ -418,6 +452,7 @@ function IndividualAttendanceTable() {
 
 
           <Table
+          opt_staff_id= {selectedUser.staff_id}
             columns={['date', ...columnsToShow, 'late_mins', 'additional_late_mins', 'working_hours', 'attendance']}
             data={sortedRecords}
             flaggedCells={flaggedCells}

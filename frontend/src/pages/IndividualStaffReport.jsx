@@ -117,19 +117,8 @@ function IndividualStaffReport() {
       });
       console.log('Approved exemptions raw response (staff report):', res.data);
       const rows = res.data?.exemptions || res.data || [];
-      console.log('Approved exemptions rows (staff report):', rows);
-      const map = {};
-      rows.forEach((r) => {
-        const raw = r.exemptionDate || r.exemption_date || r.date || r.exemptionDate;
-        if (!raw) return;
-        const ymd = normalizeDateYMD(raw);
-        const dmy = normalizeDateDMY(raw);
-        // light highlight and note
-        const entry = { backgroundColor: '#fff3bf', note: 'Approved Exemption' };
-        map[ymd] = entry;
-        map[dmy] = entry;
-      });
-      setApprovedExemptionsMap(map);
+
+      setApprovedExemptionsMap(rows);
     } catch (err) {
       console.error('Failed to fetch approved exemptions', err);
     }
@@ -226,6 +215,7 @@ function IndividualStaffReport() {
     );
   };
 
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const sortedRecords = useMemo(() => {
     if (!sortConfig.key) return records;
@@ -236,15 +226,21 @@ function IndividualStaffReport() {
       let bValue = b[realKey] ?? '';
 
       if (realKey === 'date') {
-        // Handle DD-MM-YYYY format properly
-        const parseDDMMYYYY = (str) => {
+        const parseDate = (str) => {
           if (!str || typeof str !== 'string') return new Date('Invalid');
-          const [day, month, year] = str.split('-');
-          return new Date(`${year}-${month}-${day}`);
+          // Handle YYYY-MM-DD
+          if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return new Date(str);
+          // Handle DD-MM-YYYY
+          if (/^\d{2}-\d{2}-\d{4}$/.test(str)) {
+            const [day, month, year] = str.split('-');
+            return new Date(`${year}-${month}-${day}`);
+          }
+          return new Date(str);
         };
-        aValue = parseDDMMYYYY(aValue);
-        bValue = parseDDMMYYYY(bValue);
+        aValue = parseDate(aValue);
+        bValue = parseDate(bValue);
       }
+
       else if (typeof aValue === 'string' && aValue.includes(':')) {
         // handle time strings like '09:45'
         aValue = aValue === '-' ? '00:00' : aValue;
@@ -414,7 +410,8 @@ function IndividualStaffReport() {
             </div>
           </div>
           <div className="d-flex align-items-center justify-content-between mt-4 mb-2">
-            <div className="d-flex align-items-center gap-3">
+            <div className="d-flex align-items-center gap-4">
+              {/* Flagged Record */}
               <div className="d-flex align-items-center">
                 <div
                   style={{
@@ -427,6 +424,21 @@ function IndividualStaffReport() {
                   }}
                 ></div>
                 <span className="text-muted small">Flagged Record</span>
+              </div>
+
+              {/* Exempted Record */}
+              <div className="d-flex align-items-center">
+                <div
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    backgroundColor: '#7cfbe836',
+                    border: '1px solid #00a36c',
+                    borderRadius: '4px',
+                    marginRight: '8px',
+                  }}
+                ></div>
+                <span className="text-muted small">Exempted Record</span>
               </div>
             </div>
 
@@ -484,8 +496,9 @@ function IndividualStaffReport() {
             </span>
           </div>
         </>
-      )}
-    </PageWrapper>
+      )
+      }
+    </PageWrapper >
   );
 }
 

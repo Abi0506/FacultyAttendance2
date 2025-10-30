@@ -27,9 +27,10 @@ def process_exemptions(today = None):
 
     try:
         # Fetch all unprocessed approved exemptions
+        
         if not today:
             cursor.execute(
-            "SELECT * FROM exemptions WHERE exemptionStatus = 'processing' AND processed = 0"
+            "SELECT * FROM exemptions WHERE exemptionStatus = 'processing' OR processed = 0"
             )
         else:
             cursor.execute(
@@ -46,7 +47,8 @@ def process_exemptions(today = None):
         staff_map = {s[0]: s for s in cursor.fetchall()}
         cursor.execute("SELECT * FROM category")
         categories = {cat[0]: cat for cat in cursor.fetchall()}
-
+       
+        
         processed_ids = []
         for exemption in exemptions_to_process:
             exemption_id = exemption[0]  # exemptionId
@@ -58,11 +60,15 @@ def process_exemptions(today = None):
             session_key = exemption[4] if len(exemption) > 4 else None  # exemptionSession
 
             staff_info = staff_map.get(staff_id)
+          
+            
             if not staff_info:
                 print(f"Skipping exemption {exemption_id} for {staff_id}: No staff record found")
                 continue
 
             category_rules = categories.get(staff_info[1])
+            if(category_rules[0] == 5):
+                continue
             if not category_rules:
                 print(f"Skipping exemption {exemption_id} for {staff_id}: No category data for category {staff_info[1]}")
                 continue
@@ -103,10 +109,17 @@ def process_exemptions(today = None):
                     exemption_start_time = start_time
                     exemption_end_time = end_time
                 elif exemption_type == 'session' and session_key:
-                    session_times = SESSION_TIMES.get(session_key)
-                    if session_times:
-                        exemption_start_time = datetime.strptime(session_times['start'], '%H:%M:%S').time()
-                        exemption_end_time = datetime.strptime(session_times['end'], '%H:%M:%S').time()
+                   
+                    session_key1 = session_key.split(",")
+                  
+                    temp_len = len(session_key1)
+                  
+                    if temp_len:
+                        
+                       exemption_start_time = datetime.strptime(SESSION_TIMES[str(session_key1[0])]['start'], '%H:%M:%S').time()
+
+                       exemption_end_time = datetime.strptime(SESSION_TIMES[str(session_key1[temp_len-1])]['end'], '%H:%M:%S').time()
+
 
                 if not exemption_start_time or not exemption_end_time:
                     print(f"Skipping exemption {exemption_id} for {staff_id}: Invalid start/end time")
@@ -228,7 +241,7 @@ def process_exemptions(today = None):
                                             temp_morning_late_mins = 0
                                             temp_attendance = 'H'
                                             print(f"Single log late > 90 mins for {staff_id}: {late_minutes:.2f}")
-                                        elif late_minutes > 16:
+                                        elif late_minutes >= 16:
                                             temp_morning_late_mins = late_minutes
                                             print(f"Single log late mins for {staff_id}: {late_minutes:.2f}")
                                     elif closest_name == 'in1' and log_time < in1_const:
@@ -262,7 +275,7 @@ def process_exemptions(today = None):
                                                 temp_morning_late_mins = 0
                                                 temp_attendance = 'H'
                                                 print(f"Morning absence > 90 mins for {staff_id}: {late_minutes}")
-                                            elif late_minutes > 16:
+                                            elif late_minutes >= 16:
                                                 temp_morning_late_mins += late_minutes
                                                 print(f"Morning late mins for {staff_id}: {late_minutes}")
 
@@ -426,6 +439,7 @@ def process_exemptions(today = None):
                         print(f"No logs outside exempted period, marking as 'I'")
                     else:
                         start_const = time_objs[0]
+                        print(category_rules)
                         end_temp = datetime.strptime(f"{exemption_date} {category_rules[5]}", "%Y-%m-%d %H:%M:%S")
                         end_const = start_const + timedelta(hours=end_temp.hour, minutes=end_temp.minute)
                         allowed_break = int(category_rules[6])
@@ -460,12 +474,13 @@ def process_exemptions(today = None):
 
                         # Round late_mins
                         if final_late_mins > 0:
-                            fractional_part = final_late_mins - int(final_late_mins)
-                            if fractional_part > 0.5:
-                                final_late_mins = math.ceil(final_late_mins)
-                            else:
-                                final_late_mins = math.floor(final_late_mins)
-                            print(f"Rounded late_mins for {staff_id}: {final_late_mins}")
+                            final_late_mins = math.floor(final_late_mins)
+                            # fractional_part = final_late_mins - int(final_late_mins)
+                            # if fractional_part > 0.5:
+                            #     final_late_mins = math.ceil(final_late_mins)
+                            # else:
+                            #     final_late_mins = math.floor(final_late_mins)
+                            # print(f"Rounded late_mins for {staff_id}: {final_late_mins}")
 
             # Update or insert report
             cursor.execute("SELECT 1 FROM report WHERE staff_id = %s AND date = %s", (staff_id, exemption_date))
@@ -490,8 +505,12 @@ def process_exemptions(today = None):
             try:
                 if len(processed_ids) == 1:
                     cursor.execute("UPDATE exemptions SET processed = 1 WHERE exemptionId = %s", (processed_ids[0],))
+                    cursor.execute("UPDATE exemptions SET exemptionStatus = 'approved' WHERE exemptionId = %s", (processed_ids[0],))
                 else:
-                    cursor.execute("UPDATE exemptions SET processed = 1 WHERE exemptionId IN %s", (tuple(processed_ids),))
+                    for i in range(len(processed_ids)):
+                        cursor.execute("UPDATE exemptions SET processed = 1 WHERE exemptionId = %s", (processed_ids[i],))
+                        cursor.execute("UPDATE exemptions SET exemptionStatus = 'approved' WHERE exemptionId = %s", (processed_ids[i],))
+                        
                 print(f"Marked exemptions as processed: {processed_ids}")
             except mysql.connector.Error as err:
                 print(f"Error marking exemptions as processed: {err}")

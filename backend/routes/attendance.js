@@ -547,6 +547,7 @@ router.post('/individual_data', async (req, res) => {
           const first = parseTimeToMinutes(times[0]);
           const last = parseTimeToMinutes(times[times.length - 1]);
           if (last > first) workingMinutes = last - first;
+          console.log(id + " " + date + " first: " + first + " last: " + last + " workingMinutes: " + workingMinutes);
         } catch (e) {
           workingMinutes = 0;
         }
@@ -904,7 +905,8 @@ router.get("/categories", async (req, res) => {
 })
 
 router.post("/add_categories", async (req, res) => {
-  const { category_description, in_time, in1, break_in, break_out, out2, out_time, break_time_mins } = req.body;
+  const { category_description, in_time, in1, break_in, break_out, out2, out_time, break_time_mins ,type} = req.body;
+  console.log(type);  
 
   try {
     // Append seconds
@@ -915,7 +917,6 @@ router.post("/add_categories", async (req, res) => {
   const out21 = (out2) ? out2 + ':00' : null;
   const out_time1 = (out_time) ? out_time + ':00' : null;
 
-    // Check if category already exists using SQL
     const [rows] = await db.query(
       `SELECT * FROM category 
        WHERE category_description = ? 
@@ -925,20 +926,21 @@ router.post("/add_categories", async (req, res) => {
   AND break_out = ? 
   AND out2 = ? 
   AND out_time = ? 
-  AND break_time_mins = ?`,
-  [category_description, in_time1, in11, break_in1, break_out1, out21, out_time1, break_time_mins]
+  AND break_time_mins = ?
+  AND type = ?`,
+  [category_description, in_time1, in11, break_in1, break_out1, out21, out_time1, break_time_mins,type]
     );
 
     if (rows.length > 0) {
       return res.status(400).json({ message: "Category already exists" });
     }
 
-    const [countResult] = await db.query("SELECT COUNT(*) AS total FROM category");
-    let count = Number(countResult[0].total) + 1;
+  
+    
 
     await db.query(
-      "INSERT INTO category (category_no, category_description, in_time, in1, break_in, break_out, out2, out_time, break_time_mins) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      [count, category_description, in_time1, in11, break_in1, break_out1, out21, out_time1, break_time_mins]
+      "INSERT INTO category (category_description, in_time, in1, break_in, break_out, out2, out_time, break_time_mins , type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [category_description, in_time1, in11, break_in1, break_out1, out21, out_time1, break_time_mins,type]
     );
 
     res.json({ message: "Category added successfully", success: true });
@@ -1024,28 +1026,25 @@ router.get('/get_user/:id', async (req, res) => {
 
 router.post("/update_additional_late_mins", async (req, res) => {
   const { staff_id, date, additional_late_mins } = req.body;
-  const [day, month, year] = date.split("-");
-  const mysqlDate = `${year}-${month}-${day}`;
-
 
   try {
-    console.log("Updating additional late minutes:", { staff_id, mysqlDate, additional_late_mins });
+    console.log("Updating additional late minutes:", { staff_id, date, additional_late_mins });
 
     // Try to update first
     const [result] = await db.query(
       `UPDATE report 
        SET additional_late_mins = ? 
        WHERE staff_id = ? AND date = ?`,
-      [additional_late_mins, staff_id, mysqlDate]
+      [additional_late_mins, staff_id, date]
     );
+    console.log(result)
 
     // If no row updated, insert new record
     if (result.affectedRows === 0) {
       const [insertResult] = await db.query(
         `INSERT INTO report (staff_id, date, late_mins, attendance, additional_late_mins) 
-        
-         VALUES (?, ?, ,?,?,?)`,
-        [staff_id, mysqlDate, 0, 'P', additional_late_mins]
+         VALUES (?, ?, ?,?,?)`,
+        [staff_id, date, 0, 'P', additional_late_mins]
       );
 
       if (insertResult.affectedRows === 0) {

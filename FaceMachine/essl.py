@@ -1,5 +1,7 @@
 import mysql.connector
+import datetime as dt
 from datetime import datetime, timedelta
+
 import math
 from connection import db as db_connect
 from holiday import get_holidays
@@ -8,6 +10,8 @@ from exemption import process_exemptions
 
 def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories):
     """Process logs and insert attendance records for a single staff member."""
+    if (category_id == 5):
+        return 
     if not logs:
         return
     print(f"Inserting log for staff_id: {staff_id}, category_id: {category_id}")
@@ -20,9 +24,13 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
         flagged_times = {str(t[0]) for t in flagged_times_raw}
         print(f"Flagged times for {staff_id}: {flagged_times}")
 
+
+
         time_logs = [log_time for log_staff_id, log_time in logs if log_staff_id == staff_id]
         time_logs.sort()
+
         time_logs = [t if isinstance(t, str) else str(t) for t in time_logs]
+        time_logs = [t for t in time_logs if t not in flagged_times]
         original_logs = time_logs.copy()
 
         # Handle odd number of logs
@@ -94,7 +102,7 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
                                 temp_half_day_morning = True
                                 temp_morning_late_mins = 0
                                 temp_attendance = 'H'
-                            elif late_minutes > 16:
+                            elif late_minutes >= 16:
                                 temp_morning_late_mins += late_minutes
 
                         if not any(t > in1_const for t in temp_time_objs):
@@ -247,7 +255,12 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
         afternoon_late_mins = 0
         late_mins = 0
 
-        if is_holiday or datetime.strptime(date, "%Y-%m-%d").weekday() == 6:
+        if isinstance(date, dt.date):
+            date_obj = date
+        else:
+            date_obj = datetime.strptime(date, "%Y-%m-%d")
+
+        if is_holiday or date_obj.weekday() == 6:
             if not time_logs:
                 print(f"No logs for {staff_id} on holiday or Sunday ({date}), skipping report")
                 return
@@ -297,7 +310,7 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
                         morning_late_mins = 0
                         attendance = 'H'
                         print(f"Single log late > 90 mins for {staff_id} compared to in_time: {late_minutes:.2f}")
-                    elif late_minutes > 16:
+                    elif late_minutes >= 16:
                         morning_late_mins = late_minutes
                         print(f"Single log late mins for {staff_id} compared to in_time: {late_minutes:.2f}")
                 elif closest_name == 'in1' and log_time < in1_const:
@@ -330,7 +343,7 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
                         morning_late_mins = 0
                         attendance = 'H'
                         print(f"Morning absence > 90 mins for {staff_id}: {late_minutes}")
-                    elif late_minutes > 16:
+                    elif late_minutes >= 16:
                         morning_late_mins += late_minutes
                         print(f"Morning late mins for {staff_id}: {late_minutes}")
 
@@ -517,12 +530,13 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
                 late_mins = afternoon_late_mins
 
         if late_mins > 0:
-            fractional_part = late_mins - int(late_mins)
-            if fractional_part > 0.5:
-                late_mins = math.ceil(late_mins)
-            else:
-                late_mins = math.floor(late_mins)
-            print(f"Rounded late_mins for {staff_id}: {late_mins}")
+            late_mins = math.floor(late_mins)
+            # fractional_part = late_mins - int(late_mins)
+            # if fractional_part > 0.5:
+            #     late_mins = math.ceil(late_mins)
+            # else:
+            #     late_mins = math.floor(late_mins)
+            # print(f"Rounded late_mins for {staff_id}: {late_mins}")
 
         try:
             cursor.execute(
@@ -563,7 +577,7 @@ def process_logs(date1=None):
     print(f"Processing date: {today}, is_holiday: {is_holiday}")
 
     try:
-        
+
         cursor.execute("SELECT staff_id, category FROM staff ")
         staffs = cursor.fetchall()
         print(f"Staffs fetched: {staffs}")

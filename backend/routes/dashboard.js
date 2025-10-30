@@ -97,7 +97,9 @@ router.get('/daily-summary', async (req, res) => {
                 MINUTE, 
                 CAST(CONCAT(l.date, ' ', l.in_time) AS DATETIME), 
                 CAST(CONCAT(l.date, ' ', l.first_time) AS DATETIME)
-            ) > 15
+            ) > 15    AND EXISTS (
+        SELECT 1 FROM report r WHERE r.date = l.date
+    )
             GROUP BY l.date
             ORDER BY l.date
         `, [startDate, endDate]);
@@ -162,7 +164,9 @@ router.get('/daily-staff', async (req, res) => {
         FROM staff s
 JOIN logs l ON s.staff_id = l.staff_id
 JOIN category c ON c.category_no = s.category
-WHERE l.date = ?
+WHERE l.date = ?     AND EXISTS (
+        SELECT 1 FROM report r WHERE r.date = l.date
+    )
 GROUP BY s.staff_id, s.name, s.dept, c.in_time, l.date
 HAVING 
     TIMESTAMPDIFF(
