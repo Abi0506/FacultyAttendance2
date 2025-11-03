@@ -34,7 +34,7 @@ def process_exemptions(today = None):
             )
         else:
             cursor.execute(
-                "SELECT * FROM exemptions WHERE (exemptionStatus = 'approved' OR exemptionStatus = 'processing') AND exemptionDate = %s", (today,)
+                "SELECT * FROM exemptions WHERE  exemptionDate = %s", (today,)
             )
         exemptions_to_process = cursor.fetchall()
         print(f"Exemptions to process: {exemptions_to_process}")

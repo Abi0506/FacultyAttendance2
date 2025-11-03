@@ -14,6 +14,7 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
         return 
     if not logs:
         return
+   
     print(f"Inserting log for staff_id: {staff_id}, category_id: {category_id}")
     try:
         cursor.execute(
@@ -261,9 +262,7 @@ def insert_log(cursor, staff_id, category_id, logs, date, is_holiday, categories
             date_obj = datetime.strptime(date, "%Y-%m-%d")
 
         if is_holiday or date_obj.weekday() == 6:
-            if not time_logs:
-                print(f"No logs for {staff_id} on holiday or Sunday ({date}), skipping report")
-                return
+            return
 
         if is_fixed_hours := (category_data[7] == 'fixed'):
             in_time = category_data[2]

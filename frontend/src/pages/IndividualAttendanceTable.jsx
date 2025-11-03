@@ -281,8 +281,7 @@ function IndividualAttendanceTable() {
       const recDate = (rec.date || '').toString();
       const ymd = normalizeDateYMD(recDate);
       const dmy = normalizeDateDMY(recDate);
-      const match = approvedExemptionsMap[recDate] || approvedExemptionsMap[ymd] || approvedExemptionsMap[dmy];
-      const note = match ? match.note : '-';
+     
       return [
         rec.date,
         ...columnsToShow.map((col) => rec[col] || '-'),
@@ -290,10 +289,10 @@ function IndividualAttendanceTable() {
         rec.late_mins,
         rec.working_hours,
         rec.additional_late_mins || 0,
-        note,
+      
       ];
     });
-    const tableColumnWithNote = [...tableColumn, 'Note'];
+    const tableColumnWithNote = [...tableColumn,];
     PdfTemplate({
       title: 'Biometric Attendance Report for ' + selectedUser.name,
       tables: [{ columns: tableColumnWithNote, data: tableRows }],

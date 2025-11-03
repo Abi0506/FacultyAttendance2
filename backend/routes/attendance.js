@@ -558,8 +558,8 @@ router.post('/individual_data', async (req, res) => {
 
       // Subtract late minutes (late_mins + additional_late_mins) for that date
       const reportRow = late_mins.find(l => l.date === date) || {};
-      const dateLate = Number(reportRow.late_mins || 0) + Number(reportRow.additional_late_mins || 0);
-      workingMinutes = Math.max(0, workingMinutes - dateLate);
+      
+      
 
       row.working_hours = workingMinutes > 0 ? minutesToHHMM(workingMinutes) : '00hrs 00mins';
       row.late_mins = Number(reportRow.late_mins || 0);

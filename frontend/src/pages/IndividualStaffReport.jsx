@@ -186,15 +186,13 @@ function IndividualStaffReport() {
     console.log(flaggedCells);
 
     // Add a Note column that mentions approved exemptions if present for the date
-    const pdfColumnsWithNote = [...pdfColumns, 'Note'];
+    const pdfColumnsWithNote = [...pdfColumns,];
     const tableRowsWithNote = tableRows.map((r) => {
       // r[0] is staff id, r[1] is name, r[2] is Date in our mapping above
       const recDate = (r[2] || '').toString();
       const ymd = normalizeDateYMD(recDate);
       const dmy = normalizeDateDMY(recDate);
-      const match = approvedExemptionsMap[recDate] || approvedExemptionsMap[ymd] || approvedExemptionsMap[dmy];
-      const note = match ? match.note : '-';
-      return [...r, note];
+      return [...r,];
     });
 
     PdfTemplate({
