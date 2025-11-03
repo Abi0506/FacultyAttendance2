@@ -547,7 +547,6 @@ router.post('/individual_data', async (req, res) => {
           const first = parseTimeToMinutes(times[0]);
           const last = parseTimeToMinutes(times[times.length - 1]);
           if (last > first) workingMinutes = last - first;
-          console.log(id + " " + date + " first: " + first + " last: " + last + " workingMinutes: " + workingMinutes);
         } catch (e) {
           workingMinutes = 0;
         }
@@ -905,7 +904,6 @@ router.get("/categories", async (req, res) => {
 
 router.post("/add_categories", async (req, res) => {
   const { category_description, in_time, in1, break_in, break_out, out2, out_time, break_time_mins ,type} = req.body;
-  console.log(type);  
 
   try {
     // Append seconds
@@ -1035,9 +1033,6 @@ router.post("/update_additional_late_mins", async (req, res) => {
        WHERE staff_id = ? AND date = ?`,
       [additional_late_mins, staff_id, date]
     );
-    console.log(result)
-
-    // If no row updated, insert new record
     if (result.affectedRows === 0) {
       const [insertResult] = await db.query(
         `INSERT INTO report (staff_id, date, late_mins, attendance, additional_late_mins) 

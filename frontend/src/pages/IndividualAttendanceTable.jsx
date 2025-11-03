@@ -19,8 +19,6 @@ function IndividualAttendanceTable() {
   const [totalLateMins, setTotalLateMins] = useState(0);
   const [lateMins, setLateMins] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [fromDate, setFromDate] = useState('');
-  const [endDate, setEndDate] = useState('');
   const [editingLateMins, setEditingLateMins] = useState({});
   const { staffId } = useParams();
   const [flaggedCells, setFlaggedCells] = useState({});
@@ -135,8 +133,6 @@ function IndividualAttendanceTable() {
 
       const { from, end: endRes, late_mins, total_late_mins, timing } = res.data;
 
-      setFromDate(from || start);
-      setEndDate(endRes || end);
       setLateMins(late_mins || 0);
       setTotalLateMins(total_late_mins || 0);
 
@@ -218,11 +214,13 @@ function IndividualAttendanceTable() {
 
   const handleUpdateAdditional = async (date, value) => {
     let parsedValue = parseInt(value, 10);
-    if (isNaN(parsedValue) || parsedValue < 0) {
+    if (isNaN(parsedValue)) {
       parsedValue = 0;
     }
     if (parsedValue > 90) {
       parsedValue = 90;
+    } else if(parsedValue < -90){
+      parsedValue = -90;
     }
     try {
       const res = await axios.post('/attendance/update_additional_late_mins', {
@@ -231,7 +229,6 @@ function IndividualAttendanceTable() {
         additional_late_mins: parsedValue,
       });
       showAlert(res.data.message || "Additional late minutes updated", "success");
-      // Refetch to update totals and records
       if (selectedUser && formData.startDate && formData.endDate) {
         fetchAttendance(selectedUser.staff_id, formData.startDate, formData.endDate);
       }
@@ -285,10 +282,6 @@ function IndividualAttendanceTable() {
     const tableColumn = ['Date', ...columnsToShow, 'Attendance', 'Late Mins', 'Working Hours', 'Additional Late Mins'];
     // Add Note column for approved exemptions
     const tableRows = records.map((rec) => {
-      const recDate = (rec.date || '').toString();
-      const ymd = normalizeDateYMD(recDate);
-      const dmy = normalizeDateDMY(recDate);
-     
       return [
         rec.date,
         ...columnsToShow.map((col) => rec[col] || '-'),
@@ -307,41 +300,6 @@ function IndividualAttendanceTable() {
       fileName: `Attendance_${selectedUser.name || 'employee'}.pdf`,
     });
   };
-  // const sortedRecords = useMemo(() => {
-  //   if (!sortConfig.key) return records;
-
-  //   const sorted = [...records].sort((a, b) => {
-  //     let aValue = a[sortConfig.key];
-  //     let bValue = b[sortConfig.key];
-
-  //     if (sortConfig.key === 'date') {
-  //       const parseDMY = (str) => {
-  //         if (!str || typeof str !== 'string') return new Date('Invalid');
-  //         const [d, m, y] = str.split('-').map(Number);
-  //         return new Date(y, m - 1, d);
-  //       };
-
-  //       const aDate = parseDMY(aValue);
-  //       const bDate = parseDMY(bValue);
-
-  //       if (aDate < bDate) return sortConfig.direction === 'asc' ? -1 : 1;
-  //       if (aDate > bDate) return sortConfig.direction === 'asc' ? 1 : -1;
-  //       return 0;
-  //     }
-  //     // Handle numeric comparison
-  //     if (!isNaN(aValue) && !isNaN(bValue)) {
-  //       aValue = parseFloat(aValue);
-  //       bValue = parseFloat(bValue);
-  //     }
-
-  //     if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-  //     if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-  //     return 0;
-  //   });
-
-  //   return sorted;
-  // }, [records, sortConfig]);
-
   const sortedRecords = useMemo(() => {
     if (!sortConfig.key) return records;
 

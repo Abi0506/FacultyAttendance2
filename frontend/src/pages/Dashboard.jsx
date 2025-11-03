@@ -250,19 +250,26 @@ function PrincipalDashboard() {
         const result = [];
         const start = new Date(startDate);
         const end = new Date(endDate);
+
+        // Create a map for quick lookup
         const map = Object.fromEntries(
-            dailySummary.map(item => [item.date, item.morning_late_count])
+            dailySummary.map(item => [item.date, item])
         );
 
+        // Fill all dates in range
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
             const dateStr = d.toISOString().split('T')[0];
+            const existing = map[dateStr];
             result.push({
                 date: dateStr,
-                morning_late_count: map[dateStr] || 0,
+                morning_late_count: existing?.morning_late_count || 0,
+                evening_early_count: existing?.evening_early_count || 0,
             });
         }
+
         return result;
     }
+
 
 
     // Auto-fetch on date change
@@ -327,18 +334,18 @@ function PrincipalDashboard() {
 
 
     const lineData = {
-        labels: normalizedDailySummary.map(item => item.date), // x-axis: dates
+        labels: normalizedDailySummary.map(item => item.date),
         datasets: [
             {
                 label: 'Morning Late Count',
-                data: dailySummary.map(item => item.morning_late_count),
+                data: normalizedDailySummary.map(item => item.morning_late_count),
                 borderColor: '#ff4b4bff',
                 backgroundColor: '#ff4b4b5a',
                 tension: 0.3,
             },
             {
                 label: 'Evening Early Count',
-                data: dailySummary.map(item => item.evening_early_count),
+                data: normalizedDailySummary.map(item => item.evening_early_count),
                 borderColor: '#678dffff',
                 backgroundColor: '#678dff68',
                 tension: 0.3,
