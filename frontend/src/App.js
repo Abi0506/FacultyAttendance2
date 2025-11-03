@@ -26,59 +26,102 @@ import HRLeaveManager from './pages/HRLeaveManager';
 import ResetPasswordPage from './pages/ResetPassword';
 import DashboardPage from './pages/Dashboard';
 import FlaggedRecords from './pages/FlaggedRecords';
+import AdminAccessControl from './pages/AdminAccessControl';
+import NotFound from './pages/NotFound';
 // import LeaveManager from './pages/LeaveManager';
 
 // --- Auth & Context Imports ---
 import { useAuth, AuthProvider } from './auth/authProvider';
 import { AlertProvider } from './components/AlertProvider';
+import DynamicNavigation from './components/DynamicNavigation';
+import { RequirePageAccess } from './auth/RequireAuth';
 
-// --- Route Guards ---
-function RequireHR({ children }) {
-    const { isAuthenticated, designation } = useAuth();
-    const location = useLocation();
 
-    if (!isAuthenticated) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
+
+// Dynamic redirect component - redirects to first accessible page
+function DynamicRedirect({ accessRole }) {
+    const [redirectTo, setRedirectTo] = useState(null);
+
+    useEffect(() => {
+        const getRedirect = async () => {
+            if (!accessRole) {
+                setRedirectTo('/login');
+                return;
+            }
+
+            try {
+                const axios = await import('./axios').then(m => m.default);
+
+                // 1) Try role's default redirect if set
+                let candidate = null;
+                try {
+                    const roleRes = await axios.get(`/access-roles/${accessRole}`);
+                    const role = roleRes.data?.role;
+                    if (role?.default_redirect) {
+                        // Verify access to the default route
+                        const check = await axios.post('/page-access/check-access', { pageRoute: role.default_redirect });
+                        if (check.data?.success && check.data?.hasAccess) {
+                            candidate = role.default_redirect;
+                        }
+                    }
+                } catch (e) {
+                    // Ignore role fetch errors; we'll fallback
+                }
+
+                if (candidate) {
+                    setRedirectTo(candidate);
+                    return;
+                }
+
+                // 2) Fallback to first accessible page
+                const response = await axios.get(`/page-access/pages/accessible/${accessRole}`);
+                if (response.data.success && response.data.pages.length > 0) {
+                    const firstPage = response.data.pages.find(
+                        page => page.page_route !== '/login' &&
+                            page.page_route !== '/reset-password'
+                    );
+                    setRedirectTo(firstPage ? firstPage.page_route : '/staffIndividualReport');
+                } else {
+                    setRedirectTo('/staffIndividualReport');
+                }
+            } catch (error) {
+                console.error('Error fetching redirect page:', error);
+                setRedirectTo('/staffIndividualReport');
+            }
+        };
+
+        getRedirect();
+    }, [accessRole]);
+
+    if (!redirectTo) {
+        return (
+            <div className="container mt-5 text-center">
+                <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        );
     }
-    if (designation !== "HR" && designation !== "PRINCIPAL") {
-        return <Navigate to="/staffIndividualReport" replace />;
-    }
-    return children;
+
+    return <Navigate to={redirectTo} replace />;
 }
-
-function RequirePRINCIPAL({ children }) {
-    const { isAuthenticated, designation } = useAuth();
-    const location = useLocation();
-
-    if (!isAuthenticated) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
-    }
-    if (designation !== "PRINCIPAL") {
-        return <Navigate to="/staffIndividualReport" replace />;
-    }
-    return children;
-}
-
-function RequireStaff({ children }) {
-    const { isAuthenticated } = useAuth();
-    const location = useLocation();
-
-    if (!isAuthenticated) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
-    }
-    return children;
-}
-
-
 
 function AppContent() {
-    const { isAuthenticated, logout, designation } = useAuth();
+    const { isAuthenticated, logout, accessRole } = useAuth();
     const [pendingExemptions, setPendingExemptions] = useState(0);
     const [pendingLeaves, setPendingLeaves] = useState(0);
 
+    // Utility to close navbar on mobile
+    const closeNavbar = () => {
+        const nav = document.getElementById('navbarNav');
+        if (nav && nav.classList.contains('show')) {
+            nav.classList.remove('show');
+        }
+    };
+
     useEffect(() => {
         const fetchData = async () => {
-            if (isAuthenticated && designation === 'HR') {
+            if (isAuthenticated && accessRole === 3) {
                 // Fetch pending exemptions
                 try {
                     const resExemptions = await import('./axios').then(m => m.default.get('/attendance/hr_exemptions_all'));
@@ -110,7 +153,8 @@ function AppContent() {
             window.removeEventListener('exemptionStatusChanged', fetchData); //  
         };
 
-    }, [isAuthenticated, designation]);
+    }, [isAuthenticated, accessRole]);
+
 
 
 
@@ -121,10 +165,10 @@ function AppContent() {
                     <div className="container-fluid flex-column p-0">
 
                         <div className="d-flex align-items-center justify-content-between w-100 px-4">
-                            <a className="navbar-brand d-flex align-items-center fw-bold" to="/" title="Dashboard">
+                            <Link className="navbar-brand d-flex align-items-center fw-bold" to="/" title="Dashboard" onClick={closeNavbar}>
                                 <img src="/psgitarlogo.jpg" alt="Logo" className="psgitarlogo me-3" />
                                 <span className="header-title float-end">Faculty Biometric Attendance</span>
-                            </a>
+                            </Link>
                             <button
                                 className="navbar-toggler border-0"
                                 type="button"
@@ -136,139 +180,20 @@ function AppContent() {
                         </div>
 
                         <div className="collapse navbar-collapse w-100 mt-2 p-3 py-2 shadow-md" id="navbarNav">
-                            {isAuthenticated && designation === "HR" && (
-                                <ul className="navbar-nav me-auto mb-2 mb-lg-0 gap-3">
-                                    <li className="nav-item dropdown"
-                                        onMouseEnter={e => e.currentTarget.classList.add("show")}
-                                        onMouseLeave={e => e.currentTarget.classList.remove("show")}>
-                                        <button
-                                            type="button"
-                                            className="nav-link dropdown-toggle btn btn-link"
-                                            id="attendanceDropdown"
-                                            data-bs-toggle="dropdown"
-                                            aria-expanded="false"
-                                            style={{ textDecoration: "none" }}
-                                        >
-                                            Logs
-                                        </button>
-                                        <ul className="dropdown-menu show-on-hover" aria-labelledby="attendanceDropdown">
-                                            <li><Link className="dropdown-item" to="/view">Live</Link></li>
-                                            <li><hr className="dropdown-divider" /></li>
-                                            <li><Link className="dropdown-item" to="/flags">Possible Flags</Link></li>
-                                            <li> <hr className='dropdown-divider' /></li>
-                                            <li><Link className="dropdown-item" to="/summary">Cumulative</Link></li>
-                                            <li><hr className="dropdown-divider" /></li>
-                                            <li><Link className="dropdown-item" to="/individual">Individual</Link></li>
-                                            <li> <hr className='dropdown-divider' /></li>
-                                            <li><Link className="dropdown-item" to="/staffIndividualReport">My record</Link></li>
-                                        </ul>
-                                    </li>
-                                    <li className="nav-item position-relative">
-                                        <Link className="nav-link" to="/exemptions">Exemptions</Link>
-                                        {pendingExemptions > 0 && (
-                                            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark">
-                                                {pendingExemptions}
-                                            </span>
-                                        )}
-                                    </li>
-                                    <li className="nav-item position-relative">
-                                        <Link className="nav-link" to="/leave">Leaves</Link>
-                                        {pendingLeaves > 0 && (
-                                            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-info text-dark">
-                                                {pendingLeaves}
-                                            </span>
-                                        )}
-                                    </li>
-                                    <li className="nav-item dropdown"
-                                        onMouseEnter={e => e.currentTarget.classList.add("show")}
-                                        onMouseLeave={e => e.currentTarget.classList.remove("show")}>
-                                        <button
-                                            type="button"
-                                            className="nav-link dropdown-toggle btn btn-link"
-                                            id="usersDropdown"
-                                            data-bs-toggle="dropdown"
-                                            aria-expanded="false"
-                                            style={{ textDecoration: "none" }}
-                                        >
-                                            Users
-                                        </button>
-                                        <ul className="dropdown-menu show-on-hover" aria-labelledby="usersDropdown">
-                                            <li><Link className="dropdown-item" to="/users">User</Link></li>
-                                            <li><hr className="dropdown-divider" /></li>
-                                            <li><Link className="dropdown-item" to="/categories">Category</Link></li>
-                                            <li><hr className="dropdown-divider" /></li>
-                                            <li><Link className="dropdown-item" to="/deptdesig">Dept & Designation</Link></li>
-                                        </ul>
-                                    </li>
-                                    <li className="nav-item dropdown"
-                                        onMouseEnter={e => e.currentTarget.classList.add("show")}
-                                        onMouseLeave={e => e.currentTarget.classList.remove("show")}>
-                                        <button
-                                            type="button"
-                                            className="nav-link dropdown-toggle btn btn-link"
-                                            id="devicesDropdown"
-                                            data-bs-toggle="dropdown"
-                                            aria-expanded="false"
-                                            style={{ textDecoration: "none" }}
-                                        >
-                                            Devices
-                                        </button>
-                                        <ul className="dropdown-menu show-on-hover" aria-labelledby="devicesDropdown">
-                                            <li><Link className="dropdown-item" to="/instant">Attendance Sync & Process</Link></li>
-                                            <li><hr className="dropdown-divider" /></li>
-                                            <li><Link className="dropdown-item" to="/devicemanager">Device Manager</Link></li>
-                                        </ul>
-                                    </li>
-                                </ul>
-                            )}
-
-                            {isAuthenticated && designation === "PRINCIPAL" && (
-                                <ul className="navbar-nav me-auto mb-2 mb-lg-0 gap-3">
-                                    <li className="nav-item">
-                                        <Link className="nav-link" to="/dashboard">Dashboard</Link>
-                                    </li>
-                                    <li className="nav-item dropdown"
-                                        onMouseEnter={e => e.currentTarget.classList.add("show")}
-                                        onMouseLeave={e => e.currentTarget.classList.remove("show")}>
-                                        <button
-                                            type="button"
-                                            className="nav-link dropdown-toggle btn btn-link"
-                                            id="attendanceDropdown"
-                                            data-bs-toggle="dropdown"
-                                            aria-expanded="false"
-                                            style={{ textDecoration: "none" }}
-                                        >
-                                            Logs
-                                        </button>
-                                        <ul className="dropdown-menu show-on-hover" aria-labelledby="attendanceDropdown">
-                                            <li><Link className="dropdown-item" to="/view">Live</Link></li>
-                                            <li><hr className="dropdown-divider" /></li>
-                                            <li><Link className="dropdown-item" to="/summary">Cumulative</Link></li>
-                                            <li><hr className="dropdown-divider" /></li>
-                                            <li><Link className="dropdown-item" to="/individual">Individual</Link></li>
-                                            <li> <hr className='dropdown-divider' /></li>
-                                            <li><Link className="dropdown-item" to="/staffIndividualReport">My record</Link></li>
-                                        </ul>
-                                    </li>
-
-                                </ul>
-                            )}
-                            {isAuthenticated && designation !== "HR" && designation !== "PRINCIPAL" && (
-                                <ul className="navbar-nav me-auto mb-2 mb-lg-0 gap-3">
-                                    <li className="nav-item">
-                                        <Link className="nav-link" to="/staffIndividualReport">Attendance Report</Link>
-                                    </li>
-                                    <li className="nav-item">
-                                        <Link className="nav-link" to="/applyExemption">Apply Exemption</Link>
-                                    </li>
-                                </ul>
+                            {isAuthenticated && (
+                                <DynamicNavigation
+                                    accessRole={accessRole}
+                                    pendingExemptions={pendingExemptions}
+                                    pendingLeaves={pendingLeaves}
+                                    onNavClick={closeNavbar}
+                                />
                             )}
 
                             <div className="ms-auto">
                                 {isAuthenticated ? (
                                     <button
                                         className="nav-link d-flex align-items-center btn btn-link"
-                                        onClick={logout}
+                                        onClick={() => { closeNavbar(); logout(); }}
                                         title="Logout"
                                     >
                                         <i className="bi bi-box-arrow-right fs-4 me-1" aria-hidden="true"></i>
@@ -279,6 +204,7 @@ function AppContent() {
                                         className="nav-link d-flex align-items-center"
                                         to="/login"
                                         title="Login"
+                                        onClick={closeNavbar}
                                     >
                                         <i className="bi bi-box-arrow-in-right fs-4 me-1" aria-hidden="true"></i>
                                         Login
@@ -291,51 +217,109 @@ function AppContent() {
                 </nav>
             </div>
 
-            <div className="container m-large">
+            <div className="container-lg m-large">
                 <Routes>
                     <Route path="/login" element={
-                        isAuthenticated
-                            ? (designation === "HR"
-                                ? <Navigate to="/view" replace />
-                                : designation === "PRINCIPAL"
-                                    ? <Navigate to="/dashboard" replace />
-                                    : <Navigate to="/staffIndividualReport" replace />)
-                            : <LoginPage />
+                        isAuthenticated ? <DynamicRedirect accessRole={accessRole} /> : <LoginPage />
                     } />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
 
+                    {/* All routes now use dynamic page access control from database */}
+
+                    {/* Admin Routes */}
+                    <Route path="/admin/access-control" element={
+                        <RequirePageAccess pageRoute="/admin/access-control">
+                            <AdminAccessControl />
+                        </RequirePageAccess>
+                    } />
+
                     {/* HR Routes */}
-                    <Route path="/view" element={<RequireHR><AttendanceViewer /></RequireHR>} />
-                    <Route path="/summary" element={<RequireHR><DepartmentSummary /></RequireHR>} />
-                    <Route path="/individual/:staffId?" element={<RequireHR><IndividualAttendanceTable /></RequireHR>} />
-                    <Route path="/exemptions" element={<RequireHR><HRExcemptions /></RequireHR>} />
-                    <Route path="/users" element={<RequireHR><UserManager /></RequireHR>} />
-                    <Route path="/categories" element={<RequireHR><CategoryManager /></RequireHR>} />
-                    <Route path="/deptdesig" element={<RequireHR><DeptDesigManager /></RequireHR>} />
-                    <Route path="/devicemanager" element={<RequireHR><DevicesManager /></RequireHR>} />
-                    <Route path="/leave" element={<RequireHR><HRLeaveManager /></RequireHR>} />
-                    <Route path="/instant" element={<RequireHR><InstantLogs /></RequireHR>} />
-                    <Route path="/flags" element={<RequireHR>< FlaggedRecords /></RequireHR>} />
+                    <Route path="/view" element={
+                        <RequirePageAccess pageRoute="/view">
+                            <AttendanceViewer />
+                        </RequirePageAccess>
+                    } />
+                    <Route path="/summary" element={
+                        <RequirePageAccess pageRoute="/summary">
+                            <DepartmentSummary />
+                        </RequirePageAccess>
+                    } />
+                    <Route path="/individual/:staffId?" element={
+                        <RequirePageAccess pageRoute="/individual">
+                            <IndividualAttendanceTable />
+                        </RequirePageAccess>
+                    } />
+                    <Route path="/exemptions" element={
+                        <RequirePageAccess pageRoute="/exemptions">
+                            <HRExcemptions />
+                        </RequirePageAccess>
+                    } />
+                    <Route path="/users" element={
+                        <RequirePageAccess pageRoute="/users">
+                            <UserManager />
+                        </RequirePageAccess>
+                    } />
+                    <Route path="/categories" element={
+                        <RequirePageAccess pageRoute="/categories">
+                            <CategoryManager />
+                        </RequirePageAccess>
+                    } />
+                    <Route path="/deptdesig" element={
+                        <RequirePageAccess pageRoute="/deptdesig">
+                            <DeptDesigManager />
+                        </RequirePageAccess>
+                    } />
+                    <Route path="/devicemanager" element={
+                        <RequirePageAccess pageRoute="/devicemanager">
+                            <DevicesManager />
+                        </RequirePageAccess>
+                    } />
+                    <Route path="/leave" element={
+                        <RequirePageAccess pageRoute="/leave">
+                            <HRLeaveManager />
+                        </RequirePageAccess>
+                    } />
+                    <Route path="/instant" element={
+                        <RequirePageAccess pageRoute="/instant">
+                            <InstantLogs />
+                        </RequirePageAccess>
+                    } />
+                    <Route path="/flags" element={
+                        <RequirePageAccess pageRoute="/flags">
+                            <FlaggedRecords />
+                        </RequirePageAccess>
+                    } />
 
                     {/* Principal Routes */}
-                    <Route path="/dashboard" element={<RequirePRINCIPAL><DashboardPage /></RequirePRINCIPAL>} />
+                    <Route path="/dashboard" element={
+                        <RequirePageAccess pageRoute="/dashboard">
+                            <DashboardPage />
+                        </RequirePageAccess>
+                    } />
 
                     {/* Staff Routes */}
-                    <Route path="/staffIndividualReport" element={<RequireStaff><IndividualStaffReport /></RequireStaff>} />
-                    <Route path="/applyExemption" element={<RequireStaff><ExemptionApplyPage /></RequireStaff>} />
+                    <Route path="/staffIndividualReport" element={
+                        <RequirePageAccess pageRoute="/staffIndividualReport">
+                            <IndividualStaffReport />
+                        </RequirePageAccess>
+                    } />
+                    <Route path="/applyExemption" element={
+                        <RequirePageAccess pageRoute="/applyExemption">
+                            <ExemptionApplyPage />
+                        </RequirePageAccess>
+                    } />
 
                     <Route
                         path="/"
                         element={
                             isAuthenticated
-                                ? designation === "HR"
-                                    ? <Navigate to="/view" replace />
-                                    : designation === "PRINCIPAL"
-                                        ? <Navigate to="/dashboard" replace />
-                                        : <Navigate to="/staffIndividualReport" replace />
+                                ? <DynamicRedirect accessRole={accessRole} />
                                 : <Navigate to="/login" replace />
                         }
                     />
+
+                    {/* 404 - Not Found */}
+                    <Route path="*" element={<NotFound />} />
 
                 </Routes>
             </div>

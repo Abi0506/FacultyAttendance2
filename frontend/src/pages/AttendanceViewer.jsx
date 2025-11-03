@@ -76,24 +76,21 @@ function AttendanceViewer() {
     if (!date) return;
     try {
       const response = await axios.post('/attendance/get_flags', { date });
-      console.log(response.data)
       setFlaggedCells(response.data || {});
     } catch (err) {
       console.error("Failed to fetch flagged times", err);
     }
   }, []);
-
   // Fetch approved exemptions for the selected date and prepare a highlight map
   const fetchApprovedExemptionsForDate = useCallback(async (date) => {
     if (!date) return;
     try {
-      // Call backend endpoint that returns approved exemptions for a given date (query param)
-      const res = await axios.post('/attendance/hr_approved_exemptions', {date } );
+      const res = await axios.post('/attendance/hr_approved_exemptions', { date });
       const rows = (res.data && res.data.exemptions) ? res.data.exemptions : [];
 
       const map = {};
       rows.forEach(r => {
-        if (r.staffId) map[r.staffId] = { backgroundColor: '#e4d386' }; // light yellow, more visible
+        if (r.staffId) map[r.staffId] = { backgroundColor: 'var(--color-flag)' }; 
       });
       setApprovedExemptionsMap(map);
     } catch (err) {
@@ -137,7 +134,6 @@ function AttendanceViewer() {
 
   const handleSaveAsPDF = () => {
     const newDate = selectedDate.split('-').reverse().join('-');
-    console.log(flaggedCells)
     PdfTemplate({
       title: `Faculty Attendance Record - ${newDate}`,
       tables: [{

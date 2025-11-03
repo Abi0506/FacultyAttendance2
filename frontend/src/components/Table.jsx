@@ -68,7 +68,7 @@ function Table({
 
 
     return (
-        <div className="table-container" style={{ position: "relative" }}>
+        <div className="table-container table-responsive" style={{ position: "relative" }}>
 
 
             <table className="table table-c">

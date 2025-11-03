@@ -19,7 +19,7 @@ passport.use(new GoogleStrategy({
         try {
             const email = profile.emails && profile.emails[0] && profile.emails[0].value;
             if (!email) return done(null, false, { message: 'No email found in Google profile' });
-            const [rows] = await db.query('SELECT staff_id, name, designation FROM staff WHERE email = ?', [email]);
+            const [rows] = await db.query('SELECT staff_id, name, designation, access_role FROM staff WHERE email = ?', [email]);
             if (rows.length === 0) {
                 return done(null, false, { message: 'No staff found with this email' });
             }
@@ -55,9 +55,9 @@ router.get('/google/callback',
             return res.redirect(`${redirectUrl}/?message=${encodeURIComponent('No staff found with this Google account. Please contact admin.')}`);
         }
 
-        const { staff_id, designation } = req.user.staff;
+        const { staff_id, access_role } = req.user.staff;
         const SECRET_KEY = process.env.SECRET_KEY;
-        const token = jwt.sign({ staff_id, designation }, SECRET_KEY, { expiresIn: '7d' });
+        const token = jwt.sign({ staff_id, access_role }, SECRET_KEY, { expiresIn: '7d' });
 
         res.cookie('token', token, {
             httpOnly: true,

@@ -150,7 +150,7 @@ export default function ResetPasswordPage() {
                     )}
 
 
-                    <button type="submit" className="reset-password-button">Update Password</button>
+                    <button type="submit" className="reset-password-button btn btn-c-primary w-100">Update Password</button>
                 </form>
             </div>
         </div>

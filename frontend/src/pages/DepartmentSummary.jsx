@@ -188,7 +188,7 @@ function DepartmentSummary() {
                             emp.name || 'N/A',
                             emp.staff_id || 'N/A',
                             emp.designation || 'N/A',
-                            emp.summary || 0,
+                            emp.filtered_late_mins || 0,
                             emp.total_late_mins || 0,
                             emp.deducted_days || 0
                         ]),
@@ -215,7 +215,7 @@ function DepartmentSummary() {
                             emp.name || 'N/A',
                             emp.staff_id || 'N/A',
                             emp.designation || 'N/A',
-                            emp.summary || 0,
+                            emp.filtered_late_mins || 0,
                             emp.total_late_mins || 0,
                             emp.deducted_days || 0
                         ]);

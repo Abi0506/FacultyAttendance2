@@ -23,14 +23,14 @@ const transporter = nodemailer.createTransport({
 
 router.post('/login', async (req, res) => {
   const { userIdorEmail, password, remember } = req.body;
-  const [rows] = await db.query('SELECT staff_id, password,designation FROM staff WHERE staff_id = ? or email = ?', [userIdorEmail, userIdorEmail]);
+  const [rows] = await db.query('SELECT staff_id, password, designation, access_role FROM staff WHERE staff_id = ? or email = ?', [userIdorEmail, userIdorEmail]);
   const user = rows[0];
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return res.status(401).json({ message: 'Invalid credentials' });
   }
   const jwtExpiry = remember ? '7d' : '1h';
-  const token = jwt.sign({ staff_id: user.staff_id, designation: user.designation }, SECRET_KEY, { expiresIn: jwtExpiry });
+  const token = jwt.sign({ staff_id: user.staff_id, access_role: user.access_role }, SECRET_KEY, { expiresIn: jwtExpiry });
 
   const cookieOptions = {
     httpOnly: true,
@@ -43,7 +43,7 @@ router.post('/login', async (req, res) => {
   // If remember is false, do not set maxAge (session cookie)
   res.cookie('token', token, cookieOptions);
 
-  res.json({ message: 'Logged in successfully', designation: user.designation, staff_id: user.staff_id });
+  res.json({ message: 'Logged in successfully', access_role: user.access_role, staff_id: user.staff_id });
 });
 
 router.get('/check_session', (req, res) => {
@@ -63,7 +63,7 @@ router.get('/check_session', (req, res) => {
       sameSite: 'lax'
     });
 
-    const token = jwt.sign({ staff_id: decoded.staff_id, designation: decoded.designation }, SECRET_KEY, { expiresIn: '7d' });
+    const token = jwt.sign({ staff_id: decoded.staff_id, access_role: decoded.access_role }, SECRET_KEY, { expiresIn: '7d' });
 
     res.cookie('token', token, {
       httpOnly: true,
@@ -71,7 +71,7 @@ router.get('/check_session', (req, res) => {
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
-    res.json({ message: 'Valid token', designation: decoded.designation, staff_id: decoded.staff_id });
+    res.json({ message: 'Valid token', access_role: decoded.access_role, staff_id: decoded.staff_id });
 
   });
 });

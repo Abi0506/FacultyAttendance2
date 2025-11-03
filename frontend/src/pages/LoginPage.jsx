@@ -50,18 +50,29 @@ function LoginPage() {
       const result = await login(formData);
       if (result.success) {
         showAlert('Login successful!', 'success');
-        if (result.designation === 'HR') {
-          navigate('/view', { replace: true });
-        } else if (result.designation === 'PRINCIPAL') {
-          navigate('/dashboard', { replace: true });
-        } else if (result.designation) {
-          navigate('/staffIndividualReport', { replace: true });
-        } else {
-          showAlert('Unknown designation. Redirecting to dashboard.', 'warning');
+
+        // Prefer role-based default redirect from DB if available and accessible.
+        try {
+          const roleRes = await axios.get(`/access-roles/${result.access_role}`);
+          const role = roleRes.data?.role;
+          if (role?.default_redirect) {
+            // Verify access to the configured default route
+            const check = await axios.post('/page-access/check-access', { pageRoute: role.default_redirect });
+            if (check.data?.success && check.data?.hasAccess) {
+              navigate(role.default_redirect, { replace: true });
+              return;
+            }
+          }
+        } catch (e) {
+          console.error('Error fetching role default redirect:', e);
+          // Ignore and fall back
         }
+
+        navigate('/', { replace: true });
       } else if (result.reason === 'invalid_credentials') {
         showAlert('Invalid User ID or Password', 'error');
       } else {
+        console.error('Login failed:', result.reason);
         showAlert('An error occurred during login. Please try again.', 'error');
       }
     } catch (error) {
@@ -70,7 +81,7 @@ function LoginPage() {
   };
 
   return (
-    <div className="w-50 m-auto">
+    <div className="login-page-wrapper m-auto">
       <PageWrapper title="Login">
 
         {/* Social logins */}
@@ -124,7 +135,7 @@ function LoginPage() {
                 top: "38px",
                 cursor: "pointer",
                 fontSize: "1.2rem",
-                color: "#666",
+                color: "var(--gray-500)",
               }}
               onClick={() => setShowPassword(!showPassword)}
             ></i>
@@ -174,17 +185,17 @@ function LoginPage() {
                   />
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" disabled={loading} onClick={() => setShowResetModal(false)}>Cancel</button>
+                  <button type="button" className="btn btn-c-secondary" disabled={loading} onClick={() => setShowResetModal(false)}>Cancel</button>
                   <button
                     type="button"
-                    className="btn btn-primary"
+                    className="btn btn-c-primary"
                     onClick={handleResetPassword}
                     disabled={loading}
                   >
                     Send Reset Link
                     {loading && (
                       <span style={{ display: 'inline-block', verticalAlign: 'middle', marginLeft: 8 }}>
-                        <ScaleLoader color="#fff" height={10} width={3} margin={2} loading={loading} />
+                        <ScaleLoader color="var(--color-6)" height={10} width={3} margin={2} loading={loading} />
                       </span>
                     )}
                   </button>

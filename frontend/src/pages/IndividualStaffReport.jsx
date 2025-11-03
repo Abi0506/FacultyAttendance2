@@ -115,9 +115,7 @@ function IndividualStaffReport() {
         end: formData.endDate,
         id: formData.employeeId,
       });
-      console.log('Approved exemptions raw response (staff report):', res.data);
       const rows = res.data?.exemptions || res.data || [];
-      console.log('Approved exemptions rows (staff report):', rows);
       const map = {};
       rows.forEach((r) => {
         const raw = r.exemptionDate || r.exemption_date || r.date || r.exemptionDate;
@@ -125,7 +123,7 @@ function IndividualStaffReport() {
         const ymd = normalizeDateYMD(raw);
         const dmy = normalizeDateDMY(raw);
         // light highlight and note
-        const entry = { backgroundColor: '#fff3bf', note: 'Approved Exemption' };
+  const entry = { backgroundColor: 'var(--warning-light-2)', note: 'Approved Exemption' };
         map[ymd] = entry;
         map[dmy] = entry;
       });
@@ -161,9 +159,7 @@ function IndividualStaffReport() {
         start_date: formData.startDate,
         end_date: formData.endDate,
       });
-      console.log('Flags response from /get_flags_for_staff (staff report):', response.data);
       const flags = response.data || {};
-      console.log('Mapped flags (staff report):', flags);
       setFlaggedCells(flags);
     } catch (err) {
       console.error('Failed to fetch flagged times', err);
@@ -194,7 +190,6 @@ function IndividualStaffReport() {
       { label: 'Total Days to be Deducted', value: totalAbsentDays },
     ];
 
-    console.log(flaggedCells);
 
     // Add a Note column that mentions approved exemptions if present for the date
     const pdfColumnsWithNote = [...pdfColumns, 'Note'];
@@ -358,7 +353,7 @@ function IndividualStaffReport() {
 
   return (
     <PageWrapper>
-      <div className="d-flex align-items-center justify-content-center position-relative mb-4">
+      <div className="d-flex flex-column flex-md-row align-items-center justify-content-between gap-2 position-relative mb-4">
         <h2 className="fw-bold text-c-primary text-center m-0 flex-grow-1">
           Attendance Report for {staffInfo.name}
         </h2>
@@ -420,8 +415,8 @@ function IndividualStaffReport() {
                   style={{
                     width: '20px',
                     height: '20px',
-                    backgroundColor: '#fff3cd',
-                    border: '1px solid #e0a800',
+                    backgroundColor: 'var(--warning-light)',
+                    border: `1px solid var(--warning-border)`,
                     borderRadius: '4px',
                     marginRight: '8px',
                   }}
@@ -432,19 +427,18 @@ function IndividualStaffReport() {
 
 
           </div>
-          <div className="d-flex align-items-center justify-content-between mt-4 mb-3">
-            <h4 className="m-0">
+          <div className="d-flex flex-column flex-md-row align-items-stretch align-items-md-center justify-content-between gap-2 mt-4 mb-3">
+            <h4 className="m-0" style={{ fontSize: '1.1rem' }}>
               Records from {formData.startDate} to {formData.endDate}:
             </h4>
-            <div className="d-flex align-items-center gap-3">
+            <div className="d-flex flex-column flex-md-row align-items-stretch align-items-md-center gap-2">
               <div className="d-flex align-items-center">
                 <label htmlFor="viewMode" className="me-2 fw-semibold mb-0">View:</label>
                 <select
                   id="viewMode"
-                  className="form-select form-select-sm w-auto"
+                  className="form-select form-select-sm w-100"
                   value={viewMode}
                   onChange={handleViewChange}
-                  style={{ minWidth: '120px' }}
                 >
                   <option value="Combined">Combined</option>
                   <option value="Logs">Logs</option>
@@ -452,13 +446,13 @@ function IndividualStaffReport() {
                 </select>
               </div>
               <div className="d-flex align-items-center">
-                <label htmlFor="rowsPerPage" className="me-2 fw-semibold mb-0">Rows per page:</label>
+                <label htmlFor="rowsPerPage" className="me-2 fw-semibold mb-0 text-nowrap">Rows per page:</label>
                 <select
                   id="rowsPerPage"
                   className="form-select form-select-sm w-auto"
                   value={rowsPerPage}
                   onChange={(e) => setRowsPerPage(parseInt(e.target.value))}
-                  style={{ minWidth: '80px' }}
+                  style={{ minWidth: '90px', maxWidth: '140px' }}
                 >
                   {[10, 25, 50, 100, 200].map(num => (
                     <option key={num} value={num}>{num}</option>

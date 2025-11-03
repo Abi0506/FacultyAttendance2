@@ -46,12 +46,9 @@ function IndividualAttendanceTable() {
         start_date: start,
         end_date: end,
       });
-  // Map flags to {staffId_date_time: true}
-  console.log("Flags response from /get_flags_for_staff:", response.data);
       const flags = {};
       const data = response.data || {};
       for (const key in data) flags[key] = true;
-      console.log(flags)
       setFlaggedCells(flags);
     } catch (err) {
       console.error('Failed to fetch flagged times', err);
@@ -186,9 +183,7 @@ function IndividualAttendanceTable() {
         end,
         id: employeeId,
       });
-  console.log('Approved exemptions raw response:', res.data);
-  const rows = res.data?.exemptions || res.data || [];
-  console.log('Approved exemptions rows:', rows);
+      const rows = res.data?.exemptions || res.data || [];
       const map = {};
       rows.forEach((r) => {
         const raw = r.exemptionDate || r.exemption_date || r.date || r.exemptionDate;

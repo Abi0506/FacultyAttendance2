@@ -12,17 +12,18 @@ const verifyToken = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, SECRET_KEY);
-        req.user = decoded; // { staff_id, designation }
+        req.user = decoded; // { staff_id, access_role }
         next();
     } catch (err) {
         return res.status(401).json({ message: 'Invalid or expired token' });
     }
 };
 
-// Role-based access control
+// Role-based access control using numeric access_role
+// Access Roles: 1 = Staff, 3 = HR, 4 = Principal
 const authorizeRoles = (...allowedRoles) => {
     return (req, res, next) => {
-        const userRole = req.user?.designation;
+        const userRole = req.user?.access_role;
         if (!allowedRoles.includes(userRole)) {
             return res.status(403).json({ message: 'Access denied. Insufficient privileges.' });
         }

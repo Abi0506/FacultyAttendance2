@@ -69,8 +69,6 @@ router.get('/late-staff', async (req, res) => {
 router.get('/daily-summary', async (req, res) => {
     let { startDate, endDate } = req.query;
     // convert date format
-    console.log(startDate, endDate);
-
     if (!startDate || !endDate) {
         return res.status(400).json({ message: "startDate and endDate are required" });
     }
@@ -102,7 +100,7 @@ router.get('/daily-summary', async (req, res) => {
             ORDER BY l.date
         `, [startDate, endDate]);
 
-        // Evening early
+        // Evening early (only count if staff has at least 2 entries for the day)
         const [earlyOutRows] = await db.execute(`
             SELECT 
                 l.date,
@@ -112,18 +110,20 @@ router.get('/daily-summary', async (req, res) => {
                     s.staff_id,
                     l.date,
                     MAX(l.time) AS last_time,
-                    c.out_time
+                    c.out_time,
+                    COUNT(*) AS log_count
                 FROM logs l
                 JOIN staff s ON s.staff_id = l.staff_id
                 JOIN category c ON c.category_no = s.category
                 WHERE l.date BETWEEN ? AND ?
                 GROUP BY s.staff_id, l.date, c.out_time
+                HAVING log_count >= 2
             ) AS l
             WHERE TIMESTAMPDIFF(
                 MINUTE, 
                 CAST(CONCAT(l.date, ' ', l.last_time) AS DATETIME), 
                 CAST(CONCAT(l.date, ' ', l.out_time) AS DATETIME)
-            ) < 15
+            ) > 15
             GROUP BY l.date
             ORDER BY l.date
         `, [startDate, endDate]);
@@ -137,7 +137,6 @@ router.get('/daily-summary', async (req, res) => {
                 evening_early_count: earlyOut ? earlyOut.evening_early_count : 0
             };
         });
-
         res.json(rows);
     } catch (err) {
         console.error(err);
@@ -145,7 +144,7 @@ router.get('/daily-summary', async (req, res) => {
     }
 });
 
-// For staff details on a selected date
+// For staff details on a selected date (both morning late and evening early)
 router.get('/daily-staff', async (req, res) => {
     const { date } = req.query;
 
@@ -154,27 +153,55 @@ router.get('/daily-staff', async (req, res) => {
     }
 
     try {
-        const [rows] = await db.execute(`
-         SELECT 
-            s.staff_id,
-            s.name,
-            s.dept
-        FROM staff s
-JOIN logs l ON s.staff_id = l.staff_id
-JOIN category c ON c.category_no = s.category
-WHERE l.date = ?
-GROUP BY s.staff_id, s.name, s.dept, c.in_time, l.date
-HAVING 
-    TIMESTAMPDIFF(
-        MINUTE, 
-        CAST(CONCAT(l.date, ' ', c.in_time) AS DATETIME), 
-        MIN(CAST(CONCAT(l.date, ' ', l.time) AS DATETIME))
-    ) > 15
-ORDER BY s.dept, s.name;
-
+        // Morning late staff
+        const [morningRows] = await db.execute(`
+            SELECT 
+                s.staff_id,
+                s.name,
+                s.dept,
+                MIN(l.time) AS actual_time,
+                c.in_time AS expected_time,
+                'Late In' AS type,
+                TIMESTAMPDIFF(
+                    MINUTE, 
+                    CAST(CONCAT(l.date, ' ', c.in_time) AS DATETIME), 
+                    MIN(CAST(CONCAT(l.date, ' ', l.time) AS DATETIME))
+                ) AS minutes_diff
+            FROM staff s
+            JOIN logs l ON s.staff_id = l.staff_id
+            JOIN category c ON c.category_no = s.category
+            WHERE l.date = ?
+            GROUP BY s.staff_id, s.name, s.dept, c.in_time, l.date
+            HAVING minutes_diff > 15
+            ORDER BY s.dept, s.name
         `, [date]);
-        console.log(rows);
-        res.json(rows);
+
+        // Evening early staff (only count if staff has at least 2 entries for the day)
+        const [eveningRows] = await db.execute(`
+            SELECT 
+                s.staff_id,
+                s.name,
+                s.dept,
+                MAX(l.time) AS actual_time,
+                c.out_time AS expected_time,
+                'Early Out' AS type,
+                TIMESTAMPDIFF(
+                    MINUTE, 
+                    MAX(CAST(CONCAT(l.date, ' ', l.time) AS DATETIME)),
+                    CAST(CONCAT(l.date, ' ', c.out_time) AS DATETIME)
+                ) AS minutes_diff,
+                COUNT(*) AS log_count
+            FROM staff s
+            JOIN logs l ON s.staff_id = l.staff_id
+            JOIN category c ON c.category_no = s.category
+            WHERE l.date = ?
+            GROUP BY s.staff_id, s.name, s.dept, c.out_time, l.date
+            HAVING minutes_diff > 15 AND log_count >= 2
+            ORDER BY s.dept, s.name
+        `, [date]);
+
+        const combinedRows = [...morningRows, ...eveningRows];
+        res.json(combinedRows);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Error fetching daily staff details" });

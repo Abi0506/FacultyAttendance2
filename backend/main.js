@@ -61,7 +61,9 @@ const esslFunctionsRouter = require("./routes/essl_functions");
 const leaveRouter = require("./routes/leave");
 const instant = require("./routes/live_attendance");
 const dashboardRouter = require("./routes/dashboard");
-const deviceRouter = require("./routes/devices")
+const deviceRouter = require("./routes/devices");
+const accessRolesRouter = require('./routes/accessRoles')
+const pageAccessRouter = require('./routes/pageAccess');
 
 app.use("/api/essl", esslFunctionsRouter);
 app.use("/api/login", loginRouter);
@@ -70,6 +72,8 @@ app.use("/api/leave", verifyToken, leaveRouter);
 app.use("/api/instant_attendance", verifyToken, instant)
 app.use("/api/dashboard", verifyToken, dashboardRouter)
 app.use("/api/devices", verifyToken, deviceRouter)
+app.use("/api/access-roles", accessRolesRouter)
+app.use("/api/page-access", pageAccessRouter);
 
 
 app.listen(PORT, '0.0.0.0', () => {

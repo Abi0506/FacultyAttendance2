@@ -710,7 +710,6 @@ router.post('/hr_approved_exemptions_for_staff', async (req, res) => {
       'SELECT exemptionDate FROM exemptions WHERE exemptionStatus = ? AND (exemptionDate BETWEEN ? AND ?) AND staffId = ? ORDER BY exemptionDate DESC',
       ['approved', start, end, id]
     );
-    console.log(rows);
     res.json({ message: 'Exemptions fetched successfully', exemptions: rows });
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch exemptions" });
@@ -999,6 +998,7 @@ router.get('/get_user/:id', async (req, res) => {
             staff.dept,
             staff.email,
             staff.designation,
+            staff.access_role,
             staff.category,
             category.category_description,
             category.in_time,
@@ -1029,8 +1029,6 @@ router.post("/update_additional_late_mins", async (req, res) => {
 
 
   try {
-    console.log("Updating additional late minutes:", { staff_id, mysqlDate, additional_late_mins });
-
     // Try to update first
     const [result] = await db.query(
       `UPDATE report 

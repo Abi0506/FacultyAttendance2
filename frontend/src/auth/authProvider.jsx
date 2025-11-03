@@ -9,7 +9,7 @@ export function useAuth() {
 
 export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [designation, setDesignation] = useState("");
+  const [accessRole, setAccessRole] = useState(1); // 1=Staff, 3=HR, 4=Principal
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -19,17 +19,17 @@ export function AuthProvider({ children }) {
         const res = await axios.get('/login/check_session');
         if (res.data.message === 'Valid token') {
           setIsAuthenticated(true);
-          setDesignation(res.data.designation || '');
-          setUser({ staffId: res.data.staff_id, designation: res.data.designation });
+          setAccessRole(res.data.access_role || 1);
+          setUser({ staffId: res.data.staff_id, accessRole: res.data.access_role });
 
         } else {
           setIsAuthenticated(false);
-          setDesignation('');
+          setAccessRole(1);
           setUser(null);
         }
       } catch (err) {
         setIsAuthenticated(false);
-        setDesignation('');
+        setAccessRole(1);
         setUser(null);
       } finally {
         setLoading(false);
@@ -43,9 +43,9 @@ export function AuthProvider({ children }) {
       const res = await axios.post('/login/login', credentials);
       if (res.data.message === 'Logged in successfully') {
         setIsAuthenticated(true);
-        setDesignation(res.data.designation || "");
-        setUser({ staffId: res.data.staff_id, designation: res.data.designation });
-        return { success: true, designation: res.data.designation || "" };
+        setAccessRole(res.data.access_role || 1);
+        setUser({ staffId: res.data.staff_id, accessRole: res.data.access_role });
+        return { success: true, access_role: res.data.access_role || 1 };
       }
       return { success: false, reason: 'unknown' };
     } catch (err) {
@@ -70,7 +70,7 @@ export function AuthProvider({ children }) {
     isAuthenticated,
     login,
     logout,
-    designation,
+    accessRole,
     user,
   };
 

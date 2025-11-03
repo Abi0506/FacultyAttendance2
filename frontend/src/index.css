@@ -9,14 +9,109 @@
   --color-6: #ffffff;
   --color-flag: #ffeda7;
   --color-7: rgba(255, 99, 71, 0.15);
+  --success: #28a745;
+  --warning: #ffc107;
+  --warning-light: #fff3cd;
+  --warning-light-2: #fff3bf;
+  --warning-border: #e0a800;
+  --warning-shadow: #ffe0b2;
+  --warning-hover-border: #ff9800;
+  --gray-300: #ccc;
+  --gray-400: #888;
+  --gray-500: #666666;
+  --gray-700: #4d4d4d;
+  --gray-200: #eee;
+  --alert-danger: #f44336;
+  --alert-success: #4caf50;
+  --black: #000000;
 }
+
+@media (min-width: 992px) {
+  .navbar .navbar-brand {
+    flex-direction: row !important;
+    align-items: center;
+    width: auto;
+    padding-bottom: 0;
+  }
+
+  .header-title {
+    display: inline-block !important;
+    text-align: left;
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-left: 0.5rem;
+    font-size: 1.25rem;
+    vertical-align: middle;
+    width: auto;
+  }
+
+  .psgitarlogo {
+    margin-right: 1rem;
+    margin-left: 0;
+    display: inline-block;
+    vertical-align: middle;
+    height: 48px;
+  }
+}
+
+@media (max-width: 991.98px) and (min-width: 576px) {
+  .navbar .navbar-brand {
+    flex-direction: column !important;
+    align-items: center;
+    width: 100%;
+    padding-bottom: 0;
+  }
+
+  .header-title {
+    display: block !important;
+    width: 100%;
+    text-align: center;
+    margin-top: 0.25rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .psgitarlogo {
+    display: block;
+    height: 60px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .navbar .navbar-brand {
+    flex-direction: column !important;
+    align-items: center;
+    width: 100%;
+    padding-bottom: 0;
+  }
+
+  .header-title {
+    display: block !important;
+    width: 100%;
+    text-align: center;
+    margin-top: 0.25rem;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .psgitarlogo {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    height: 44px;
+  }
+}
+
 
 
 .btn-c-primary {
   background-color: var(--primary);
   color: var(--color-6);
   border-radius: 8px;
-  padding: 6px 16px;
   font-weight: bold;
   transition: all 0.3s ease;
   border: none;
@@ -25,8 +120,9 @@
 
 .btn-c-primary:hover {
   color: var(--color-6);
-  background-color: var(--secondary);
+  background-color: var(--primary);
   box-shadow: 0px 0px 8px 4px rgba(0, 0, 0, 0.1);
+  scale: 1.01;
 }
 
 .btn-c-primary:active {
@@ -48,14 +144,14 @@
   background-color: var(--secondary);
   color: var(--color-6);
   border-radius: 8px;
-  padding: 10px 20px;
   font-weight: bold;
   transition: all 0.3s ease;
 }
 
 .btn-c-secondary:hover {
   color: var(--color-6);
-  background-color: var(--primary);
+  background-color: var(--secondary);
+  scale: 1.01;
   box-shadow: 0px 0px 8px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -143,11 +239,11 @@
 
 
 .maintenance-btn.active {
-  color: #28a745;
+  color: var(--success);
 }
 
 .maintenance-btn.maintenance {
-  color: #ffc107;
+  color: var(--warning);
 }
 
 
@@ -182,7 +278,7 @@
   width: 100%;
   padding: 12px 40px 12px 12px;
   border-radius: 4px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--gray-300);
   font-size: 16px;
   box-sizing: border-box;
 }
@@ -194,7 +290,7 @@
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
-  color: #888;
+  color: var(--gray-400);
   font-size: 18px;
   user-select: none;
 }
@@ -203,7 +299,7 @@
 .strength-bar-container {
   height: 8px;
   width: 100%;
-  background-color: #eee;
+  background-color: var(--gray-200);
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 8px;
@@ -222,22 +318,22 @@
 }
 
 /* Submit button */
-.reset-password-button {
+/* .reset-password-button {
   width: 100%;
   padding: 12px;
   margin-top: 24px;
-  background-color: #1890ff;
-  color: #fff;
+  background-color: var(--blue-500);
+  color: var(--color-6);
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 16px;
   transition: background-color 0.3s;
-}
+} */
 
-.reset-password-button:hover {
-  background-color: #40a9ff;
-}
+/* .reset-password-button:hover {
+  background-color: var(--blue-400);
+} */
 
 .page-link-c {
   position: relative;
@@ -269,7 +365,7 @@
 
 .header-title {
   font-size: 1.5rem;
-  color: #2c2c54;
+  color: var(--primary);
   /* deep PSG purple */
 }
 
@@ -331,7 +427,7 @@
   opacity: 0;
   transform: translateX(-10px);
   /* start slightly left */
-  color: #4d4d4d;
+  color: var(--gray-700);
   white-space: nowrap;
   transition: transform 0.3s ease, opacity 0.3s ease;
 }
@@ -354,6 +450,15 @@
   transform: translateY(-50%);
 }
 
+@media (max-width: 767.98px) {
+  .btn-pdf {
+    position: static;
+    width: 100%;
+    margin-top: 0.5rem;
+    transform: none;
+  }
+}
+
 .bg-c-warning {
   background-color: var(--color-flag) !important;
   /* border-color: var(--color-7); */
@@ -372,11 +477,57 @@
 }
 
 .flag-hover-cell:hover {
-  border: 2px solid #ff9800 !important;
-  box-shadow: 0 0 0 2px #ffe0b2;
+  border: 2px solid var(--warning-hover-border) !important;
+  box-shadow: 0 0 0 2px var(--warning-shadow);
 }
 
 /* Approved exemption row highlight - light, visible color */
 .exemption-approved {
-  background-color: #fff3bf !important; /* light yellow */
+  background-color: var(--warning-light-2) !important;
+  /* light yellow */
+}
+
+/* Login page responsive width: 100% on small/medium, 50% on large+ */
+.login-page-wrapper {
+  width: 100%;
+}
+
+@media (min-width:800px) {
+  .login-page-wrapper {
+    width: 50%;
+  }
+}
+
+/* --- Mobile-specific improvements for report tables and controls --- */
+@media (max-width: 540px) {
+
+  /* Make PDF button flow naturally in document on small screens */
+  .btn-pdf {
+    position: static;
+    transform: none;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+
+  /* Enable momentum scrolling horizontally for wide tables */
+  .table-responsive,
+  .table-container {
+    -webkit-overflow-scrolling: touch;
+    overflow-x: auto;
+  }
+
+  /* Slightly tighter table spacing and font for small screens */
+  .table.table-c th,
+  .table.table-c td {
+    padding: 0.5rem 0.5rem;
+    font-size: 0.92rem;
+    white-space: nowrap;
+  }
+
+  /* Larger tap targets for pagination */
+  .pagination .page-link.page-link-c,
+  .pagination .page-link {
+    min-height: 2.25rem;
+    min-width: 2.25rem;
+  }
 }

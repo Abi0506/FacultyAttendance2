@@ -42,6 +42,9 @@ function PrincipalDashboard() {
     const tableRef = useRef(null);
     const [selectedDate, setSelectedDate] = useState(null);
     const [dailyStaff, setDailyStaff] = useState([]);
+    const [selectedType, setSelectedType] = useState(null); // 'Late In' or 'Early Out'
+    const [dailyStaffSortConfig, setDailyStaffSortConfig] = useState({ key: 'minutes_diff', direction: 'desc' });
+    const [dailyStaffPage, setDailyStaffPage] = useState(1);
 
     const deptShortNames = {
         "MECHANICAL ENGINEERING": "MECH",
@@ -99,6 +102,30 @@ function PrincipalDashboard() {
         }
         return sortable;
     }, [staffData, staffSortConfig]);
+
+    const sortedDailyStaffData = React.useMemo(() => {
+        if (!dailyStaff.length) return [];
+        let sortable = [...dailyStaff];
+        if (dailyStaffSortConfig.key) {
+            sortable.sort((a, b) => {
+                let valA = a[dailyStaffSortConfig.key];
+                let valB = b[dailyStaffSortConfig.key];
+
+                if (dailyStaffSortConfig.key === 'minutes_diff') {
+                    valA = Number(valA);
+                    valB = Number(valB);
+                } else {
+                    if (typeof valA === 'string') valA = valA.toLowerCase();
+                    if (typeof valB === 'string') valB = valB.toLowerCase();
+                }
+
+                if (valA < valB) return dailyStaffSortConfig.direction === 'asc' ? -1 : 1;
+                if (valA > valB) return dailyStaffSortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        return sortable;
+    }, [dailyStaff, dailyStaffSortConfig]);
 
     function getDefaultStartDate() {
         const today = new Date();
@@ -179,13 +206,20 @@ function PrincipalDashboard() {
         if (!elements.length) return;
 
         const index = elements[0].index;
+        const datasetIndex = elements[0].datasetIndex; // 0 = Morning Late, 1 = Evening Early
         const clickedDate = dailySummary[index]?.date;
+
+        // Determine which type based on dataset
+        const type = datasetIndex === 0 ? 'Late In' : 'Early Out';
+
         setSelectedDate(clickedDate);
+        setSelectedType(type);
 
         try {
             const res = await axios.get('/dashboard/daily-staff', { params: { date: clickedDate } });
-            console.log(res.data)
-            setDailyStaff(res.data);
+            const filteredData = res.data.filter(staff => staff.type === type);
+            setDailyStaff(filteredData);
+
             setTimeout(() => {
                 tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
@@ -233,6 +267,7 @@ function PrincipalDashboard() {
                     item.department === selectedDept ? '#F29C3B' : '#F9B75D'
                 ),
                 borderRadius: 6,
+
                 borderSkipped: false,
             },
         ],
@@ -274,20 +309,17 @@ function PrincipalDashboard() {
             {
                 label: 'Morning Late Count',
                 data: dailySummary.map(item => item.morning_late_count),
-                borderColor: '#F9B75D',
-                backgroundColor: 'rgba(249, 183, 93, 0.3)',
-                // fill: true,
+                borderColor: '#ff4b4bff',
+                backgroundColor: '#ff4b4b5a',
                 tension: 0.3,
-            }
-            // ,
-            // {
-            //     label: 'Evening Early Count',
-            //     data: dailySummary.map(item => item.evening_early_count),
-            //     borderColor: '#EDCE92',
-            //     backgroundColor: 'rgba(237, 206, 146, 0.3)',
-            //     // fill: true,
-            //     tension: 0.3,
-            // },
+            },
+            {
+                label: 'Evening Early Count',
+                data: dailySummary.map(item => item.evening_early_count),
+                borderColor: '#678dffff',
+                backgroundColor: '#678dff68',
+                tension: 0.3,
+            },
         ],
     };
 
@@ -309,7 +341,11 @@ function PrincipalDashboard() {
 
         scales: {
             x: {
-                ticks: { maxRotation: 0 },
+                ticks: {
+                    maxRotation: 30,
+                    minRotation: 30,
+                    // autoSkip: false,
+                },
                 title: {
                     display: true,
                     text: 'Date',
@@ -405,16 +441,29 @@ function PrincipalDashboard() {
             </div>
 
             {/* Daily Staff Table Section */}
-            {selectedDate && (
-                <div ref={tableRef} className="bg-white p-6 rounded-xl shadow-md mt-6">
+            {selectedDate && selectedType && (
+                <div className="bg-white p-6 rounded-xl shadow-md mt-6">
                     <h5 className="mb-4">
-                        {`Late Staff on ${selectedDate}`}
+                        {selectedType === 'Late In'
+                            ? `Morning Late Staff on ${selectedDate}`
+                            : `Evening Early Out Staff on ${selectedDate}`
+                        }
                     </h5>
 
                     <Table
-                        columns={['staff_id', 'name', 'dept']}
-                        data={dailyStaff}
-                        onRowClick={(row) => handleRowClick(row.staff_id)}
+                        columns={['staff_id', 'name', 'dept', 'expected_time', 'actual_time', 'minutes_diff']}
+                        data={sortedDailyStaffData}
+                        sortConfig={dailyStaffSortConfig}
+                        onSort={(col) => {
+                            setDailyStaffSortConfig(prev =>
+                                prev.key === col
+                                    ? { key: col, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+                                    : { key: col, direction: 'asc' }
+                            );
+                        }}
+                        currentPage={dailyStaffPage}
+                        onPageChange={setDailyStaffPage}
+                        onRowClick={handleRowClick}
                     />
                 </div>
             )}

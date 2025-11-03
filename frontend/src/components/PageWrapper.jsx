@@ -16,7 +16,7 @@ function PageWrapper({ title, children }) {
     }, []);
 
     return (
-        <div className={`container mt-5 mb-5 p-4 rounded-4 shadow-lg bg-white bg-opacity-75${isFlagMode ? ' border border-danger border-2' : ''}`}>
+        <div className={`mt-5 mb-5 p-4 rounded-4 shadow-lg bg-white bg-opacity-75${isFlagMode ? ' border border-danger border-2' : ''}`}>
             {title && (
                 <>
                     <h2 className="mb-4 fw-bold text-c-primary text-center">{title}</h2>
