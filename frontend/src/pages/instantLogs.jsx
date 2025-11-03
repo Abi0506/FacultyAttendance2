@@ -68,6 +68,9 @@ function InstantLogs() {
         <PageWrapper title="Attendance Sync & Process">
             <div className="p-4 rounded-3 bg-light border mb-4">
                 <h4 className="mb-3 text-secondary">Get Logs / Generate Report</h4>
+                <h6 className="text-muted fw-normal small mb-4">
+                    The selected operation will continue running in the background. You will receive an alert once it has completed.
+                </h6>
                 <form onSubmit={handleSubmit} className="row g-4">
                     <div className="col-md-4">
                         <label htmlFor="fromDate" className="form-label fw-medium">From Date</label>

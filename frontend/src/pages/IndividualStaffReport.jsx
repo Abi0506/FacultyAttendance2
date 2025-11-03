@@ -192,15 +192,13 @@ function IndividualStaffReport() {
 
 
     // Add a Note column that mentions approved exemptions if present for the date
-    const pdfColumnsWithNote = [...pdfColumns, 'Note'];
+    const pdfColumnsWithNote = [...pdfColumns,];
     const tableRowsWithNote = tableRows.map((r) => {
       // r[0] is staff id, r[1] is name, r[2] is Date in our mapping above
       const recDate = (r[2] || '').toString();
       const ymd = normalizeDateYMD(recDate);
       const dmy = normalizeDateDMY(recDate);
-      const match = approvedExemptionsMap[recDate] || approvedExemptionsMap[ymd] || approvedExemptionsMap[dmy];
-      const note = match ? match.note : '-';
-      return [...r, note];
+      return [...r,];
     });
 
     PdfTemplate({
@@ -221,6 +219,7 @@ function IndividualStaffReport() {
     );
   };
 
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const sortedRecords = useMemo(() => {
     if (!sortConfig.key) return records;
@@ -231,15 +230,21 @@ function IndividualStaffReport() {
       let bValue = b[realKey] ?? '';
 
       if (realKey === 'date') {
-        // Handle DD-MM-YYYY format properly
-        const parseDDMMYYYY = (str) => {
+        const parseDate = (str) => {
           if (!str || typeof str !== 'string') return new Date('Invalid');
-          const [day, month, year] = str.split('-');
-          return new Date(`${year}-${month}-${day}`);
+          // Handle YYYY-MM-DD
+          if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return new Date(str);
+          // Handle DD-MM-YYYY
+          if (/^\d{2}-\d{2}-\d{4}$/.test(str)) {
+            const [day, month, year] = str.split('-');
+            return new Date(`${year}-${month}-${day}`);
+          }
+          return new Date(str);
         };
-        aValue = parseDDMMYYYY(aValue);
-        bValue = parseDDMMYYYY(bValue);
+        aValue = parseDate(aValue);
+        bValue = parseDate(bValue);
       }
+
       else if (typeof aValue === 'string' && aValue.includes(':')) {
         // handle time strings like '09:45'
         aValue = aValue === '-' ? '00:00' : aValue;
@@ -409,7 +414,8 @@ function IndividualStaffReport() {
             </div>
           </div>
           <div className="d-flex align-items-center justify-content-between mt-4 mb-2">
-            <div className="d-flex align-items-center gap-3">
+            <div className="d-flex align-items-center gap-4">
+              {/* Flagged Record */}
               <div className="d-flex align-items-center">
                 <div
                   style={{
@@ -422,6 +428,21 @@ function IndividualStaffReport() {
                   }}
                 ></div>
                 <span className="text-muted small">Flagged Record</span>
+              </div>
+
+              {/* Exempted Record */}
+              <div className="d-flex align-items-center">
+                <div
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    backgroundColor: '#7cfbe836',
+                    border: '1px solid #00a36c',
+                    borderRadius: '4px',
+                    marginRight: '8px',
+                  }}
+                ></div>
+                <span className="text-muted small">Exempted Record</span>
               </div>
             </div>
 
@@ -478,8 +499,9 @@ function IndividualStaffReport() {
             </span>
           </div>
         </>
-      )}
-    </PageWrapper>
+      )
+      }
+    </PageWrapper >
   );
 }
 

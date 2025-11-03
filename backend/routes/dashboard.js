@@ -95,7 +95,9 @@ router.get('/daily-summary', async (req, res) => {
                 MINUTE, 
                 CAST(CONCAT(l.date, ' ', l.in_time) AS DATETIME), 
                 CAST(CONCAT(l.date, ' ', l.first_time) AS DATETIME)
-            ) > 15
+            ) > 15    AND EXISTS (
+        SELECT 1 FROM report r WHERE r.date = l.date
+    )
             GROUP BY l.date
             ORDER BY l.date
         `, [startDate, endDate]);

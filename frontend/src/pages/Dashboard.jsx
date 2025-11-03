@@ -36,7 +36,9 @@ function PrincipalDashboard() {
     const [selectedDept, setSelectedDept] = useState(null);
     const [staffData, setStaffData] = useState([]);
     const [staffSortConfig, setStaffSortConfig] = useState({ key: 'late_count', direction: 'desc' });
+    const [dailySortConfig, setDailySortConfig] = useState({ key: 'staff_id', direction: 'asc' });
     const [staffPage, setStaffPage] = useState(1);
+    const [dailyPage, setDailyPage] = useState(1);
     const [dailySummary, setDailySummary] = useState([]);
     const navigate = useNavigate();
     const tableRef = useRef(null);
@@ -188,6 +190,7 @@ function PrincipalDashboard() {
                 params: { department: deptName, startDate, endDate },
             });
             setStaffData(res.data);
+            setStaffPage(1)
             setTimeout(() => {
                 tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
@@ -243,6 +246,24 @@ function PrincipalDashboard() {
         setStartDate(format(start));
         setEndDate(format(end));
     };
+    function fillMissingDates(dailySummary, startDate, endDate) {
+        const result = [];
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const map = Object.fromEntries(
+            dailySummary.map(item => [item.date, item.morning_late_count])
+        );
+
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            result.push({
+                date: dateStr,
+                morning_late_count: map[dateStr] || 0,
+            });
+        }
+        return result;
+    }
+
 
     // Auto-fetch on date change
     useEffect(() => {
@@ -302,9 +323,11 @@ function PrincipalDashboard() {
         },
         onClick: handleBarClick,
     };
+    const normalizedDailySummary = fillMissingDates(dailySummary, startDate, endDate);
+
 
     const lineData = {
-        labels: dailySummary.map(item => item.date), // x-axis: dates
+        labels: normalizedDailySummary.map(item => item.date), // x-axis: dates
         datasets: [
             {
                 label: 'Morning Late Count',
@@ -362,13 +385,9 @@ function PrincipalDashboard() {
         },
     };
 
-
-
     return (
         <PageWrapper title="Principal Dashboard">
-            {/* Date Controls with Preset Options and Filter — Single Row Layout */}
             <div className="d-flex justify-content-between items-center mb-6 bg-white">
-                {/* Left Section: Date Inputs */}
                 <div className="d-flex items-center gap-4 justify-content-between">
 
                     <div>
@@ -419,6 +438,7 @@ function PrincipalDashboard() {
                             columns={['staff_id', 'name', 'late_count']}
                             data={sortedStaffData}
                             sortConfig={staffSortConfig}
+                            selectedDate={selectedDate}
                             onSort={(col) => {
                                 setStaffSortConfig(prev =>
                                     prev.key === col

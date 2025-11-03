@@ -2,12 +2,14 @@ import React, { useState, useMemo, useEffect } from "react";
 import PropTypes from "prop-types";
 
 function Table({
+    opt_staff_id = "",
     columns,
     data,
     sortConfig,
     onSort,
     selectedDate,
-    rowsPerPage = 25,
+    rowsPerPage = 10,
+    rowHighlightMap = {},
     flaggedCells,
     onFlagClick,
     isFlagMode,
@@ -18,7 +20,6 @@ function Table({
     editableColumns = [], // NEW
     onEdit, // NEW
     editConfig = {}, // NEW — optional (min, max)
-    rowHighlightMap = {}, // optional map: { dateOrStaffKey: { backgroundColor: '#...', note: '...' } }
 }) {
     const [internalPage, setInternalPage] = useState(1);
     const currentPage = externalPage ?? internalPage;
@@ -30,6 +31,8 @@ function Table({
         const startIndex = (currentPage - 1) * rowsPerPage;
         return data.slice(startIndex, startIndex + rowsPerPage);
     }, [data, currentPage, rowsPerPage]);
+
+    let currentDateExempted = false;
 
     useEffect(() => {
         if (!externalPage) setInternalPage(1);
@@ -69,8 +72,6 @@ function Table({
 
     return (
         <div className="table-container table-responsive" style={{ position: "relative" }}>
-
-
             <table className="table table-c">
                 <thead className="table-secondary" style={{ position: "sticky", top: 0, zIndex: 2 }}>
                     <tr>
@@ -96,167 +97,104 @@ function Table({
                 </thead>
 
                 <tbody>
-                    {(() => {
-                        if (loading) {
-                            return (
-                                <tr>
-                                    <td colSpan={columns.length} className="text-center py-4 text-secondary">
-                                        Loading...
-                                    </td>
-                                </tr>
-                            );
-                        }
-
-                        if (currentData.length > 0) {
-                            return currentData.map((row, rowIndex) => {
-                                // Determine highlight style by trying multiple possible key names and normalizations
-                                let highlightStyle = {};
-                                let hasHighlight = false;
-                                let highlightNote = undefined;
-                                if (row && rowHighlightMap) {
-                                    const possibleKeys = [];
-                                    if (row.staff_id !== undefined && row.staff_id !== null) possibleKeys.push(row.staff_id);
-                                    if (row.staffId !== undefined && row.staffId !== null) possibleKeys.push(row.staffId);
-                                    if (row.Date !== undefined && row.Date !== null) possibleKeys.push(row.Date);
-                                    if (row.date !== undefined && row.date !== null) possibleKeys.push(row.date);
-
-                                    const dateCandidates = (val) => {
-                                        const s = String(val || '').trim();
-                                        const candidates = [s];
-                                        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-                                            const [y, m, d] = s.split('-');
-                                            candidates.push(`${d}-${m}-${y}`);
-                                        } else if (/^\d{2}-\d{2}-\d{4}$/.test(s)) {
-                                            const [d, m, y] = s.split('-');
-                                            candidates.push(`${y}-${m}-${d}`);
-                                        }
-                                        return Array.from(new Set(candidates));
-                                    };
-
-                                    const expandedKeys = [];
-                                    for (const k of possibleKeys) {
-                                        if (k === undefined || k === null) continue;
-                                        const ks = String(k).trim();
-                                        expandedKeys.push(ks);
-                                        expandedKeys.push(...dateCandidates(ks));
-                                    }
-
-                                    for (const k of expandedKeys) {
-                                        if (!k && k !== 0) continue;
-                                        // direct match
-                                        if (rowHighlightMap[k]) {
-                                            const entry = rowHighlightMap[k];
-                                            highlightNote = entry && entry.note !== undefined ? entry.note : highlightNote;
-                                            const { note, ...styleOnly } = entry || {};
-                                            highlightStyle = styleOnly && Object.keys(styleOnly).length ? styleOnly : entry;
-                                            hasHighlight = true;
-                                            console.debug('Table: highlight matched (direct)', { rowIndex, key: k, entry });
-                                            break;
-                                        }
-                                        // composite match: staffId_date
-                                        const staffIdVal = row.staff_id ?? row.staffId;
-                                        if (staffIdVal !== undefined && staffIdVal !== null) {
-                                            const composite = `${String(staffIdVal).trim()}_${k}`;
-                                            if (rowHighlightMap[composite]) {
-                                                const entry = rowHighlightMap[composite];
-                                                highlightNote = entry && entry.note !== undefined ? entry.note : highlightNote;
-                                                const { note, ...styleOnly } = entry || {};
-                                                highlightStyle = styleOnly && Object.keys(styleOnly).length ? styleOnly : entry;
-                                                hasHighlight = true;
-                                                console.debug('Table: highlight matched (composite)', { rowIndex, key: composite, entry });
-                                                break;
-                                            }
-                                        }
-                                    }
+                    {loading ? (
+                        <tr>
+                            <td colSpan={columns.length} className="text-center py-4 text-secondary">
+                                Loading...
+                            </td>
+                        </tr>
+                    ) : currentData.length > 0 ? (
+                        currentData.map((row, rowIndex) => (
+                            currentDateExempted = false,
+                            Object.values(rowHighlightMap).forEach(e => {
+                                if (e.exemptionDate === (row.Date || row.date)) {
+                                    currentDateExempted = true;
                                 }
+                            }),
+                            <tr
+                                key={rowIndex}
+                                onClick={onRowClick ? () => onRowClick(row.staff_id) : undefined}
+                                style={{
+                                    ...(onRowClick ? { cursor: "pointer" } : {}),
+                                    ...(currentDateExempted ? { backgroundColor: "#7cfbe836" } : {})
+                                }}
+                            >
+                                {columns.map((col, colIndex) => {
+                                    const timeValue = row[col];
+                                    const flaggedKey =
+                                        (row.staff_id || opt_staff_id) && timeValue
+                                            ? `${row.staff_id || opt_staff_id}_${row.Date || row.date}_${timeValue}`
+                                            : undefined;
+                                    const isFlagged =
+                                        flaggedCells && flaggedKey && flaggedCells[flaggedKey];
+                                    const isClickable =
+                                        isFlagMode &&
+                                        (col.toLowerCase().includes("in") ||
+                                            col.toLowerCase().includes("out")) &&
+                                        timeValue &&
+                                        onFlagClick;
 
-                                return (
-                                    <tr
-                                        key={rowIndex}
-                                        onClick={onRowClick ? () => onRowClick(row.staff_id) : undefined}
-                                        title={highlightNote || undefined}
-                                        className={hasHighlight ? 'exemption-approved' : undefined}
-                                        style={{
-                                            ...(onRowClick ? { cursor: "pointer" } : {}),
-                                            ...highlightStyle,
-                                        }}
-                                    >
-                                        {columns.map((col, colIndex) => {
-                                            const timeValue = row[col];
-                                            const flaggedKey =
-                                                row.staff_id && timeValue
-                                                    ? `${row.staff_id}_${row.Date || row.date}_${timeValue}`
-                                                    : undefined;
-                                            const isFlagged =
-                                                flaggedCells && flaggedKey && flaggedCells[flaggedKey];
-                                            const isClickable =
-                                                isFlagMode &&
-                                                (col.toLowerCase().includes("in") ||
-                                                    col.toLowerCase().includes("out")) &&
-                                                timeValue &&
-                                                onFlagClick;
+                                    // Handle editable numeric column
+                                    const isEditable = editableColumns.includes(col);
+                                    if (isEditable) {
+                                        return (
+                                            <td key={colIndex} style={{
+                                                backgroundColor: "inherit"
+                                            }}>
+                                                <EditableCell
+                                                    value={row[col]}
+                                                    row={row}
+                                                    col={col}
+                                                    editConfig={editConfig}
+                                                    onEdit={onEdit}
+                                                />
+                                            </td>
+                                        );
+                                    }
 
-                                            // Handle editable numeric column
-                                            const isEditable = editableColumns.includes(col);
-                                            if (isEditable) {
-                                                return (
-                                                    <td key={colIndex}>
-                                                        <EditableCell
-                                                            value={row[col]}
-                                                            row={row}
-                                                            col={col}
-                                                            editConfig={editConfig}
-                                                            onEdit={onEdit}
-                                                        />
-                                                    </td>
-                                                );
-                                            }
+                                    // Regular cell
+                                    return (
+                                        <td
+                                            key={colIndex}
+                                            onClick={(e) => {
+                                                if (isClickable) {
+                                                    e.stopPropagation();
+                                                    onFlagClick(
+                                                        row.staff_id,
+                                                        row.Date || row.date || selectedDate,
+                                                        timeValue
+                                                    );
+                                                }
+                                            }}
+                                            className={[
+                                                isClickable ? "flag-hover-cell" : "",
+                                                isFlagged ? "bg-c-warning" : "",
 
-                                            // Regular cell
-                                            return (
-                                                <td
-                                                    key={colIndex}
-                                                    onClick={(e) => {
-                                                        if (isClickable) {
-                                                            e.stopPropagation();
-                                                            onFlagClick(
-                                                                row.staff_id,
-                                                                row.Date || row.date || selectedDate,
-                                                                timeValue
-                                                            );
-                                                        }
-                                                    }}
-                                                    className={[
-                                                        isClickable ? "flag-hover-cell" : "",
-                                                        isFlagged ? "bg-c-warning" : "",
-                                                    ]
-                                                        .filter(Boolean)
-                                                        .join(" ")}
-                                                    style={{
-                                                        cursor:
-                                                            (!isFlagMode && onRowClick) ||
-                                                                (isFlagMode && isClickable)
-                                                                ? "pointer"
-                                                                : "default",
-                                                    }}
-                                                >
-                                                    {timeValue ?? "-"}
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                );
-                            });
-                        }
-
-                        return (
-                            <tr>
-                                <td colSpan={columns.length} className="text-center">
-                                    {selectedDate ? "No records found" : "Please select a date"}
-                                </td>
+                                            ]
+                                                .filter(Boolean)
+                                                .join(" ")}
+                                            style={{
+                                                cursor:
+                                                    (!isFlagMode && onRowClick) ||
+                                                        (isFlagMode && isClickable)
+                                                        ? "pointer"
+                                                        : "default",
+                                                backgroundColor: "inherit",
+                                            }}
+                                        >
+                                            {timeValue ?? "-"}
+                                        </td>
+                                    );
+                                })}
                             </tr>
-                        );
-                    })()}
+                        ))
+                    ) : (
+                        <tr>
+                            <td colSpan={columns.length} className="text-center">
+                                {selectedDate ? "No records found" : "Please select a date"}
+                            </td>
+                        </tr>
+                    )}
                 </tbody>
             </table>
 

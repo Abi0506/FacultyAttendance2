@@ -26,7 +26,12 @@ function IndividualAttendanceTable() {
   const [flaggedCells, setFlaggedCells] = useState({});
   const [approvedExemptionsMap, setApprovedExemptionsMap] = useState({});
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
-
+  const columnKeyMap = {
+    "Date": "date",
+    "Late Mins": "late_mins",
+    "Additional Late Mins": "additional_late_mins",
+    "Working Hours": "working_hours",
+  };
   const handleSort = (column) => {
     setSortConfig((prev) =>
       prev.key === column
@@ -200,8 +205,6 @@ function IndividualAttendanceTable() {
     }
   };
 
-
-
   const handleDateChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -285,8 +288,7 @@ function IndividualAttendanceTable() {
       const recDate = (rec.date || '').toString();
       const ymd = normalizeDateYMD(recDate);
       const dmy = normalizeDateDMY(recDate);
-      const match = approvedExemptionsMap[recDate] || approvedExemptionsMap[ymd] || approvedExemptionsMap[dmy];
-      const note = match ? match.note : '-';
+     
       return [
         rec.date,
         ...columnsToShow.map((col) => rec[col] || '-'),
@@ -294,10 +296,10 @@ function IndividualAttendanceTable() {
         rec.late_mins,
         rec.working_hours,
         rec.additional_late_mins || 0,
-        note,
+      
       ];
     });
-    const tableColumnWithNote = [...tableColumn, 'Note'];
+    const tableColumnWithNote = [...tableColumn,];
     PdfTemplate({
       title: 'Biometric Attendance Report for ' + selectedUser.name,
       tables: [{ columns: tableColumnWithNote, data: tableRows }],
@@ -305,29 +307,70 @@ function IndividualAttendanceTable() {
       fileName: `Attendance_${selectedUser.name || 'employee'}.pdf`,
     });
   };
+  // const sortedRecords = useMemo(() => {
+  //   if (!sortConfig.key) return records;
+
+  //   const sorted = [...records].sort((a, b) => {
+  //     let aValue = a[sortConfig.key];
+  //     let bValue = b[sortConfig.key];
+
+  //     if (sortConfig.key === 'date') {
+  //       const parseDMY = (str) => {
+  //         if (!str || typeof str !== 'string') return new Date('Invalid');
+  //         const [d, m, y] = str.split('-').map(Number);
+  //         return new Date(y, m - 1, d);
+  //       };
+
+  //       const aDate = parseDMY(aValue);
+  //       const bDate = parseDMY(bValue);
+
+  //       if (aDate < bDate) return sortConfig.direction === 'asc' ? -1 : 1;
+  //       if (aDate > bDate) return sortConfig.direction === 'asc' ? 1 : -1;
+  //       return 0;
+  //     }
+  //     // Handle numeric comparison
+  //     if (!isNaN(aValue) && !isNaN(bValue)) {
+  //       aValue = parseFloat(aValue);
+  //       bValue = parseFloat(bValue);
+  //     }
+
+  //     if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+  //     if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+  //     return 0;
+  //   });
+
+  //   return sorted;
+  // }, [records, sortConfig]);
+
   const sortedRecords = useMemo(() => {
     if (!sortConfig.key) return records;
 
+    const realKey = columnKeyMap[sortConfig.key] || sortConfig.key; // map label to data key
     const sorted = [...records].sort((a, b) => {
-      let aValue = a[sortConfig.key];
-      let bValue = b[sortConfig.key];
+      let aValue = a[realKey] ?? '';
+      let bValue = b[realKey] ?? '';
 
-      if (sortConfig.key === 'date') {
-        const parseDMY = (str) => {
+      if (realKey === 'date') {
+        const parseDate = (str) => {
           if (!str || typeof str !== 'string') return new Date('Invalid');
-          const [d, m, y] = str.split('-').map(Number);
-          return new Date(y, m - 1, d);
+          // Handle YYYY-MM-DD
+          if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return new Date(str);
+          // Handle DD-MM-YYYY
+          if (/^\d{2}-\d{2}-\d{4}$/.test(str)) {
+            const [day, month, year] = str.split('-');
+            return new Date(`${year}-${month}-${day}`);
+          }
+          return new Date(str);
         };
-
-        const aDate = parseDMY(aValue);
-        const bDate = parseDMY(bValue);
-
-        if (aDate < bDate) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (aDate > bDate) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
+        aValue = parseDate(aValue);
+        bValue = parseDate(bValue);
       }
-      // Handle numeric comparison
-      if (!isNaN(aValue) && !isNaN(bValue)) {
+
+      else if (typeof aValue === 'string' && aValue.includes(':')) {
+        // handle time strings like '09:45'
+        aValue = aValue === '-' ? '00:00' : aValue;
+        bValue = bValue === '-' ? '00:00' : bValue;
+      } else if (!isNaN(parseFloat(aValue)) && !isNaN(parseFloat(bValue))) {
         aValue = parseFloat(aValue);
         bValue = parseFloat(bValue);
       }
@@ -338,7 +381,9 @@ function IndividualAttendanceTable() {
     });
 
     return sorted;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [records, sortConfig]);
+
 
   return (
     <PageWrapper>
@@ -387,7 +432,7 @@ function IndividualAttendanceTable() {
 
       {selectedUser && (
         <>
-          <div className="border rounded p-4 bg-white mb-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+          <div className="border rounded p-4 bg-white mb-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
             <div><strong>Name:</strong> {selectedUser.name}</div>
             <div><strong>ID:</strong> {selectedUser.staff_id}</div>
             <div><strong>Department:</strong> {selectedUser.dept}</div>
@@ -413,6 +458,7 @@ function IndividualAttendanceTable() {
 
 
           <Table
+          opt_staff_id= {selectedUser.staff_id}
             columns={['date', ...columnsToShow, 'late_mins', 'additional_late_mins', 'working_hours', 'attendance']}
             data={sortedRecords}
             flaggedCells={flaggedCells}
