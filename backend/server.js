@@ -6,7 +6,7 @@ const scriptPath = process.env.PYTHON_SCRIPT_PATH1;
 
 function startPythonScript() {
     // console.log("Sciprt", scriptPath)
-    const pythonProcess = spawn('C:\\FacultyAttendance2\\FaceMachine\\venv\\Scripts\\python.exe', [scriptPath]);
+    const pythonProcess = spawn(process.env.PYTHON_PROCESS_PATH, [scriptPath]);
 
     pythonProcess.on('error', (err) => {
         console.error('Failed to start Python process:', err);
