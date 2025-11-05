@@ -140,7 +140,6 @@ const PdfTemplate = ({
                         else if (colName === 'IN3') time = rowData[7];
                         else if (colName === 'OUT3') time = rowData[8];
                         const key = `${staffId}_${date}_${time}`;
-                        console.log("Key: ", key, "Column name: ", colName, rowData)
                         if (flaggedCells[key]) {
                             data.cell.styles.fillColor = [255, 237, 167];
                             data.cell.styles.textColor = [0, 0, 0];
