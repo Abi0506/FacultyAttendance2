@@ -11,6 +11,7 @@ function DeptDesigManager() {
     const [hodList, setHodList] = useState([]);
     const [newDept, setNewDept] = useState('');
     const [newDesig, setNewDesig] = useState('');
+    const [newAbbr, setNewAbbr] = useState('');
     const [loadingDept, setLoadingDept] = useState(false);
     const [loadingDesig, setLoadingDesig] = useState(false);
     const [editingHod, setEditingHod] = useState({});
@@ -60,7 +61,7 @@ function DeptDesigManager() {
         e.preventDefault();
         if (!newDept.trim()) return;
         try {
-            const res = await axios.post('/attendance/add_department', { dept: newDept });
+            const res = await axios.post('/attendance/add_department', { dept: newDept ,  dept_abbr: newAbbr});
             if (res.data.success) {
                 showAlert('Department added', 'success');
                 setNewDept('');
@@ -114,19 +115,33 @@ function DeptDesigManager() {
                 <div className="col-md-6">
                     <div className="p-4 rounded-4 bg-light border">
                         <h5 className="mb-3 text-c-primary fw-bold">Departments</h5>
-                        <form className="mb-3 d-flex gap-2" onSubmit={handleAddDept}>
-                            <input
-                                type="text"
-                                className="form-control"
-                                placeholder="Add new department"
-                                value={newDept}
-                                onChange={e => setNewDept(e.target.value)}
-                                required
-                            />
-                            <button className="btn btn-c-primary" type="submit" disabled={loadingDept}>
-                                Add
-                            </button>
+                        <form className="mb-3 d-flex flex-column gap-2" onSubmit={handleAddDept}>
+                            <div className="d-flex gap-2">
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Department name"
+                                    value={newDept}
+                                    onChange={e => setNewDept(e.target.value)}
+                                    required
+                                />
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Abbreviation (e.g., MECH)"
+                                    value={newAbbr}
+                                    onChange={e => setNewAbbr(e.target.value)}
+                                    required
+                                />
+                                <button className="btn btn-c-primary" type="submit" disabled={loadingDept}>
+                                    Add
+                                </button>
+                            </div>
+                            <small className="text-muted">
+                                The abbreviation is used in reports and quick references (e.g., MECHANICAL ENGINEERING → MECH).
+                            </small>
                         </form>
+
                         {loadingDept ? (
                             <div className="text-center py-3">
                                 <div className="spinner-border text-c-primary" role="status">

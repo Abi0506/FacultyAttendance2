@@ -47,39 +47,27 @@ function PrincipalDashboard() {
     const [selectedType, setSelectedType] = useState(null); // 'Late In' or 'Early Out'
     const [dailyStaffSortConfig, setDailyStaffSortConfig] = useState({ key: 'minutes_diff', direction: 'desc' });
     const [dailyStaffPage, setDailyStaffPage] = useState(1);
+    const [deptShortNames, setDeptShortNames] = useState({});
 
-    const deptShortNames = {
-        "MECHANICAL ENGINEERING": "MECH",
-        "CIVIL ENGINEERING": "CIVIL",
-        "ELECTRICAL AND ELECTRONICS ENGINEERING": "EEE",
-        "COMPUTER SCIENCE AND ENGINEERING": "CSE",
-        "MATHEMATICS": "MATHS",
-        "CHEMISTRY": "CHEM",
-        "ENGLISH": "ENG",
-        "COMPUTER CENTRE": "CC",
-        "PHYSICS": "PHY",
-        "PHYSICAL EDUCATION": "PE",
-        "OFFICE": "OFFICE",
-        "EXAMINATION CENTER": "EXAM",
-        "STORES": "STORES",
-        "PRINCIPAL OFFICE": "PRINCIPAL",
-        "LIBRARY": "LIB",
-        "ELECTRONICS AND COMMUNICATION ENGINEERING": "ECE",
-        "POWER OFFICE": "POWER",
-        "HUMANITIES": "HUM",
-        "IQAC": "IQAC",
-        "ARTIFICIAL INTELLIGENCE AND DATA SCIENCE": "AIDS",
-        "CAREER DEVELOPMENT CENTRE": "CDC",
-        "STAFF HOSTEL": "HOSTEL",
-        "MAINTANANCE": "MAINT",
-        "TOTAL QUALITY MANAGEMENT": "TQM",
-        "PSG GRD S & T MUSEUM": "MUSEUM",
-        "TAMIL": "TAMIL",
-        "COMPUTER MAINTENANCE CELL": "CMC",
-        "CONVENTION CENTRE": "CONVENTION",
-        "TRANSPORT": "TRANS",
-        "PSG SOFTWARE TECHNOLOGIES": "PSGT",
-    };
+   useEffect(() => {
+        const fetchDeptAbbr = async () => {
+            try {
+                const res = await axios.get('/dashboard/abbr');
+                const formattedData = {};
+                res.data.forEach(item => {
+                    formattedData[item.dept] = item.dept_abbr;
+                });
+
+                setDeptShortNames(formattedData);
+                console.log("Formatted Department Abbreviations:", formattedData);
+            } catch (err) {
+                console.error("Error fetching department abbreviations:", err);
+            }
+        };
+
+        fetchDeptAbbr();
+    }, []);
+  
 
     const sortedStaffData = React.useMemo(() => {
         if (!staffData.length) return [];
@@ -210,9 +198,12 @@ function PrincipalDashboard() {
 
         const index = elements[0].index;
         const datasetIndex = elements[0].datasetIndex; // 0 = Morning Late, 1 = Evening Early
-        const clickedDate = dailySummary[index]?.date;
 
-        // Determine which type based on dataset
+        // Use normalizedDailySummary (not dailySummary)
+        const clickedDate = normalizedDailySummary[index]?.date;
+
+        if (!clickedDate) return;
+
         const type = datasetIndex === 0 ? 'Late In' : 'Early Out';
 
         setSelectedDate(clickedDate);
@@ -231,6 +222,7 @@ function PrincipalDashboard() {
             setDailyStaff([]);
         }
     };
+
 
 
     // Preset date range setter

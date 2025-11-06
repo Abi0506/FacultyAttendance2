@@ -58,3 +58,4 @@ def get_holidays():
     except Exception as e:
         print(f"Error fetching holidays from Google Calendar: {e}")
         return []
+    

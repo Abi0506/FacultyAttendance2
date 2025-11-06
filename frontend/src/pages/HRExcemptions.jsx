@@ -7,7 +7,7 @@ import PageWrapper from '../components/PageWrapper';
 function HRExcemptions() {
     const { showAlert } = useAlert();
     const todayDate = new Date().toISOString().split('T')[0];
-
+    const [loadingLogs, setLoadingLogs] = useState({});
     const today = new Date();
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
     const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
@@ -19,6 +19,8 @@ function HRExcemptions() {
     const [startDate, setStartDate] = useState(firstDay.toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(lastDay.toISOString().split('T')[0]);
     const [staffName, setStaffName] = useState('');
+    const [expandedExemption, setExpandedExemption] = useState(null);
+    const [logDetails, setLogDetails] = useState({});
 
     const [formData, setFormData] = useState({
         staffId: '',
@@ -95,6 +97,32 @@ function HRExcemptions() {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
+
+    const getExemptionDetails = async (exemption) => {
+    const { staffId, exemptionDate, exemptionId } = exemption;
+    try {
+        const res = await axios.post("/attendance/exemption_log_details", {
+            id: staffId,
+            date: exemptionDate
+        });
+        if (res.data.success) {
+            setLogDetails(prev => ({
+                ...prev,
+                [exemptionId]: {
+                    logs: res.data.logs,
+                    category: res.data.category
+                }
+            }));
+            setExpandedExemption(exemptionId);
+        } else {
+            showAlert(res.data.message, 'warning');
+        }
+    } catch (error) {
+        showAlert(error.response?.data?.message || 'Failed to fetch exemption details', 'error');
+        console.error("Error fetching exemption details:", error);
+    }
+};
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -286,90 +314,170 @@ function HRExcemptions() {
                     </div>
                 </div>
 
-                <div className="table-responsive rounded-3">
-                    <table className='table table-c align-middle mb-0'>
-                        <thead className="table-secondary">
-                            <tr>
-                                <th>Staff ID</th>
-                                <th>Name</th>
-                                <th>Type</th>
-                                <th>Date</th>
-                                <th>Session(s)</th>
-                                <th>Time</th>
-                                <th>Reason</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredExemptions.length === 0 ? (
-                                <tr><td colSpan="8" className="text-center">No exemptions found</td></tr>
-                            ) : (
-                                filteredExemptions.map((exemption, index) => {
-                                    return (
-                                        <tr key={index} className="exemption-row" id={`${exemption.exemptionId}`}>
-                                            <td>{exemption.staffId}</td>
-                                            <td>{exemption.exemptionStaffName}</td>
-                                            <td>{exemption.exemptionType}</td>
-                                            <td>{exemption.exemptionDate}</td>
-                                            <td>{exemption.exemptionSession || <span className="text-muted">-------</span>}</td>
-                                            <td>
-                                                {(exemption.start_time && exemption.end_time)
-                                                    ? `${exemption.start_time} - ${exemption.end_time}`
-                                                    : <span className="text-muted">-----</span>
-                                                }
-                                            </td>
-                                            <td>{exemption.exemptionReason === 'Other' ? <span className="fst-italic">{exemption.otherReason}</span> : exemption.exemptionReason}</td>
-                                            <td>
-                                                {exemption.exemptionStatus === 'approved' ? (
-                                                    <span className="badge bg-success">Approved</span>
-                                                ) : exemption.exemptionStatus === 'rejected' ? (
-                                                    <span className="badge bg-danger">Rejected</span>
-                                                ) : exemption.exemptionStatus === 'processing' ? (
-                                                    <span className="badge bg-info text-light">Processing</span>
-                                                ) : (
-                                                    <span className="badge bg-warning text-light">Pending</span>
-                                                )}
-                                            </td>
-
-                                            <td style={{ width: "0px" }}>
-                                                {exemption.exemptionStatus === 'pending' && (
-                                                    <div className='btn-group' role='group'>
-                                                        <button
-                                                            className="btn btn-sm btn-outline-success py-0 px-2"
-                                                            onClick={() => modifyExemption(index, "approve")}
-                                                            type="button"
-                                                        >
-                                                            Approve
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-sm btn-outline-danger py-0 px-2"
-                                                            onClick={() => modifyExemption(index, "reject")}
-                                                            type="button"
-                                                        >
-                                                            Reject
-                                                        </button>
-                                                    </div>
-                                                )}
-
-                                                {exemption.exemptionStatus === 'processing' && (
-                                                    <button
-                                                        className="btn btn-sm btn-outline-warning py-0 px-2"
-                                                        onClick={() => modifyExemption(index, "revoke")}
-                                                        type="button"
-                                                    >
-                                                        Revoke
-                                                    </button>
-                                                )}
-
-                                            </td>
-                                        </tr>
-                                    );
-                                })
-                            )}
-                        </tbody>
-                    </table>
+<div className="table-responsive rounded-3">
+  <table className="table table-c align-middle mb-0">
+    <thead className="table-secondary">
+      <tr>
+        <th>Staff ID</th>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Date</th>
+        <th>Session(s)</th>
+        <th>Time</th>
+        <th>Reason</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {filteredExemptions.length === 0 ? (
+        <tr>
+          <td colSpan="9" className="text-center">
+            No exemptions found
+          </td>
+        </tr>
+      ) : (
+        filteredExemptions.map((exemption, index) => (
+          <React.Fragment key={exemption.exemptionId}>
+            <tr
+              className="exemption-row"
+              id={`${exemption.exemptionId}`}
+              onClick={() =>
+                expandedExemption === exemption.exemptionId
+                  ? setExpandedExemption(null)
+                  : getExemptionDetails(exemption)
+              }
+              style={{ cursor: 'pointer' }}
+              role="button"
+              aria-expanded={expandedExemption === exemption.exemptionId}
+              aria-controls={`log-details-${exemption.exemptionId}`}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  expandedExemption === exemption.exemptionId
+                    ? setExpandedExemption(null)
+                    : getExemptionDetails(exemption);
+                }
+              }}
+            >
+              <td>{exemption.staffId}</td>
+              <td>{exemption.exemptionStaffName}</td>
+              <td>{exemption.exemptionType}</td>
+              <td>{exemption.exemptionDate}</td>
+              <td>
+                {exemption.exemptionSession || (
+                  <span className="text-muted">-------</span>
+                )}
+              </td>
+              <td>
+                {exemption.start_time && exemption.end_time ? (
+                  `${exemption.start_time} - ${exemption.end_time}`
+                ) : (
+                  <span className="text-muted">-----</span>
+                )}
+              </td>
+              <td>
+                {exemption.exemptionReason === 'Other' ? (
+                  <span className="fst-italic">{exemption.otherReason}</span>
+                ) : (
+                  exemption.exemptionReason
+                )}
+              </td>
+              <td>
+                {exemption.exemptionStatus === 'approved' ? (
+                  <span className="badge bg-success">Approved</span>
+                ) : exemption.exemptionStatus === 'rejected' ? (
+                  <span className="badge bg-danger">Rejected</span>
+                ) : exemption.exemptionStatus === 'processing' ? (
+                  <span className="badge bg-info text-light">Processing</span>
+                ) : (
+                  <span className="badge bg-warning text-light">Pending</span>
+                )}
+              </td>
+              <td style={{ width: '0px' }}>
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="btn-group"
+                  role="group"
+                >
+                  {exemption.exemptionStatus === 'pending' && (
+                    <>
+                      <button
+                        className="btn btn-sm btn-outline-success py-0 px-2"
+                        onClick={() => modifyExemption(index, 'approve')}
+                        type="button"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-danger py-0 px-2"
+                        onClick={() => modifyExemption(index, 'reject')}
+                        type="button"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+                  {exemption.exemptionStatus === 'processing' && (
+                    <button
+                      className="btn btn-sm btn-outline-warning py-0 px-2"
+                      onClick={() => modifyExemption(index, 'revoke')}
+                      type="button"
+                    >
+                      Revoke
+                    </button>
+                  )}
                 </div>
+              </td>
+            </tr>
+            {expandedExemption === exemption.exemptionId && (
+              <tr id={`log-details-${exemption.exemptionId}`}>
+                <td colSpan="9" className="bg-light">
+                  <div className="p-3">
+                    {loadingLogs[exemption.exemptionId] ? (
+                      <p className="text-muted">Loading log details...</p>
+                    ) : logDetails[exemption.exemptionId] ? (
+                      <div>
+                        <h6>Log Details</h6>
+                        {logDetails[exemption.exemptionId].logs.length > 0 ? (
+                          <p>
+                            {logDetails[exemption.exemptionId].logs
+                              .map((log) => log.time)
+                              .join(', ')}
+                          </p>
+                        ) : (
+                          <p className="text-muted">No logs available</p>
+                        )}
+                        {logDetails[exemption.exemptionId].category ? (
+                          <div>
+                            <h6>Category Details</h6>
+                            <p>
+                              Category No:{' '}
+                              {logDetails[exemption.exemptionId].category.category_no}
+                              <br />
+                              Description:{' '}
+                              {logDetails[exemption.exemptionId].category
+                                .category_description}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-muted">No category details available</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-muted">Failed to load log details</p>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )}
+          </React.Fragment>
+        ))
+      )}
+    </tbody>
+  </table>
+</div>
             </div>
 
             {/* Add Exemption */}

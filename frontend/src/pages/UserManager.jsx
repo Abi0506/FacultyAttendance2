@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import axios from '../axios';
 import PageWrapper from '../components/PageWrapper';
 import Table from '../components/Table';
@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAlert } from '../components/AlertProvider';
 
 function UserManager() {
+  const [staffName, setStaffName] = useState('');
   const { showAlert } = useAlert();
   const [departments, setDepartments] = useState([]);
   const [designations, setDesignations] = useState([]);
@@ -64,6 +65,26 @@ function UserManager() {
     }
     return filtered;
   }, [staff, searchQuery, staffSortConfig]);
+
+   useEffect(() => {
+        const fetchStaffName = async () => {
+            if (deleteId && deleteId.length > 2) {
+                try {
+                    const res = await axios.post('/attendance/search/getuser', { staffId: deleteId });
+                    if (res.data && res.data.staff && res.data.staff.name) {
+                        setStaffName(res.data.staff.name);
+                    } else {
+                        setStaffName('');
+                    }
+                } catch (err) {
+                    setStaffName('');
+                }
+            } else {
+                setStaffName('');
+            }
+        };
+        fetchStaffName();
+    }, [deleteId]);
 
   const handleStaffSort = (col) => {
     setStaffSortConfig((prev) => {
@@ -217,6 +238,13 @@ function UserManager() {
       setEditUser(null);
     }
   };
+  useEffect(() => {
+    if(editSearchId.trim().length >= 5) {
+      handleSearchEditUser();
+    } else {
+      setEditUser(null);
+    }
+  }, [editSearchId]);
 
   const handleEditUser = async (e) => {
     e.preventDefault();
@@ -256,6 +284,11 @@ function UserManager() {
   };
 
   const handleDeleteUser = async (e) => {
+    const confirmDelete = prompt("Do you want to delete user " + deleteId + " ? Type Staff ID to confirm", "");
+    if (confirmDelete.toUpperCase() !== deleteId.toUpperCase()) {
+      showAlert('User deletion cancelled', 'info');
+      return;
+    }
     e.preventDefault();
     setLoading1(true);
     try {
@@ -272,6 +305,7 @@ function UserManager() {
     }
   };
 
+ 
 
 
   return (
@@ -422,6 +456,7 @@ function UserManager() {
         <h4 className="mb-3 text-c-primary fw-bold">Edit User</h4>
         <div className="mb-3 d-flex gap-2">
           <input
+            id="editStaffId"
             className="form-control"
             placeholder="Enter Staff ID"
             value={editSearchId}
@@ -497,7 +532,7 @@ function UserManager() {
             </div>
           </form>
         ) : (
-          <p className="text-muted">No user selected for editing.</p>
+         <div></div>
         )}
       </div>
 
@@ -515,6 +550,9 @@ function UserManager() {
               required
             />
           </div>
+          {staffName && (
+                            <div className="mt-1 text-primary small">{staffName}</div>
+                        )}
           <button className="btn btn-c-secondary" type="submit" disabled={loading1}>
             {loading1 ? 'Deleting...' : 'Delete User'}
           </button>

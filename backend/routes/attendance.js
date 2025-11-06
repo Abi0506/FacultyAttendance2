@@ -444,16 +444,19 @@ router.post('/department', async (req, res) => {
 });
 
 router.post('/add_department', async (req, res) => {
-  const { dept } = req.body;
+  const { dept, dept_abbr } = req.body;
   if (!dept || !dept.trim()) {
     return res.status(400).json({ success: false, message: 'Department name cannot be empty' });
+  }
+  if(!dept_abbr || !dept_abbr.trim()) {
+    dept_abbr = null;
   }
   try {
     const [existing] = await db.query('SELECT dept FROM department WHERE dept = ?', [dept.trim()]);
     if (existing.length > 0) {
       return res.status(400).json({ success: false, message: 'Department already exists' });
     }
-    await db.query('INSERT INTO department (dept) VALUES (?)', [dept.trim()]);
+    await db.query('INSERT INTO department (dept, dept_abbr) VALUES (?, ?)', [dept.trim(), dept_abbr]);
     res.json({ success: true, message: 'Department added successfully' });
   } catch (error) {
 
@@ -837,6 +840,40 @@ router.post('/categories/update', async (req, res) => {
   }
 });
 
+router.post('/exemption_log_details', async (req, res) => {
+  try {
+    const { id, date } = req.body;
+
+    const [result] = await db.query(
+      'SELECT time FROM logs WHERE staff_id = ? AND date = ? ORDER BY time ASC',
+      [id, date]
+    );
+
+    const [category] = await db.query(
+      `SELECT c.category_no, c.category_description
+       FROM staff s
+       JOIN category c ON s.category = c.category_no
+       WHERE s.staff_id = ?`,
+      [id]
+    );
+
+    if (result.length > 0 || category.length > 0) {
+      return res.json({
+        success: true,
+        message: "Exemption details fetched successfully",
+        logs: result,
+        category: category[0] || null,
+      });
+    }
+
+    res.status(404).json({ success: false, message: 'No data found' });
+  } catch (error) {
+    console.error('Error fetching exemption details:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  } 
+});
+
+
 router.post('/hr_exemptions/approve', async (req, res) => {
   const { exemptionId } = req.body;
 
@@ -1146,6 +1183,30 @@ router.post("/update_additional_late_mins", async (req, res) => {
   } catch (err) {
     console.error("Error updating additional late minutes:", err);
     res.status(500).json({ success: false, message: "Failed to update additional late minutes" });
+  }
+});
+
+// router.post('/get_holiday_list', async (req, res) => {
+//   const limit = req.body.limit || 10; 
+//   try {
+//     const [rows] = await db.query('SELECT holiday FROM holidays ORDER BY date ASC LIMIT ?', [limit]);
+    
+//     ....
+//     res.json({ success: true, holidays: rows });
+//   } catch (err) {
+//     console.error("Error fetching holiday list:", err);
+//     res.status(500).json({ success: false, message: "Failed to fetch holiday list" });
+//   }
+// });
+
+router.post('/add_holiday', async (req, res) => {
+  const { holiday } = req.body;
+  try {
+    await db.query('INSERT INTO holidays (holiday) VALUES (?)', [holiday]);
+    res.json({ success: true, message: "Holiday added successfully" });
+  } catch (err) {
+    console.error("Error adding holiday:", err);
+    res.status(500).json({ success: false, message: "Failed to add holiday" });
   }
 });
 
