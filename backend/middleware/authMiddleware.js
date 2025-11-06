@@ -20,7 +20,6 @@ const verifyToken = (req, res, next) => {
 };
 
 // Role-based access control using numeric access_role
-// Access Roles: 1 = Staff, 3 = HR, 4 = Principal
 const authorizeRoles = (...allowedRoles) => {
     return (req, res, next) => {
         const userRole = req.user?.access_role;
