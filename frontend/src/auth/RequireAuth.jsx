@@ -32,14 +32,12 @@ export function RequirePageAccess({ children, pageRoute }) {
 
   useEffect(() => {
     const checkAccess = async () => {
-      // Not authenticated - redirect to login
       if (!isAuthenticated) {
         setHasAccess(false);
         return;
       }
 
       try {
-        // Check if user has access to this page
         const response = await axios.post('/page-access/check-access', {
           pageRoute
         });
@@ -48,7 +46,6 @@ export function RequirePageAccess({ children, pageRoute }) {
           setHasAccess(response.data.hasAccess);
 
           if (!response.data.hasAccess) {
-            // Try to find a suitable redirect page based on user's role
             const accessibleResponse = await axios.get(
               `/page-access/pages/accessible/${accessRole}`
             );
@@ -65,12 +62,10 @@ export function RequirePageAccess({ children, pageRoute }) {
             }
           }
         } else {
-          // On API error, deny access by default
           setHasAccess(false);
         }
       } catch (error) {
         console.error('Error checking page access:', error);
-        // On error, deny access by default for security
         setHasAccess(false);
       }
     };
@@ -79,15 +74,12 @@ export function RequirePageAccess({ children, pageRoute }) {
   }, [isAuthenticated, pageRoute, accessRole]);
 
   useEffect(() => {
-    // Only show the alert when the user is authenticated and explicitly denied by access rules.
-    // Avoid showing it during logout or unauthenticated redirects to /login.
     if (isAuthenticated && hasAccess === false && !alertedRef.current) {
       alertedRef.current = true;
       showAlert('Access denied to that page', 'error');
     }
   }, [hasAccess, isAuthenticated, showAlert]);
 
-  // Loading state - show nothing or a loader
   if (hasAccess === null) {
     return (
       <div className="container mt-5 text-center">
@@ -98,17 +90,13 @@ export function RequirePageAccess({ children, pageRoute }) {
     );
   }
 
-  // Not authenticated - redirect to login
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // No access - redirect to appropriate page
   if (!hasAccess) {
     return <Navigate to={redirectPath} replace />;
   }
-
-  // Has access - render the page
   return children;
 }
 

@@ -210,5 +210,15 @@ router.get('/daily-staff', async (req, res) => {
     }
 });
 
+// For fetching deptname abbr
+router.get('/abbr', async (req, res) => {
+    try {
+        const [rows] = await db.execute(`SELECT * FROM department`);
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Error fetching department abbreviations" });
+    }
+});
 
 module.exports = router;

@@ -97,7 +97,6 @@ router.get('/get_user/:id', async (req, res) => {
 router.post('/delete_user', async (req, res) => {
   const { id } = req.body;
 
-
   try {
    
      await db.query(`SET FOREIGN_KEY_CHECKS = 0;
@@ -109,16 +108,16 @@ router.post('/delete_user', async (req, res) => {
   }
 });
 
-router.post('/delete_logs', async (req, res) => {
-  try {
-    const pythonResult = await runPythonScript(['delete_logs']);
-    if (pythonResult.includes('Error')) {
-      throw new Error(pythonResult);
-    }
-    res.status(200).json({ message: 'Logs deleted successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// router.post('/delete_logs', async (req, res) => {
+//   try {
+//     const pythonResult = await runPythonScript(['delete_logs']);
+//     if (pythonResult.includes('Error')) {
+//       throw new Error(pythonResult);
+//     }
+//     res.status(200).json({ message: 'Logs deleted successfully' });
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// });
 
 module.exports = router;
