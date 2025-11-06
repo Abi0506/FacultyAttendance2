@@ -393,7 +393,7 @@ function PrincipalDashboard() {
     };
 
     return (
-        <PageWrapper title="Principal Dashboard">
+        <PageWrapper title="Dashboard">
             <div className="d-flex justify-content-between items-center mb-6 bg-white">
                 <div className="d-flex items-center gap-4 justify-content-between">
 

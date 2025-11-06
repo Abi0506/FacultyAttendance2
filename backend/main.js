@@ -19,7 +19,7 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
-const pythonProcess = startPythonScript();
+// const pythonProcess = startPythonScript();
 
 app.use(cors(corsOptions));
 app.use(express.json());
@@ -64,6 +64,7 @@ const dashboardRouter = require("./routes/dashboard");
 const deviceRouter = require("./routes/devices");
 const accessRolesRouter = require('./routes/accessRoles')
 const pageAccessRouter = require('./routes/pageAccess');
+const hodDashboardRouter = require('./routes/hodDashboard');
 
 app.use("/api/essl", esslFunctionsRouter);
 app.use("/api/login", loginRouter);
@@ -74,6 +75,7 @@ app.use("/api/dashboard", verifyToken, dashboardRouter)
 app.use("/api/devices", verifyToken, deviceRouter)
 app.use("/api/access-roles", accessRolesRouter)
 app.use("/api/page-access", pageAccessRouter);
+app.use("/api/hod-dashboard", hodDashboardRouter);
 
 
 app.listen(PORT, '0.0.0.0', () => {

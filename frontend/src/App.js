@@ -28,6 +28,7 @@ import DashboardPage from './pages/Dashboard';
 import FlaggedRecords from './pages/FlaggedRecords';
 import AdminAccessControl from './pages/AdminAccessControl';
 import NotFound from './pages/NotFound';
+import HODDashboard from './pages/HODDashboard';
 // import LeaveManager from './pages/LeaveManager';
 
 // --- Auth & Context Imports ---
@@ -294,6 +295,13 @@ function AppContent() {
                     <Route path="/dashboard" element={
                         <RequirePageAccess pageRoute="/dashboard">
                             <DashboardPage />
+                        </RequirePageAccess>
+                    } />
+
+                    {/* HOD Routes */}
+                    <Route path="/hod-dashboard" element={
+                        <RequirePageAccess pageRoute="/hod-dashboard">
+                            <HODDashboard />
                         </RequirePageAccess>
                     } />
 

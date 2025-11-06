@@ -17,6 +17,11 @@ const DynamicNavigation = ({ accessRole, pendingExemptions = 0, pendingLeaves = 
             type: 'single',
             route: '/dashboard'
         },
+        'HOD Dashboard': {
+            type: 'single',
+            route: '/hod-dashboard',
+            displayName: 'Dashboard'
+        },
         'Logs': {
             type: 'dropdown',
             dropdownId: 'logsDropdown',
@@ -65,6 +70,7 @@ const DynamicNavigation = ({ accessRole, pendingExemptions = 0, pendingLeaves = 
     const routeToNavMap = {
         '/admin/access-control': 'Access Control',
         '/dashboard': 'Dashboard',
+        '/hod-dashboard': 'HOD Dashboard',
         '/view': 'Logs',
         '/flags': 'Logs',
         '/summary': 'Logs',
@@ -149,6 +155,7 @@ const DynamicNavigation = ({ accessRole, pendingExemptions = 0, pendingLeaves = 
     const navOrder = [
         'Access Control',
         'Dashboard',
+        'HOD Dashboard',
         'Logs',
         'Exemptions',
         'Leaves',
@@ -171,7 +178,7 @@ const DynamicNavigation = ({ accessRole, pendingExemptions = 0, pendingLeaves = 
                         <li key={index} className={`nav-item ${navItem.badge ? 'position-relative' : ''}`}>
                             <Link className="nav-link" to={navItem.route} onClick={onNavClick}>
                                 {navItem.icon && <i className={`bi ${navItem.icon} me-1`}></i>}
-                                {navItem.name}
+                                {navItem.displayName || navItem.name}
                             </Link>
                             {navItem.badge && (
                                 <span className={`position-absolute top-0 start-100 translate-middle badge rounded-pill ${navItem.badge.class}`}>

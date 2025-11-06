@@ -8,14 +8,17 @@ function DeptDesigManager() {
     const { showAlert } = useAlert();
     const [departments, setDepartments] = useState([]);
     const [designations, setDesignations] = useState([]);
+    const [hodList, setHodList] = useState([]);
     const [newDept, setNewDept] = useState('');
     const [newDesig, setNewDesig] = useState('');
     const [loadingDept, setLoadingDept] = useState(false);
     const [loadingDesig, setLoadingDesig] = useState(false);
+    const [editingHod, setEditingHod] = useState({});
 
     useEffect(() => {
         fetchDepartments();
         fetchDesignations();
+        fetchHodList();
     }, []);
 
     const fetchDepartments = async () => {
@@ -41,6 +44,15 @@ function DeptDesigManager() {
             showAlert('Error fetching designations', 'danger');
         } finally {
             setLoadingDesig(false);
+        }
+    };
+
+    const fetchHodList = async () => {
+        try {
+            const res = await axios.get('/attendance/hod_list');
+            if (res.data.success) setHodList(res.data.hods);
+        } catch (err) {
+            console.error('Error fetching HOD list:', err);
         }
     };
 
@@ -78,6 +90,24 @@ function DeptDesigManager() {
         }
     };
 
+    const handleHodChange = async (department, hodId) => {
+        try {
+            const res = await axios.post('/attendance/update_department_hod', {
+                department,
+                hod_id: hodId
+            });
+            if (res.data.success) {
+                showAlert('HOD assignment updated', 'success');
+                fetchDepartments();
+                setEditingHod(prev => ({ ...prev, [department]: false }));
+            } else {
+                showAlert(res.data.message || 'Failed to update HOD', 'danger');
+            }
+        } catch (err) {
+            showAlert('Error updating HOD assignment', 'danger');
+        }
+    };
+
     return (
         <PageWrapper title="Department & Designation Manager">
             <div className="row g-4">
@@ -104,10 +134,59 @@ function DeptDesigManager() {
                                 </div>
                             </div>
                         ) : (
-                            <Table
-                                columns={['dept',]}
-                                data={departments}
-                            />
+                            <div className="table-responsive">
+                                <table className="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Department</th>
+                                            <th>Head of Department</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {departments.map((dept) => (
+                                            <tr key={dept.dept}>
+                                                <td>{dept.dept}</td>
+                                                <td>
+                                                    {editingHod[dept.dept] ? (
+                                                        <select
+                                                            className="form-select form-select-sm"
+                                                            defaultValue={dept.hods.length > 0 ? dept.hods[0].staff_id : ''}
+                                                            onChange={(e) => handleHodChange(dept.dept, e.target.value)}
+                                                        >
+                                                            <option value="">-- No HOD --</option>
+                                                            {hodList.map((staff) => (
+                                                                <option key={staff.staff_id} value={staff.staff_id}>
+                                                                    {staff.name} ({staff.staff_id}) - {staff.dept}
+                                                                    {staff.access_role === 5 ? ' [Current HOD]' : ''}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    ) : (
+                                                        <span>
+                                                            {dept.hods.length > 0
+                                                                ? `${dept.hods[0].name} (${dept.hods[0].staff_id})`
+                                                                : <span className="text-muted">Not assigned</span>
+                                                            }
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    <button
+                                                        className="btn btn-sm btn-outline-primary"
+                                                        onClick={() => setEditingHod(prev => ({
+                                                            ...prev,
+                                                            [dept.dept]: !prev[dept.dept]
+                                                        }))}
+                                                    >
+                                                        {editingHod[dept.dept] ? 'Cancel' : 'Edit'}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         )}
                     </div>
                 </div>

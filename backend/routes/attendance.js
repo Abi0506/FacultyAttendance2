@@ -410,8 +410,33 @@ router.post('/department', async (req, res) => {
 
   try {
 
-    const [departments] = await db.query('SELECT dept FROM department ORDER BY dept ASC');
-    res.json({ success: true, departments });
+    const [departments] = await db.query(`
+      SELECT d.dept, hda.staff_id as hod_id, s.name as hod_name
+      FROM department d
+      LEFT JOIN hod_department_access hda ON d.dept = hda.department
+      LEFT JOIN staff s ON hda.staff_id = s.staff_id
+      ORDER BY d.dept ASC
+    `);
+
+    // Group by department in case multiple HODs exist
+    const deptMap = {};
+    departments.forEach(row => {
+      if (!deptMap[row.dept]) {
+        deptMap[row.dept] = {
+          dept: row.dept,
+          hods: []
+        };
+      }
+      if (row.hod_id) {
+        deptMap[row.dept].hods.push({
+          staff_id: row.hod_id,
+          name: row.hod_name
+        });
+      }
+    });
+
+    const result = Object.values(deptMap);
+    res.json({ success: true, departments: result });
   } catch (error) {
 
     res.status(500).json({ success: false, message: error.message });
@@ -436,6 +461,74 @@ router.post('/add_department', async (req, res) => {
   }
 
 });
+// Get list of all staff members for HOD assignment
+router.get('/hod_list', async (req, res) => {
+  try {
+    const [staff] = await db.query(`
+      SELECT staff_id, name, dept, designation, access_role
+      FROM staff
+      ORDER BY name ASC
+    `);
+    res.json({ success: true, hods: staff });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update HOD for a department
+router.post('/update_department_hod', async (req, res) => {
+  const { department, hod_id } = req.body;
+
+  if (!department) {
+    return res.status(400).json({ success: false, message: 'Department is required' });
+  }
+
+  try {
+    // Get the current HOD(s) for this department before deletion
+    const [currentHods] = await db.query('SELECT staff_id FROM hod_department_access WHERE department = ?', [department]);
+
+    // Remove existing HOD assignments for this department
+    await db.query('DELETE FROM hod_department_access WHERE department = ?', [department]);
+
+    // Check if any of the removed HODs still have other department assignments
+    for (const hod of currentHods) {
+      const [remainingDepts] = await db.query(
+        'SELECT COUNT(*) as count FROM hod_department_access WHERE staff_id = ?',
+        [hod.staff_id]
+      );
+
+      // If this staff member has no more HOD assignments, revert to access_role 1
+      if (remainingDepts[0].count === 0) {
+        await db.query('UPDATE staff SET access_role = 1 WHERE staff_id = ?', [hod.staff_id]);
+      }
+    }
+
+    // If hod_id is provided and not empty, add the new assignment
+    if (hod_id && hod_id.trim() !== '') {
+      // Check if staff member exists
+      const [staff] = await db.query('SELECT staff_id, access_role FROM staff WHERE staff_id = ?', [hod_id]);
+      if (staff.length === 0) {
+        return res.status(400).json({ success: false, message: 'Invalid staff member' });
+      }
+
+      // Update staff member's access role to HOD (5) if not already
+      if (staff[0].access_role !== 5) {
+        await db.query('UPDATE staff SET access_role = 5 WHERE staff_id = ?', [hod_id]);
+      }
+
+      await db.query(
+        'INSERT INTO hod_department_access (staff_id, department) VALUES (?, ?)',
+        [hod_id, department]
+      );
+    }
+
+    res.json({ success: true, message: 'HOD assignment updated successfully' });
+  } catch (error) {
+    console.error('Error updating department HOD:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.post('/add_designation', async (req, res) => {
   const { designation } = req.body;
   if (!designation || !designation.trim()) {
@@ -557,8 +650,8 @@ router.post('/individual_data', async (req, res) => {
 
       // Subtract late minutes (late_mins + additional_late_mins) for that date
       const reportRow = late_mins.find(l => l.date === date) || {};
-      
-      
+
+
 
       row.working_hours = workingMinutes > 0 ? minutesToHHMM(workingMinutes) : '00hrs 00mins';
       row.late_mins = Number(reportRow.late_mins || 0);
@@ -704,8 +797,8 @@ router.post('/hr_approved_exemptions', async (req, res) => {
 router.post('/hr_approved_exemptions_for_staff', async (req, res) => {
   try {
     // Expect date as a query parameter: /hr_approved_exemptions?date=YYYY-MM-DD
-    const { start , end ,id } = req.body;
-    
+    const { start, end, id } = req.body;
+
     const [rows] = await db.query(
       'SELECT exemptionDate FROM exemptions WHERE exemptionStatus = ? AND (exemptionDate BETWEEN ? AND ?) AND staffId = ? ORDER BY exemptionDate DESC',
       ['approved', start, end, id]
@@ -903,16 +996,16 @@ router.get("/categories", async (req, res) => {
 })
 
 router.post("/add_categories", async (req, res) => {
-  const { category_description, in_time, in1, break_in, break_out, out2, out_time, break_time_mins ,type} = req.body;
+  const { category_description, in_time, in1, break_in, break_out, out2, out_time, break_time_mins, type } = req.body;
 
   try {
     // Append seconds
-  const in_time1 = (in_time) ? in_time + ':00' : null;
-  const in11 = (in1) ? in1 + ':00' : null;
-  const break_in1 = (break_in) ? break_in + ':00' : null;
-  const break_out1 = (break_out) ? break_out + ':00' : null;
-  const out21 = (out2) ? out2 + ':00' : null;
-  const out_time1 = (out_time) ? out_time + ':00' : null;
+    const in_time1 = (in_time) ? in_time + ':00' : null;
+    const in11 = (in1) ? in1 + ':00' : null;
+    const break_in1 = (break_in) ? break_in + ':00' : null;
+    const break_out1 = (break_out) ? break_out + ':00' : null;
+    const out21 = (out2) ? out2 + ':00' : null;
+    const out_time1 = (out_time) ? out_time + ':00' : null;
 
     const [rows] = await db.query(
       `SELECT * FROM category 
@@ -925,19 +1018,19 @@ router.post("/add_categories", async (req, res) => {
   AND out_time = ? 
   AND break_time_mins = ?
   AND type = ?`,
-  [category_description, in_time1, in11, break_in1, break_out1, out21, out_time1, break_time_mins,type]
+      [category_description, in_time1, in11, break_in1, break_out1, out21, out_time1, break_time_mins, type]
     );
 
     if (rows.length > 0) {
       return res.status(400).json({ message: "Category already exists" });
     }
 
-  
-    
+
+
 
     await db.query(
       "INSERT INTO category (category_description, in_time, in1, break_in, break_out, out2, out_time, break_time_mins , type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      [category_description, in_time1, in11, break_in1, break_out1, out21, out_time1, break_time_mins,type]
+      [category_description, in_time1, in11, break_in1, break_out1, out21, out_time1, break_time_mins, type]
     );
 
     res.json({ message: "Category added successfully", success: true });
