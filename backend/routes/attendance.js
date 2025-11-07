@@ -411,7 +411,7 @@ router.post('/department', async (req, res) => {
   try {
 
     const [departments] = await db.query(`
-      SELECT d.dept, hda.staff_id as hod_id, s.name as hod_name
+      SELECT d.dept, d.dept_abbr, hda.staff_id as hod_id, s.name as hod_name
       FROM department d
       LEFT JOIN hod_department_access hda ON d.dept = hda.department
       LEFT JOIN staff s ON hda.staff_id = s.staff_id
@@ -424,6 +424,7 @@ router.post('/department', async (req, res) => {
       if (!deptMap[row.dept]) {
         deptMap[row.dept] = {
           dept: row.dept,
+          dept_abbr: row.dept_abbr || '',
           hods: []
         };
       }
@@ -443,12 +444,54 @@ router.post('/department', async (req, res) => {
   }
 });
 
+router.post('/update_department', async (req, res) => {
+  const { oldDept, newDept, newAbbr } = req.body;
+  if (!oldDept || !newDept || !newDept.trim()) {
+    return res.status(400).json({ success: false, message: 'Department information is incomplete' });
+  }
+
+  try {
+    // Check if the new department name already exists (except for the current department)
+    const [existing] = await db.query(
+      'SELECT dept FROM department WHERE dept = ? AND dept != ?',
+      [newDept.trim(), oldDept]
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({ success: false, message: 'Department name already exists' });
+    }
+
+    // Update the department
+    await db.query(
+      'UPDATE department SET dept = ?, dept_abbr = ? WHERE dept = ?',
+      [newDept.trim(), newAbbr?.trim() || '', oldDept]
+    );
+
+    // Update HOD department access if any HODs are assigned
+    await db.query(
+      'UPDATE hod_department_access SET department = ? WHERE department = ?',
+      [newDept.trim(), oldDept]
+    );
+
+    // Update staff department assignments
+    await db.query(
+      'UPDATE staff SET dept = ? WHERE dept = ?',
+      [newDept.trim(), oldDept]
+    );
+
+
+    res.json({ success: true, message: 'Department updated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.post('/add_department', async (req, res) => {
   const { dept, dept_abbr } = req.body;
   if (!dept || !dept.trim()) {
     return res.status(400).json({ success: false, message: 'Department name cannot be empty' });
   }
-  if(!dept_abbr || !dept_abbr.trim()) {
+  if (!dept_abbr || !dept_abbr.trim()) {
     dept_abbr = null;
   }
   try {
@@ -870,7 +913,7 @@ router.post('/exemption_log_details', async (req, res) => {
   } catch (error) {
     console.error('Error fetching exemption details:', error);
     res.status(500).json({ success: false, message: 'Server error' });
-  } 
+  }
 });
 
 
@@ -1190,7 +1233,7 @@ router.post("/update_additional_late_mins", async (req, res) => {
 //   const limit = req.body.limit || 10; 
 //   try {
 //     const [rows] = await db.query('SELECT holiday FROM holidays ORDER BY date ASC LIMIT ?', [limit]);
-    
+
 //     ....
 //     res.json({ success: true, holidays: rows });
 //   } catch (err) {

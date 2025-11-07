@@ -240,6 +240,18 @@ router.put('/users/:staffId/role', verifyToken, authorizeRoles(10), async (req, 
             });
         }
 
+        // Get current access role before updating
+        const [currentUser] = await db.query(
+            'SELECT access_role FROM staff WHERE staff_id = ?',
+            [staffId]
+        );
+
+        if (currentUser.length === 0) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        const oldAccessRole = currentUser[0].access_role;
+
         // Update user's role
         const [result] = await db.query(
             'UPDATE staff SET access_role = ? WHERE staff_id = ?',
@@ -248,6 +260,14 @@ router.put('/users/:staffId/role', verifyToken, authorizeRoles(10), async (req, 
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // If user is being demoted from HOD (5) to any other role, remove all HOD department assignments
+        if (oldAccessRole === 5 && access_role !== 5) {
+            await db.query(
+                'DELETE FROM hod_department_access WHERE staff_id = ?',
+                [staffId]
+            );
         }
 
         res.json({ success: true, message: 'User role updated successfully' });

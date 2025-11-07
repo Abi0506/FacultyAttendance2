@@ -14,7 +14,10 @@ function DeptDesigManager() {
     const [newAbbr, setNewAbbr] = useState('');
     const [loadingDept, setLoadingDept] = useState(false);
     const [loadingDesig, setLoadingDesig] = useState(false);
-    const [editingHod, setEditingHod] = useState({});
+    const [editingRow, setEditingRow] = useState(null);
+    const [editDeptForm, setEditDeptForm] = useState({ dept: '', dept_abbr: '' });
+    const [deptSearch, setDeptSearch] = useState('');
+    const [desigSearch, setDesigSearch] = useState('');
 
     useEffect(() => {
         fetchDepartments();
@@ -57,11 +60,37 @@ function DeptDesigManager() {
         }
     };
 
+    const handleUpdateDepartment = async (oldDept) => {
+        if (!editDeptForm.dept.trim()) {
+            showAlert('Department name cannot be empty', 'danger');
+            return;
+        }
+
+        try {
+            const res = await axios.post('/attendance/update_department', {
+                oldDept,
+                newDept: editDeptForm.dept,
+                newAbbr: editDeptForm.dept_abbr
+            });
+
+            if (res.data.success) {
+                showAlert('Department updated successfully', 'success');
+                setEditingRow(null);
+                setEditDeptForm({ dept: '', dept_abbr: '' });
+                fetchDepartments();
+            } else {
+                showAlert(res.data.message || 'Failed to update department', 'danger');
+            }
+        } catch (err) {
+            showAlert(err.response?.data?.message || 'Error updating department', 'danger');
+        }
+    };
+
     const handleAddDept = async (e) => {
         e.preventDefault();
         if (!newDept.trim()) return;
         try {
-            const res = await axios.post('/attendance/add_department', { dept: newDept ,  dept_abbr: newAbbr});
+            const res = await axios.post('/attendance/add_department', { dept: newDept });
             if (res.data.success) {
                 showAlert('Department added', 'success');
                 setNewDept('');
@@ -100,7 +129,7 @@ function DeptDesigManager() {
             if (res.data.success) {
                 showAlert('HOD assignment updated', 'success');
                 fetchDepartments();
-                setEditingHod(prev => ({ ...prev, [department]: false }));
+                setEditingRow(null);
             } else {
                 showAlert(res.data.message || 'Failed to update HOD', 'danger');
             }
@@ -115,32 +144,43 @@ function DeptDesigManager() {
                 <div className="col-md-6">
                     <div className="p-4 rounded-4 bg-light border">
                         <h5 className="mb-3 text-c-primary fw-bold">Departments</h5>
-                        <form className="mb-3 d-flex flex-column gap-2" onSubmit={handleAddDept}>
-                            <div className="d-flex gap-2">
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    placeholder="Department name"
-                                    value={newDept}
-                                    onChange={e => setNewDept(e.target.value)}
-                                    required
-                                />
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    placeholder="Abbreviation (e.g., MECH)"
-                                    value={newAbbr}
-                                    onChange={e => setNewAbbr(e.target.value)}
-                                    required
-                                />
-                                <button className="btn btn-c-primary" type="submit" disabled={loadingDept}>
-                                    Add
-                                </button>
-                            </div>
-                            <small className="text-muted">
-                                The abbreviation is used in reports and quick references (e.g., MECHANICAL ENGINEERING → MECH).
-                            </small>
-                        </form>
+                        <div className="p-3 mb-4 rounded-4 bg-white border">
+                            <h6>Add Department</h6>
+
+                            <form className="mb-3 d-flex flex-column gap-2" onSubmit={handleAddDept}>
+                                <div className="d-flex gap-2">
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Department name"
+                                        value={newDept}
+                                        onChange={e => setNewDept(e.target.value)}
+                                        required
+                                    />
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Abbreviation (e.g., MECH)"
+                                        value={newAbbr}
+                                        onChange={e => setNewAbbr(e.target.value)}
+                                        required
+                                    />
+                                    <button className="btn btn-c-primary" type="submit" disabled={loadingDept}>
+                                        Add
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div className="mb-3">
+                            <input
+                                type="text"
+                                className="form-control"
+                                placeholder="Search departments..."
+                                value={deptSearch}
+                                onChange={e => setDeptSearch(e.target.value)}
+                            />
+                        </div>
 
                         {loadingDept ? (
                             <div className="text-center py-3">
@@ -154,16 +194,51 @@ function DeptDesigManager() {
                                     <thead>
                                         <tr>
                                             <th>Department</th>
-                                            <th>Head of Department</th>
-                                            <th>Action</th>
+                                            <th>Abbreviation</th>
+                                            <th>HOD</th>
+                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {departments.map((dept) => (
+                                        {departments.filter(dept =>
+                                            dept.dept.toLowerCase().includes(deptSearch.toLowerCase()) ||
+                                            (dept.dept_abbr && dept.dept_abbr.toLowerCase().includes(deptSearch.toLowerCase()))
+                                        ).map((dept) => (
                                             <tr key={dept.dept}>
-                                                <td>{dept.dept}</td>
                                                 <td>
-                                                    {editingHod[dept.dept] ? (
+                                                    {editingRow === dept.dept ? (
+                                                        <input
+                                                            type="text"
+                                                            className="form-control form-control-sm"
+                                                            value={editDeptForm.dept}
+                                                            onChange={(e) => setEditDeptForm(prev => ({
+                                                                ...prev,
+                                                                dept: e.target.value
+                                                            }))}
+                                                            placeholder="Department Name"
+                                                        />
+                                                    ) : (
+                                                        dept.dept
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    {editingRow === dept.dept ? (
+                                                        <input
+                                                            type="text"
+                                                            className="form-control form-control-sm"
+                                                            value={editDeptForm.dept_abbr}
+                                                            onChange={(e) => setEditDeptForm(prev => ({
+                                                                ...prev,
+                                                                dept_abbr: e.target.value
+                                                            }))}
+                                                            placeholder="Abbreviation"
+                                                        />
+                                                    ) : (
+                                                        dept.dept_abbr || '-'
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    {editingRow === dept.dept ? (
                                                         <select
                                                             className="form-select form-select-sm"
                                                             defaultValue={dept.hods.length > 0 ? dept.hods[0].staff_id : ''}
@@ -187,15 +262,40 @@ function DeptDesigManager() {
                                                     )}
                                                 </td>
                                                 <td>
-                                                    <button
-                                                        className="btn btn-sm btn-outline-primary"
-                                                        onClick={() => setEditingHod(prev => ({
-                                                            ...prev,
-                                                            [dept.dept]: !prev[dept.dept]
-                                                        }))}
-                                                    >
-                                                        {editingHod[dept.dept] ? 'Cancel' : 'Edit'}
-                                                    </button>
+                                                    <div className="btn-group">
+                                                        {editingRow === dept.dept ? (
+                                                            <>
+                                                                <button
+                                                                    className="btn btn-sm btn-c-outline-primary"
+                                                                    onClick={() => handleUpdateDepartment(dept.dept)}
+                                                                >
+                                                                    <i className="bi bi-check-lg"></i>
+                                                                </button>
+                                                                <button
+                                                                    className="btn btn-sm btn-c-outline-secondary"
+                                                                    onClick={() => {
+                                                                        setEditingRow(null);
+                                                                        setEditDeptForm({ dept: '', dept_abbr: '' });
+                                                                    }}
+                                                                >
+                                                                    <i className='bi bi-x-lg'></i>
+                                                                </button>
+                                                            </>
+                                                        ) : (
+                                                            <button
+                                                                className="btn btn-sm btn-outline-primary"
+                                                                onClick={() => {
+                                                                    setEditingRow(dept.dept);
+                                                                    setEditDeptForm({
+                                                                        dept: dept.dept,
+                                                                        dept_abbr: dept.dept_abbr || ''
+                                                                    });
+                                                                }}
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -208,19 +308,33 @@ function DeptDesigManager() {
                 <div className="col-md-6">
                     <div className="p-4 rounded-4 bg-light border">
                         <h5 className="mb-3 text-c-primary fw-bold">Designations</h5>
-                        <form className="mb-3 d-flex gap-2" onSubmit={handleAddDesig}>
+                        <div className="p-3 mb-4 rounded-4 bg-white border">
+                            <h6>Add Designation</h6>
+                            <form className="mb-0 d-flex gap-2" onSubmit={handleAddDesig}>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Designation name"
+                                    value={newDesig}
+                                    onChange={e => setNewDesig(e.target.value)}
+                                    required
+                                />
+                                <button className="btn btn-c-primary" type="submit" disabled={loadingDesig}>
+                                    Add
+                                </button>
+                            </form>
+                        </div>
+
+                        <div className="mb-3">
                             <input
                                 type="text"
                                 className="form-control"
-                                placeholder="Add new designation"
-                                value={newDesig}
-                                onChange={e => setNewDesig(e.target.value)}
-                                required
+                                placeholder="Search designations..."
+                                value={desigSearch}
+                                onChange={e => setDesigSearch(e.target.value)}
                             />
-                            <button className="btn btn-c-primary" type="submit" disabled={loadingDesig}>
-                                Add
-                            </button>
-                        </form>
+                        </div>
+
                         {loadingDesig ? (
                             <div className="text-center py-3">
                                 <div className="spinner-border text-c-primary" role="status">
@@ -230,7 +344,9 @@ function DeptDesigManager() {
                         ) : (
                             <Table
                                 columns={['designation',]}
-                                data={designations}
+                                data={designations.filter(desig =>
+                                    desig.designation.toLowerCase().includes(desigSearch.toLowerCase())
+                                )}
                             />
                         )}
                     </div>

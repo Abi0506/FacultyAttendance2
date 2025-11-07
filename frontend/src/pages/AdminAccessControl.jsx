@@ -24,7 +24,7 @@ const AdminAccessControl = () => {
         role_name: '',
         role_description: '',
         default_redirect: '',
-    role_color: 'var(--color-4)'
+        role_color: 'var(--color-4)'
     });
     const [searchTerm, setSearchTerm] = useState('');
     const { showAlert } = useAlert();
@@ -301,11 +301,38 @@ const AdminAccessControl = () => {
 
     const handleUpdateUserRole = async (staffId, newRoleId) => {
         try {
+            // Find the user's department first if we're setting HOD role
+            let userDept = null;
+            if (newRoleId === 5) {
+                const user = users.find(u => u.staff_id === staffId);
+                if (!user?.department) {
+                    showAlert('Cannot assign HOD role: User has no department', 'error');
+                    return;
+                }
+                userDept = user.department;
+            }
+
+            // Update the role
             const response = await axios.put(`/access-roles/users/${staffId}/role`, {
                 access_role: newRoleId
             });
+
             if (response.data.success) {
-                showAlert('User role updated successfully', 'success');
+                // If changing to HOD role, automatically assign their department
+                if (newRoleId === 5 && userDept) {
+                    try {
+                        await axios.post('/attendance/update_department_hod', {
+                            department: userDept,
+                            hod_id: staffId
+                        });
+                        showAlert(`User assigned as HOD of ${userDept}`, 'success');
+                    } catch (err) {
+                        console.error('Error assigning department:', err);
+                        showAlert('Role updated but failed to assign department', 'warning');
+                    }
+                } else {
+                    showAlert('User role updated successfully', 'success');
+                }
                 fetchUsers();
                 setEditingUser(null);
             }
