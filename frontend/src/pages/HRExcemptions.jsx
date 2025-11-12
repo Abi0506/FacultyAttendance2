@@ -433,43 +433,52 @@ function HRExcemptions() {
             </tr>
             {expandedExemption === exemption.exemptionId && (
               <tr id={`log-details-${exemption.exemptionId}`}>
-                <td colSpan="9" className="bg-light">
-                  <div className="p-3">
-                    {loadingLogs[exemption.exemptionId] ? (
-                      <p className="text-muted">Loading log details...</p>
-                    ) : logDetails[exemption.exemptionId] ? (
-                      <div>
-                        <h6>Log Details</h6>
-                        {logDetails[exemption.exemptionId].logs.length > 0 ? (
-                          <p>
-                            {logDetails[exemption.exemptionId].logs
-                              .map((log) => log.time)
-                              .join(', ')}
-                          </p>
-                        ) : (
-                          <p className="text-muted">No logs available</p>
-                        )}
-                        {logDetails[exemption.exemptionId].category ? (
-                          <div>
-                            <h6>Category Details</h6>
-                            <p>
-                              Category No:{' '}
-                              {logDetails[exemption.exemptionId].category.category_no}
-                              <br />
-                              Description:{' '}
-                              {logDetails[exemption.exemptionId].category
-                                .category_description}
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="text-muted">No category details available</p>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-muted">Failed to load log details</p>
-                    )}
-                  </div>
-                </td>
+               <td colSpan="9" className="bg-light">
+  <div className="p-3">
+    {loadingLogs[exemption.exemptionId] ? (
+      <p className="text-muted">Loading log details...</p>
+    ) : logDetails[exemption.exemptionId] ? (
+      <div>
+        
+        {logDetails[exemption.exemptionId].category ? (
+          <div className="mb-2">
+            <h8>
+              Category:&nbsp;
+              {logDetails[exemption.exemptionId].category.category_description}
+            </h8>
+          </div>
+        ) : (
+          <p className="text-muted">No category details available</p>
+        )}
+
+        
+        {logDetails[exemption.exemptionId].logs.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {logDetails[exemption.exemptionId].logs.map((log, index) => (
+              <span
+                key={index}
+                style={{
+                  border: '1px solid #ccc',
+                  borderRadius: '6px',
+                  padding: '4px 8px',
+                  backgroundColor: '#f8f9fa',
+                  fontSize: '0.9rem',
+                }}
+              >
+                {log.time}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted">No logs available</p>
+        )}
+      </div>
+    ) : (
+      <p className="text-muted">Failed to load log details</p>
+    )}
+  </div>
+</td>
+
               </tr>
             )}
           </React.Fragment>

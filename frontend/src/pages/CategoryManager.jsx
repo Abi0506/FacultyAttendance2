@@ -198,8 +198,8 @@ function CategoryManagerPage() {
                         <table className="table table-c">
                             <thead className="table-secondary">
                                 <tr>
-                                    <th>#</th>
-                                    <th>Description</th>
+                                    
+                                    <th>Name</th>
                                     <th>Type</th>
                                     <th>Session 1 In</th>
                                     <th>Session 1 Out</th>
@@ -215,7 +215,7 @@ function CategoryManagerPage() {
                             <tbody>
                                 {categories.map((cat) => (
                                     <tr key={cat.category_no}>
-                                        <td>{cat.category_no}</td>
+                                        
                                         <td>
                                             {editingId === cat.category_no ? (
                                                 <input
@@ -336,54 +336,44 @@ function CategoryManagerPage() {
                                             )}
                                         </td>
                                         <td>
-                                            {editingId === cat.category_no ? (
-                                                <input
-                                                    type="number"
-                                                    name="break_time_mins"
-                                                    value={editForm.break_time_mins || ''}
-                                                    onChange={handleEditChange}
-                                                    className="form-control"
-                                                />
-                                            ) : (
-                                                cat.break_time_mins
-                                            )}
-                                        </td>
-                                        <td>
-                                            {editingId === cat.category_no ? (
-                                                <>
-                                                    <button
-                                                        className="btn btn-success btn-sm me-2"
-                                                        onClick={() => handleSaveEdit(cat)}
-                                                        title="Save"
-                                                    >
-                                                        <i className="bi bi-check-lg"></i>
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-secondary btn-sm"
-                                                        onClick={() => handleEditClick(cat)}
-                                                        title="Cancel"
-                                                    >
-                                                        <i className="bi bi-x-lg"></i>
-                                                    </button>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <button
-                                                        className="btn btn-outline-primary btn-sm me-2"
-                                                        onClick={() => handleEditClick(cat)}
-                                                        title="Edit"
-                                                    >
-                                                        <i className="bi bi-pencil-square"></i>
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-outline-danger btn-sm"
-                                                        onClick={() => handleDelete(cat.category_no)}
-                                                        title="Delete"
-                                                    >
-                                                        <i className="bi bi-trash-fill"></i>
-                                                    </button>
-                                                </>
-                                            )}
+                                            {cat.category_no !== 5 && (
+    editingId === cat.category_no ? (
+        <>
+            <button
+                className="btn btn-success btn-sm me-2"
+                onClick={() => handleSaveEdit(cat)}
+                title="Save"
+            >
+                <i className="bi bi-check-lg"></i>
+            </button>
+            <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => handleEditClick(cat)}
+                title="Cancel"
+            >
+                <i className="bi bi-x-lg"></i>
+            </button>
+        </>
+    ) : (
+        <>
+            <button
+                className="btn btn-outline-primary btn-sm me-2"
+                onClick={() => handleEditClick(cat)}
+                title="Edit"
+            >
+                <i className="bi bi-pencil-square"></i>
+            </button>
+            <button
+                className="btn btn-outline-danger btn-sm"
+                onClick={() => handleDelete(cat.category_no)}
+                title="Delete"
+            >
+                <i className="bi bi-trash-fill"></i>
+            </button>
+        </>
+    )
+)}
+
                                         </td>
                                     </tr>
                                 ))}
