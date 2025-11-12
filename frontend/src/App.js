@@ -36,6 +36,7 @@ import { useAuth, AuthProvider } from './auth/authProvider';
 import { AlertProvider } from './components/AlertProvider';
 import DynamicNavigation from './components/DynamicNavigation';
 import { RequirePageAccess } from './auth/RequireAuth';
+import Footer from './components/Footer';
 
 
 
@@ -331,6 +332,7 @@ function AppContent() {
 
                 </Routes>
             </div>
+            <Footer />
         </Router>
     );
 }

@@ -48,6 +48,8 @@ cd FacultyAttendance2
 
 ### 2. Frontend Setup
 
+Open a new terminal
+
 ```bash
 cd frontend
 npm install
@@ -60,8 +62,10 @@ npm start
 
 ### 3. Backend Setup
 
+Open a new terminal
+
 ```bash
-cd ../backend
+cd backend
 npm install
 nodemon main.js
 ```
@@ -72,23 +76,37 @@ nodemon main.js
 
 ### 4. Create a `.env` File
 
-Inside the `backend` folder, create a `.env` file with the following contents:
+Inside the `backend` folder, the frontend folder and the FaceMachine folder, create a `.env` file with the following contents:
 
 ```env
+
+//Required
 DB_HOST=your_mysql_host
 DB_USER=your_mysql_user
 DB_PASS=your_mysql_password
 DB_NAME=your_database
-SECRET_KEY=your_jwt_secret
+REACT_APP_NODE_ENV = "development"
+SECRET_KEY=your_jwt_secret -- Some random long string
+FRONTEND_URL="http://192.168.29.77:8000"
+
+
+// Optional For basic functinalities
 GOOGLE_CLIENT_ID=your_client_id
 GOOGLE_CLIENT_SECRET=your_client_secret
 GOOGLE_CALLBACK_URL=google_callback_url
 SESSION_SECRET=your_google_secret
 EMAIL_USER=your_email_id
 EMAIL_PASS=your_email_app_password
+
+PYTHON_PATH_VENV = "C:\Users\aryaa\Desktop\Arya.A\Projects\SDC Projects\FacultyAtt\FacultyAttendance2\FaceMachine\venv\Scripts\python.exe"
+PYTHON_SCRIPT_PATH = "C:\Users\aryaa\Desktop\Arya.A\Projects\SDC Projects\FacultyAtt\FacultyAttendance2\FaceMachine"
+PYTHON_SCRIPT_PATH1 = "C:\Users\aryaa\Desktop\Arya.A\Projects\SDC Projects\FacultyAtt\FacultyAttendance2\FaceMachine\instant_logs.py"
+PYTHON_PROCESS_PATH = "C:\Users\aryaa\AppData\Local\Programs\Python\Python313\python.exe"
+
+
 ```
 
-> Replace `your_mysql_username` and `your_mysql_password` with your actual MySQL credentials.
+> Replace `your_mysql_username` and `your_mysql_password` and other required fields with your actual MySQL credentials.
 
 ---
 
@@ -146,12 +164,3 @@ This project is licensed under the MIT License.
 ## 👤 Authors
 
 * **Arya A** -  – [@aryaanand055](https://github.com/aryaanand055)
-
----
-
-```
-
----
-
-Let me know if you'd like help generating a `.env.example`, or if you'd like to automate the SQL import process as part of the setup!
-```
