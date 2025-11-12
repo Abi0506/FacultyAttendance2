@@ -1,6 +1,28 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { exec } = require('child_process');
+
+const scriptPath = process.env.PYTHON_SCRIPT_PATH3;
+const pythonPath = process.env.PYTHON_PATH_VENV;
+
+
+function runPythonWithDates(startDate, endDate) {
+
+  return new Promise((resolve, reject) => {
+    const cmd = `${pythonPath} "${scriptPath}" ${startDate} ${endDate}`;
+    console.log("Executing command:", cmd);
+    exec(cmd, (error, stdout, stderr) => {
+      if (error) {console.error(`Error executing Python script: ${error.message}`); return reject(stderr || error.message);}
+      try {
+        const data = JSON.parse(stdout);
+        resolve(data);
+      } catch {
+        reject(`Invalid JSON from Python: ${stdout}`);
+      }
+    });
+  });
+}
 
 async function start_end_time() {
   const today = new Date();
@@ -487,7 +509,7 @@ router.post('/update_department', async (req, res) => {
 });
 
 router.post('/add_department', async (req, res) => {
-  const { dept, dept_abbr } = req.body;
+  let { dept, dept_abbr } = req.body;
   if (!dept || !dept.trim()) {
     return res.status(400).json({ success: false, message: 'Department name cannot be empty' });
   }
@@ -530,36 +552,30 @@ router.post('/update_department_hod', async (req, res) => {
   }
 
   try {
-    // Get the current HOD(s) for this department before deletion
     const [currentHods] = await db.query('SELECT staff_id FROM hod_department_access WHERE department = ?', [department]);
 
-    // Remove existing HOD assignments for this department
     await db.query('DELETE FROM hod_department_access WHERE department = ?', [department]);
 
-    // Check if any of the removed HODs still have other department assignments
     for (const hod of currentHods) {
       const [remainingDepts] = await db.query(
         'SELECT COUNT(*) as count FROM hod_department_access WHERE staff_id = ?',
         [hod.staff_id]
       );
 
-      // If this staff member has no more HOD assignments, revert to access_role 1
       if (remainingDepts[0].count === 0) {
         await db.query('UPDATE staff SET access_role = 1 WHERE staff_id = ?', [hod.staff_id]);
       }
     }
 
-    // If hod_id is provided and not empty, add the new assignment
     if (hod_id && hod_id.trim() !== '') {
-      // Check if staff member exists
       const [staff] = await db.query('SELECT staff_id, access_role FROM staff WHERE staff_id = ?', [hod_id]);
       if (staff.length === 0) {
         return res.status(400).json({ success: false, message: 'Invalid staff member' });
       }
 
-      // Update staff member's access role to HOD (5) if not already
-      if (staff[0].access_role !== 5) {
-        await db.query('UPDATE staff SET access_role = 5 WHERE staff_id = ?', [hod_id]);
+      // Update staff member's access role to HOD (6) if not already
+      if (staff[0].access_role !== 6) {
+        await db.query('UPDATE staff SET access_role = 6 WHERE staff_id = ?', [hod_id]);
       }
 
       await db.query(
@@ -1229,28 +1245,73 @@ router.post("/update_additional_late_mins", async (req, res) => {
   }
 });
 
-// router.post('/get_holiday_list', async (req, res) => {
-//   const limit = req.body.limit || 10; 
-//   try {
-//     const [rows] = await db.query('SELECT holiday FROM holidays ORDER BY date ASC LIMIT ?', [limit]);
+router.post('/get_holiday_list', async (req, res) => {
+  const { start_date, end_date } = req.body;
+ 
+  if (!start_date || !end_date) {
+    return res.status(400).json({ success: false, message: "Start and end date required" });
+  }
 
-//     ....
-//     res.json({ success: true, holidays: rows });
-//   } catch (err) {
-//     console.error("Error fetching holiday list:", err);
-//     res.status(500).json({ success: false, message: "Failed to fetch holiday list" });
-//   }
-// });
+  try {
+   
+    const [dbRows] = await db.query(
+      'SELECT holiday AS date, reason FROM holiday WHERE holiday BETWEEN ? AND ? ORDER BY holiday ASC',
+      [start_date, end_date]
+    );
+
+    const googleHolidays = await runPythonWithDates(start_date, end_date);
+   
+    const allHolidays = [
+      ...dbRows.map(h => ({ date: h.date, reason: h.reason })),
+      ...googleHolidays.map(h => ({ date: h.date, reason: h.summary })),
+    ];
+
+    const uniqueHolidays = [];
+    const seen = new Set();
+
+    for (const h of allHolidays) {
+      if (!seen.has(h.date)) {
+        seen.add(h.date);
+        uniqueHolidays.push(h);
+      }
+    }
+    res.json({ success: true, holidays: uniqueHolidays });
+
+  } catch (err) {
+    console.error("Error fetching holiday list:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch holiday list" });
+  }
+});
+
 
 router.post('/add_holiday', async (req, res) => {
-  const { holiday } = req.body;
+  const { holiday, reason } = req.body;
+  console.log('Received holiday:', holiday, 'Reason:', reason);
+ 
+  if (!holiday || !reason) {
+    return res.status(400).json({
+      success: false,
+      message: "Holiday date and reason are required"
+    });
+  }
+
   try {
-    await db.query('INSERT INTO holidays (holiday) VALUES (?)', [holiday]);
+ 
+    const [existing] = await db.query('SELECT * FROM holiday WHERE holiday = ?', [holiday]);
+    if (existing.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "Holiday for this date already exists"
+      });
+    }
+    await db.query('INSERT INTO holiday (holiday, reason) VALUES (?, ?)', [holiday, reason]);
     res.json({ success: true, message: "Holiday added successfully" });
+
   } catch (err) {
     console.error("Error adding holiday:", err);
     res.status(500).json({ success: false, message: "Failed to add holiday" });
   }
 });
+
 
 module.exports = router;

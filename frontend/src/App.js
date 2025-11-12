@@ -29,7 +29,7 @@ import FlaggedRecords from './pages/FlaggedRecords';
 import AdminAccessControl from './pages/AdminAccessControl';
 import NotFound from './pages/NotFound';
 import HODDashboard from './pages/HODDashboard';
-// import LeaveManager from './pages/LeaveManager';
+
 
 // --- Auth & Context Imports ---
 import { useAuth, AuthProvider } from './auth/authProvider';
@@ -275,8 +275,8 @@ function AppContent() {
                             <DevicesManager />
                         </RequirePageAccess>
                     } />
-                    <Route path="/leave" element={
-                        <RequirePageAccess pageRoute="/leave">
+                    <Route path="/holidays" element={
+                        <RequirePageAccess pageRoute="/holidays">
                             <HRLeaveManager />
                         </RequirePageAccess>
                     } />

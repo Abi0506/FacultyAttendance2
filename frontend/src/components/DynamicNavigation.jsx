@@ -38,10 +38,9 @@ const DynamicNavigation = ({ accessRole, pendingExemptions = 0, pendingLeaves = 
             route: '/exemptions',
             badge: pendingExemptions > 0 ? { count: pendingExemptions, class: 'bg-warning text-dark' } : null
         },
-        'Leaves': {
+        'Holidays': {
             type: 'single',
-            route: '/leave',
-            badge: pendingLeaves > 0 ? { count: pendingLeaves, class: 'bg-info text-dark' } : null
+            route: '/holidays'
         },
         'Users': {
             type: 'dropdown',
@@ -77,7 +76,7 @@ const DynamicNavigation = ({ accessRole, pendingExemptions = 0, pendingLeaves = 
         '/individual': 'Logs',
         '/staffIndividualReport': 'Logs',
         '/exemptions': 'Exemptions',
-        '/leave': 'Leaves',
+        '/holidays': 'Holidays',
         '/users': 'Users',
         '/categories': 'Users',
         '/deptdesig': 'Users',
@@ -158,7 +157,7 @@ const DynamicNavigation = ({ accessRole, pendingExemptions = 0, pendingLeaves = 
         'HOD Dashboard',
         'Logs',
         'Exemptions',
-        'Leaves',
+        'Holidays',
         'Users',
         'Devices',
         'Apply Exemption'

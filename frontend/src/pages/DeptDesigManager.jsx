@@ -90,10 +90,11 @@ function DeptDesigManager() {
         e.preventDefault();
         if (!newDept.trim()) return;
         try {
-            const res = await axios.post('/attendance/add_department', { dept: newDept });
+            const res = await axios.post('/attendance/add_department', { dept: newDept , dept_abbr: newAbbr });
             if (res.data.success) {
                 showAlert('Department added', 'success');
                 setNewDept('');
+                setNewAbbr('');
                 fetchDepartments();
             } else {
                 showAlert(res.data.message || 'Failed to add department', 'danger');
@@ -248,7 +249,7 @@ function DeptDesigManager() {
                                                             {hodList.map((staff) => (
                                                                 <option key={staff.staff_id} value={staff.staff_id}>
                                                                     {staff.name} ({staff.staff_id}) - {staff.dept}
-                                                                    {staff.access_role === 5 ? ' [Current HOD]' : ''}
+                                                                    {staff.access_role === 6 ? ' [Current HOD]' : ''}
                                                                 </option>
                                                             ))}
                                                         </select>

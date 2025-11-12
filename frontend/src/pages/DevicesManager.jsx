@@ -129,22 +129,16 @@ function DeviceManager() {
       console.error("Error adding device:", error);
     }
   };
-  
-  // For bootstrap tooltips
-  useEffect(() => {
-    // Dispose old tooltips first
-    const oldTooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    [...oldTooltips].forEach(el => {
-      const existingTooltip = Tooltip.getInstance(el);
-      if (existingTooltip) existingTooltip.dispose();
-    });
 
-    // Then create fresh tooltips
+  useEffect(() => {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    const tooltipList = [...tooltipTriggerList].map(el => new Tooltip(el));
+    const tooltipList = [...tooltipTriggerList].map(
+      el => new Tooltip(el, { trigger: 'hover' })
+    );
 
     return () => tooltipList.forEach(t => t.dispose());
-  }, []);
+  }, [devices, editingIdx, showActiveOnly]);
+
 
   return (
     <PageWrapper title="Device Manager">
